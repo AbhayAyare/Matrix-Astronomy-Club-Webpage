@@ -171,6 +171,7 @@ export default function AdminGalleryPage() {
       <Card>
         <CardHeader>
           <CardTitle>Current Gallery Images</CardTitle>
+          <CardDescription>Manage existing images. Hover over an image to delete it.</CardDescription> {/* Added description */}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -199,12 +200,14 @@ export default function AdminGalleryPage() {
                       data-ai-hint="astronomy club gallery" // Generic hint
                     />
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      {/* Delete Confirmation Dialog Trigger */}
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
                               variant="destructive"
                               size="icon"
                               disabled={deletingRef?.fullPath === image.ref.fullPath} // Disable button while this specific image is deleting
+                              aria-label={`Delete image ${image.name}`} // Add accessible label
                           >
                             {deletingRef?.fullPath === image.ref.fullPath ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -245,7 +248,3 @@ export default function AdminGalleryPage() {
     </div>
   );
 }
-
-
-
-    
