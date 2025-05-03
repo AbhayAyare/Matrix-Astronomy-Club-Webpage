@@ -7,11 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/context/firebase-provider';
-import { collection, getDocs, doc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
-import { Loader2, Trash2, Mail } from 'lucide-react';
+import { collection, getDocs, doc, deleteDoc, query, orderBy, Timestamp, FirestoreError } from 'firebase/firestore';
+import { Loader2, Trash2, Mail, WifiOff } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from 'lucide-react';
 
 const NEWSLETTER_COLLECTION = 'newsletterSubscribers';
 
@@ -27,6 +29,7 @@ export default function AdminNewsletterPage() {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const subscribersCollectionRef = collection(db, NEWSLETTER_COLLECTION);
 
@@ -34,6 +37,7 @@ export default function AdminNewsletterPage() {
   useEffect(() => {
     const fetchSubscribers = async () => {
       setLoading(true);
+      setFetchError(null); // Reset error on fetch
       try {
         // Assuming subscribers have a 'subscribedAt' field for ordering
         const q = query(subscribersCollectionRef, orderBy("subscribedAt", "desc"));
@@ -46,18 +50,30 @@ export default function AdminNewsletterPage() {
         setSubscribers(fetchedSubscribers);
       } catch (error) {
          console.error("Error fetching subscribers:", error);
-           // Check if the error is due to missing index
-           if ((error as any).code === 'failed-precondition') {
-               toast({
-                   title: "Firestore Index Required",
-                   description: "A Firestore index on 'newsletterSubscribers' by 'subscribedAt' descending is needed. Please create it in Firebase.",
-                   variant: "destructive",
-                   duration: 10000,
-               });
-           } else {
+         let errorMessage = "Failed to load newsletter subscribers.";
+         if (error instanceof FirestoreError) {
+             if (error.code === 'failed-precondition') {
+                 errorMessage = "A Firestore index on 'newsletterSubscribers' by 'subscribedAt' descending is needed. Please create it in Firebase.";
+                 toast({
+                     title: "Firestore Index Required",
+                     description: errorMessage,
+                     variant: "destructive",
+                     duration: 10000,
+                 });
+                 setFetchError(errorMessage); // Set specific error for UI if needed
+             } else if (error.code === 'unavailable' || error.message.includes('offline')) {
+                 errorMessage = "Cannot load subscribers. You appear to be offline. Please check your internet connection.";
+                 setFetchError(errorMessage);
+                 toast({
+                     title: "Error",
+                     description: errorMessage,
+                     variant: "destructive",
+                 });
+             }
+         } else {
               toast({
                 title: "Error",
-                description: "Failed to load newsletter subscribers.",
+                description: errorMessage,
                 variant: "destructive",
               });
            }
@@ -67,7 +83,7 @@ export default function AdminNewsletterPage() {
     };
     fetchSubscribers();
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db]); // Add subscribersCollectionRef if needed, but it's stable
+  }, [db]); // Rerun if db instance changes
 
   const handleDeleteSubscriber = async (id: string) => {
     setDeletingId(id);
@@ -78,9 +94,13 @@ export default function AdminNewsletterPage() {
       toast({ title: "Success", description: "Subscriber removed successfully." });
     } catch (error) {
       console.error("Error deleting subscriber:", error);
+       let errorMessage = "Failed to remove subscriber.";
+       if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
+          errorMessage = "Cannot remove subscriber. You appear to be offline.";
+       }
       toast({
         title: "Error",
-        description: "Failed to remove subscriber.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -100,11 +120,17 @@ export default function AdminNewsletterPage() {
       <Card>
         <CardHeader>
           <CardTitle>Subscriber List</CardTitle>
-          <CardDescription>Total Subscribers: {subscribers.length}</CardDescription>
+          <CardDescription>Total Subscribers: {loading || fetchError ? '...' : subscribers.length}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Subscribers...</span></div>
+          ) : fetchError ? (
+             <Alert variant="destructive">
+               <AlertCircle className="h-4 w-4" />
+               <AlertTitle>Network Error</AlertTitle>
+               <AlertDescription>{fetchError}</AlertDescription>
+             </Alert>
           ) : (
             <Table>
               <TableHeader>
@@ -176,4 +202,6 @@ export default function AdminNewsletterPage() {
   );
 }
 
-        
+
+
+    

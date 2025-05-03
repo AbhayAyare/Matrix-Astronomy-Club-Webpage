@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,8 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/context/firebase-provider';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { doc, getDoc, setDoc, updateDoc, FirestoreError } from 'firebase/firestore';
+import { Loader2, WifiOff } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from 'lucide-react';
+
 
 const CONTENT_DOC_ID = 'siteContent'; // Single document to store content
 const CONTENT_COLLECTION = 'config'; // Collection name
@@ -31,6 +35,7 @@ export default function AdminContentPage() {
   const [loading, setLoading] = useState(true);
   const [savingAbout, setSavingAbout] = useState(false);
   const [savingContact, setSavingContact] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
 
@@ -38,6 +43,7 @@ export default function AdminContentPage() {
   useEffect(() => {
     const fetchContent = async () => {
       setLoading(true);
+      setFetchError(null); // Reset error on fetch
       try {
         const docSnap = await getDoc(contentDocRef);
         if (docSnap.exists()) {
@@ -55,12 +61,22 @@ export default function AdminContentPage() {
              contactPhone: 'N/A',
              contactAddress: 'N/A',
            });
+           // Set initial state after creating
+           setAboutContent('Default about content.');
+           setContactEmail('default@example.com');
+           setContactPhone('N/A');
+           setContactAddress('N/A');
         }
       } catch (error) {
         console.error("Error fetching content:", error);
+        let errorMessage = "Failed to load website content.";
+         if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
+            errorMessage = "Cannot load content. You appear to be offline. Please check your internet connection.";
+            setFetchError(errorMessage);
+         }
         toast({
           title: "Error",
-          description: "Failed to load website content.",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
@@ -69,7 +85,7 @@ export default function AdminContentPage() {
     };
     fetchContent();
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db]); // Add contentDocRef if needed, but Firestore refs are stable
+  }, [db]); // Rerun if db instance changes
 
   const handleSaveAbout = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,9 +98,13 @@ export default function AdminContentPage() {
       });
     } catch (error) {
       console.error("Error updating about content:", error);
+       let errorMessage = "Failed to update About section.";
+        if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
+          errorMessage = "Cannot save. You appear to be offline.";
+        }
       toast({
         title: "Error",
-        description: "Failed to update About section.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -107,9 +127,13 @@ export default function AdminContentPage() {
        });
      } catch (error) {
        console.error("Error updating contact info:", error);
+        let errorMessage = "Failed to update contact information.";
+        if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
+          errorMessage = "Cannot save. You appear to be offline.";
+        }
        toast({
          title: "Error",
-         description: "Failed to update contact information.",
+         description: errorMessage,
          variant: "destructive",
        });
      } finally {
@@ -120,6 +144,20 @@ export default function AdminContentPage() {
   if (loading) {
     return <div className="flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Content...</span></div>;
   }
+
+  if (fetchError) {
+     return (
+         <div className="space-y-6">
+           <h1 className="text-3xl font-bold">Content Management</h1>
+           <Alert variant="destructive">
+             <AlertCircle className="h-4 w-4" />
+             <AlertTitle>Network Error</AlertTitle>
+             <AlertDescription>{fetchError}</AlertDescription>
+           </Alert>
+         </div>
+     );
+   }
+
 
   return (
     <div className="space-y-6">
@@ -200,3 +238,6 @@ export default function AdminContentPage() {
     </div>
   );
 }
+
+
+    

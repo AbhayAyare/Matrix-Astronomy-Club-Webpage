@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/context/firebase-provider';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { Loader2, PlusCircle, Edit, Trash2, Wand2 } from 'lucide-react';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, Timestamp, FirestoreError } from 'firebase/firestore';
+import { Loader2, PlusCircle, Edit, Trash2, Wand2, WifiOff } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose
 } from "@/components/ui/dialog";
@@ -42,6 +43,7 @@ export default function AdminEventsPage() {
   const [aiKeywords, setAiKeywords] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
 
   const eventsCollectionRef = collection(db, EVENTS_COLLECTION);
@@ -50,6 +52,7 @@ export default function AdminEventsPage() {
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
+      setFetchError(null); // Reset error on fetch
       try {
         const q = query(eventsCollectionRef, orderBy("date", "asc")); // Order by event date
         const querySnapshot = await getDocs(q);
@@ -63,9 +66,14 @@ export default function AdminEventsPage() {
         setEvents(fetchedEvents);
       } catch (error) {
         console.error("Error fetching events:", error);
+        let errorMessage = "Failed to load events.";
+         if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
+            errorMessage = "Cannot load events. You appear to be offline. Please check your internet connection.";
+            setFetchError(errorMessage); // Set specific error message for UI
+         }
         toast({
           title: "Error",
-          description: "Failed to load events.",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
@@ -181,10 +189,14 @@ export default function AdminEventsPage() {
       }
       handleCloseModal();
     } catch (error) {
-      console.error("Error saving event:", error);
+       console.error("Error saving event:", error);
+       let errorMessage = `Failed to ${editEventId ? 'update' : 'add'} event.`;
+        if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
+          errorMessage = "Cannot save. You appear to be offline.";
+        }
       toast({
         title: "Error",
-        description: `Failed to ${editEventId ? 'update' : 'add'} event.`,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -201,9 +213,13 @@ export default function AdminEventsPage() {
       toast({ title: "Success", description: "Event deleted successfully." });
     } catch (error) {
       console.error("Error deleting event:", error);
+       let errorMessage = "Failed to delete event.";
+        if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
+          errorMessage = "Cannot delete. You appear to be offline.";
+        }
       toast({
         title: "Error",
-        description: "Failed to delete event.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -227,6 +243,12 @@ export default function AdminEventsPage() {
 
       {loading ? (
          <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Events...</span></div>
+      ) : fetchError ? ( // Display fetch error message if present
+         <Alert variant="destructive">
+           <AlertCircle className="h-4 w-4" />
+           <AlertTitle>Network Error</AlertTitle>
+           <AlertDescription>{fetchError}</AlertDescription>
+         </Alert>
       ) : events.length === 0 ? (
         <Card>
             <CardContent className="p-6 text-center text-muted-foreground">
@@ -249,10 +271,29 @@ export default function AdminEventsPage() {
                           <Edit className="h-4 w-4" />
                           <span className="sr-only">Edit</span>
                         </Button>
-                        <Button variant="destructive" size="icon" onClick={() => handleDeleteEvent(event.id)} disabled={deletingId === event.id}>
-                          {deletingId === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                           <span className="sr-only">Delete</span>
-                        </Button>
+                         {/* Delete Confirmation Dialog */}
+                         <AlertDialog>
+                           <AlertDialogTrigger asChild>
+                             <Button variant="destructive" size="icon" disabled={deletingId === event.id}>
+                                {deletingId === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                <span className="sr-only">Delete</span>
+                             </Button>
+                           </AlertDialogTrigger>
+                           <AlertDialogContent>
+                             <AlertDialogHeader>
+                               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                               <AlertDialogDescription>
+                                 This action cannot be undone. This will permanently delete the event "{event.name}".
+                               </AlertDialogDescription>
+                             </AlertDialogHeader>
+                             <AlertDialogFooter>
+                               <AlertDialogCancel>Cancel</AlertDialogCancel>
+                               <AlertDialogAction onClick={() => handleDeleteEvent(event.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                 Yes, delete it
+                               </AlertDialogAction>
+                             </AlertDialogFooter>
+                           </AlertDialogContent>
+                         </AlertDialog>
                       </div>
                  </div>
               </CardHeader>
@@ -330,3 +371,5 @@ export default function AdminEventsPage() {
     </div>
   );
 }
+
+    

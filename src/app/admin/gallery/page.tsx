@@ -9,11 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/context/firebase-provider';
-import { ref, uploadBytes, getDownloadURL, listAll, deleteObject, StorageReference } from 'firebase/storage';
-import { Loader2, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL, listAll, deleteObject, StorageReference, StorageError } from 'firebase/storage';
+import { Loader2, Upload, Trash2, Image as ImageIcon, WifiOff } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from 'lucide-react';
 
 const GALLERY_FOLDER = 'gallery';
 
@@ -31,6 +33,7 @@ export default function AdminGalleryPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [deletingRef, setDeletingRef] = useState<StorageReference | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
 
   const galleryListRef = ref(storage, GALLERY_FOLDER);
@@ -38,6 +41,7 @@ export default function AdminGalleryPage() {
   // Fetch images on load
   const fetchImages = async () => {
     setLoading(true);
+    setFetchError(null); // Reset error on fetch
     try {
       const res = await listAll(galleryListRef);
       const fetchedImagesPromises = res.items.map(async (itemRef) => {
@@ -50,9 +54,14 @@ export default function AdminGalleryPage() {
       setImages(fetchedImages);
     } catch (error) {
       console.error("Error fetching gallery images:", error);
+      let errorMessage = "Failed to load gallery images.";
+       if (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline'))) {
+           errorMessage = "Cannot load gallery. You appear to be offline. Please check your internet connection.";
+           setFetchError(errorMessage);
+       }
       toast({
         title: "Error",
-        description: "Failed to load gallery images.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -93,9 +102,13 @@ export default function AdminGalleryPage() {
 
     } catch (error) {
       console.error("Error uploading image:", error);
+       let errorMessage = "Failed to upload image.";
+        if (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline'))) {
+           errorMessage = "Cannot upload. You appear to be offline.";
+       }
       toast({
         title: "Error",
-        description: "Failed to upload image.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -111,9 +124,13 @@ export default function AdminGalleryPage() {
       toast({ title: "Success", description: "Image deleted successfully." });
     } catch (error) {
       console.error("Error deleting image:", error);
+       let errorMessage = "Failed to delete image.";
+       if (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline'))) {
+          errorMessage = "Cannot delete. You appear to be offline.";
+       }
       toast({
         title: "Error",
-        description: "Failed to delete image.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -158,6 +175,12 @@ export default function AdminGalleryPage() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Images...</span></div>
+          ) : fetchError ? (
+             <Alert variant="destructive">
+               <AlertCircle className="h-4 w-4" />
+               <AlertTitle>Network Error</AlertTitle>
+               <AlertDescription>{fetchError}</AlertDescription>
+             </Alert>
           ) : images.length === 0 ? (
              <p className="text-center text-muted-foreground p-6">No images in the gallery yet. Upload some!</p>
           ) : (
@@ -223,4 +246,6 @@ export default function AdminGalleryPage() {
   );
 }
 
-        
+
+
+    
