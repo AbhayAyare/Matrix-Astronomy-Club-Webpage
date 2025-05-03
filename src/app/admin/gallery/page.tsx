@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, ChangeEvent } from 'react';
@@ -120,9 +121,10 @@ export default function AdminGalleryPage() {
     }
   };
 
-  // Unique IDs for Alert Dialog Title and Description
-  const alertDialogTitleId = "delete-image-dialog-title";
-  const alertDialogDescriptionId = "delete-image-dialog-description";
+  // Unique IDs for Alert Dialog Title and Description for each image instance
+  const getDialogTitleId = (imageName: string) => `delete-image-dialog-title-${imageName}`;
+  const getDialogDescriptionId = (imageName: string) => `delete-image-dialog-description-${imageName}`;
+
 
   return (
     <div className="space-y-6">
@@ -160,55 +162,59 @@ export default function AdminGalleryPage() {
              <p className="text-center text-muted-foreground p-6">No images in the gallery yet. Upload some!</p>
           ) : (
             <div className="grid grid-cols-gallery gap-4">
-              {images.map((image) => (
-                <div key={image.url} className="relative group border rounded-lg overflow-hidden shadow">
-                  <Image
-                    src={image.url}
-                    alt={image.name || "Gallery image"}
-                    width={300}
-                    height={200}
-                    className="object-cover w-full h-full aspect-[3/2]"
-                    data-ai-hint="astronomy club gallery" // Generic hint
-                  />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                     <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                         <Button
-                            variant="destructive"
-                            size="icon"
-                            disabled={deletingRef?.fullPath === image.ref.fullPath} // Disable button while this specific image is deleting
-                         >
-                           {deletingRef?.fullPath === image.ref.fullPath ? (
-                             <Loader2 className="h-4 w-4 animate-spin" />
-                           ) : (
-                             <Trash2 className="h-4 w-4" />
-                           )}
-                          <span className="sr-only">Delete Image</span>
-                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent
-                        aria-labelledby={alertDialogTitleId}
-                        aria-describedby={alertDialogDescriptionId}
-                      >
-                        <AlertDialogHeader>
-                          <AlertDialogTitle id={alertDialogTitleId}>Are you absolutely sure?</AlertDialogTitle>
-                          <AlertDialogDescription id={alertDialogDescriptionId}>
-                            This action cannot be undone. This will permanently delete the image
-                            <span className="font-medium break-all"> {image.name} </span>
-                            from the gallery.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(image.ref)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Yes, delete it
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+              {images.map((image) => {
+                const titleId = getDialogTitleId(image.name);
+                const descriptionId = getDialogDescriptionId(image.name);
+                return (
+                  <div key={image.url} className="relative group border rounded-lg overflow-hidden shadow">
+                    <Image
+                      src={image.url}
+                      alt={image.name || "Gallery image"}
+                      width={300}
+                      height={200}
+                      className="object-cover w-full h-full aspect-[3/2]"
+                      data-ai-hint="astronomy club gallery" // Generic hint
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                              variant="destructive"
+                              size="icon"
+                              disabled={deletingRef?.fullPath === image.ref.fullPath} // Disable button while this specific image is deleting
+                          >
+                            {deletingRef?.fullPath === image.ref.fullPath ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                            <span className="sr-only">Delete Image</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent
+                          aria-labelledby={titleId} // Use dynamic ID
+                          aria-describedby={descriptionId} // Use dynamic ID
+                        >
+                          <AlertDialogHeader>
+                            <AlertDialogTitle id={titleId}>Are you absolutely sure?</AlertDialogTitle> {/* Add ID */}
+                            <AlertDialogDescription id={descriptionId}> {/* Add ID */}
+                              This action cannot be undone. This will permanently delete the image
+                              <span className="font-medium break-all"> {image.name} </span>
+                              from the gallery.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(image.ref)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Yes, delete it
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -216,3 +222,5 @@ export default function AdminGalleryPage() {
     </div>
   );
 }
+
+        

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -87,9 +88,9 @@ export default function AdminNewsletterPage() {
     }
   };
 
-   // Unique IDs for Alert Dialog Title and Description
-   const alertDialogTitleId = "remove-subscriber-dialog-title";
-   const alertDialogDescriptionId = "remove-subscriber-dialog-description";
+   // Function to generate unique IDs for Alert Dialog Title and Description
+   const getDialogTitleId = (subscriberId: string) => `remove-subscriber-dialog-title-${subscriberId}`;
+   const getDialogDescriptionId = (subscriberId: string) => `remove-subscriber-dialog-description-${subscriberId}`;
 
   return (
     <div className="space-y-6">
@@ -121,46 +122,50 @@ export default function AdminNewsletterPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  subscribers.map((subscriber) => (
-                    <TableRow key={subscriber.id}>
-                      <TableCell className="font-medium flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground"/>
-                        {subscriber.email}
+                  subscribers.map((subscriber) => {
+                    const titleId = getDialogTitleId(subscriber.id);
+                    const descriptionId = getDialogDescriptionId(subscriber.id);
+                    return (
+                      <TableRow key={subscriber.id}>
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-muted-foreground"/>
+                          {subscriber.email}
+                          </TableCell>
+                        <TableCell>
+                          {subscriber.subscribedAt ? subscriber.subscribedAt.toDate().toLocaleDateString() : 'N/A'}
                         </TableCell>
-                      <TableCell>
-                         {subscriber.subscribedAt ? subscriber.subscribedAt.toDate().toLocaleDateString() : 'N/A'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                         <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                             <Button variant="destructive" size="sm" disabled={deletingId === subscriber.id}>
-                              {deletingId === subscriber.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1 h-4 w-4" />}
-                               Remove
-                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent
-                             aria-labelledby={alertDialogTitleId}
-                             aria-describedby={alertDialogDescriptionId}
-                          >
-                            <AlertDialogHeader>
-                              <AlertDialogTitle id={alertDialogTitleId}>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription id={alertDialogDescriptionId}>
-                                This action will permanently remove the subscriber
-                                <span className="font-medium"> {subscriber.email} </span>
-                                from the newsletter list.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteSubscriber(subscriber.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                Yes, remove
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        <TableCell className="text-right">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm" disabled={deletingId === subscriber.id}>
+                                {deletingId === subscriber.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1 h-4 w-4" />}
+                                Remove
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent
+                              aria-labelledby={titleId} // Use dynamic ID
+                              aria-describedby={descriptionId} // Use dynamic ID
+                            >
+                              <AlertDialogHeader>
+                                <AlertDialogTitle id={titleId}>Are you sure?</AlertDialogTitle> {/* Add ID */}
+                                <AlertDialogDescription id={descriptionId}> {/* Add ID */}
+                                  This action will permanently remove the subscriber
+                                  <span className="font-medium"> {subscriber.email} </span>
+                                  from the newsletter list.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteSubscriber(subscriber.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Yes, remove
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -170,3 +175,5 @@ export default function AdminNewsletterPage() {
     </div>
   );
 }
+
+        

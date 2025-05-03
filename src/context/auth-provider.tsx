@@ -1,82 +1,52 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Auth, User, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import type { Auth, User } from 'firebase/auth';
+// Removed unused Firebase auth imports: onAuthStateChanged, signInWithEmailAndPassword, signOut
 import { useFirebase } from './firebase-provider';
 
 interface AuthContextProps {
-  user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  user: User | null; // Keeping user structure in case it's needed later, but will always be null or placeholder
+  loading: boolean; // Keeping loading structure, but will resolve quickly
+  // Removed login/logout types
 }
 
 const AuthContext = createContext<AuthContextProps | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { auth } = useFirebase(); // Get auth instance from FirebaseProvider
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // Start loading as true
+  // const { auth } = useFirebase(); // Auth instance no longer needed here
+  // Simulate admin state without actual Firebase auth
+  const [user, setUser] = useState<User | null>(null); // Start as null initially
+  const [loading, setLoading] = useState(false); // Set loading to false as no auth check is performed
+
+  // Simulate an admin user being logged in without Firebase check
+  // In a real scenario without auth, you might pass admin status differently
+  // For now, let's assume admin access is granted by reaching the layout
+  // We can remove the concept of a logged-in 'user' entirely if preferred
 
   useEffect(() => {
-    // console.log("AuthProvider: Setting up onAuthStateChanged listener.");
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // console.log("AuthProvider: onAuthStateChanged fired. User:", currentUser ? currentUser.email : null);
-      setUser(currentUser);
-      // console.log("AuthProvider: Setting loading to false.");
-      setLoading(false);
-    }, (error) => {
-       // Handle potential errors during listener setup or execution
-       console.error("AuthProvider: Error in onAuthStateChanged listener:", error);
-       setUser(null); // Assume no user on error
-       setLoading(false); // Ensure loading state is updated even on error
-    });
+     // No auth state listener needed
+     // If we wanted to simulate a logged-in admin for components relying on `user` object:
+     // setUser({ uid: 'admin-placeholder', email: 'admin@example.com' } as User);
+     // setLoading(false); // Ensure loading is false
+     // Or keep user null if components don't rely on it
+     setLoading(false);
+  }, []);
 
-    // Cleanup subscription on unmount
-    return () => {
-       // console.log("AuthProvider: Cleaning up onAuthStateChanged listener.");
-      unsubscribe();
-    }
-  }, [auth]);
 
-  const login = async (email: string, password: string): Promise<void> => {
-    // console.log("AuthProvider: login called for", email);
-    setLoading(true); // Set loading to true when login starts
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // Auth state change will be handled by onAuthStateChanged, which sets loading to false.
-      // console.log("AuthProvider: signInWithEmailAndPassword successful.");
-    } catch (error) {
-      console.error("AuthProvider: Login error:", error);
-      setLoading(false); // Set loading to false if login fails
-      throw error; // Re-throw error to be caught in the component
-    }
-    // No finally block needed here, loading is handled by listener or catch block
-  };
+  // Login function removed
+  // const login = async (email: string, password: string): Promise<void> => { ... }
 
-  const logout = async (): Promise<void> => {
-    // console.log("AuthProvider: logout called.");
-    setLoading(true); // Set loading to true when logout starts
-    try {
-      await signOut(auth);
-      // Auth state change (user becomes null) will be handled by onAuthStateChanged, which sets loading to false.
-      // console.log("AuthProvider: signOut successful.");
-    } catch (error) {
-      console.error("AuthProvider: Logout error:", error);
-      setLoading(false); // Set loading to false if logout fails
-      // Handle logout error if needed
-    }
-     // No finally block needed here, loading is handled by listener or catch block
-  };
+  // Logout function removed
+  // const logout = async (): Promise<void> => { ... }
 
   const value: AuthContextProps = {
-    user,
-    loading,
-    login,
-    logout,
+    user: null, // Explicitly set user to null as auth is disabled
+    loading, // Loading is now always false after initial render
+    // login and logout removed from context value
   };
 
-  // console.log("AuthProvider: Rendering provider with loading:", loading, "user:", user ? user.email : null);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
@@ -85,6 +55,7 @@ export const useAuth = (): AuthContextProps => {
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  // console.log("useAuth hook called, returning context with loading:", context.loading, "user:", context.user ? context.user.email : null);
+  // User will always be null, loading will be false
   return context;
 };
+

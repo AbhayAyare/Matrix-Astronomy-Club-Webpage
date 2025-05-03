@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -105,3 +106,4 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
 
 // Default export remains the layout component
 export default AdminLayout;
+
