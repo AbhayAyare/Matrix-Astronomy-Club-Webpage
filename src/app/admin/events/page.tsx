@@ -211,6 +211,10 @@ export default function AdminEventsPage() {
     }
   };
 
+  // Unique IDs for Dialog Title and Description
+  const dialogTitleId = "event-dialog-title";
+  const dialogDescriptionId = "event-dialog-description";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -262,10 +266,14 @@ export default function AdminEventsPage() {
 
       {/* Add/Edit Event Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[525px]">
+        <DialogContent
+           className="sm:max-w-[525px]"
+           aria-labelledby={dialogTitleId}
+           aria-describedby={dialogDescriptionId}
+        >
           <DialogHeader>
-            <DialogTitle>{editEventId ? 'Edit Event' : 'Add New Event'}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle id={dialogTitleId}>{editEventId ? 'Edit Event' : 'Add New Event'}</DialogTitle>
+            <DialogDescription id={dialogDescriptionId}>
               {editEventId ? 'Update the details for this event.' : 'Fill in the details for the new event.'} Use the AI tool for suggestions.
             </DialogDescription>
           </DialogHeader>

@@ -87,6 +87,10 @@ export default function AdminNewsletterPage() {
     }
   };
 
+   // Unique IDs for Alert Dialog Title and Description
+   const alertDialogTitleId = "remove-subscriber-dialog-title";
+   const alertDialogDescriptionId = "remove-subscriber-dialog-description";
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Newsletter Subscribers</h1>
@@ -134,10 +138,13 @@ export default function AdminNewsletterPage() {
                                Remove
                              </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent>
+                          <AlertDialogContent
+                             aria-labelledby={alertDialogTitleId}
+                             aria-describedby={alertDialogDescriptionId}
+                          >
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
+                              <AlertDialogTitle id={alertDialogTitleId}>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription id={alertDialogDescriptionId}>
                                 This action will permanently remove the subscriber
                                 <span className="font-medium"> {subscriber.email} </span>
                                 from the newsletter list.

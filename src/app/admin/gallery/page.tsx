@@ -120,6 +120,10 @@ export default function AdminGalleryPage() {
     }
   };
 
+  // Unique IDs for Alert Dialog Title and Description
+  const alertDialogTitleId = "delete-image-dialog-title";
+  const alertDialogDescriptionId = "delete-image-dialog-description";
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Gallery Management</h1>
@@ -182,10 +186,13 @@ export default function AdminGalleryPage() {
                           <span className="sr-only">Delete Image</span>
                          </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent>
+                      <AlertDialogContent
+                        aria-labelledby={alertDialogTitleId}
+                        aria-describedby={alertDialogDescriptionId}
+                      >
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
+                          <AlertDialogTitle id={alertDialogTitleId}>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription id={alertDialogDescriptionId}>
                             This action cannot be undone. This will permanently delete the image
                             <span className="font-medium break-all"> {image.name} </span>
                             from the gallery.
