@@ -42,6 +42,9 @@ body {
     --sidebar-accent-foreground: 0 0% 98%; /* Near White */
     --sidebar-border: 210 100% 25%;
     --sidebar-ring: 180 100% 35%; /* Teal for focus rings */
+    --star-color-1: hsl(210 100% 60%); /* Lighter Blue */
+    --star-color-2: hsl(180 100% 40%); /* Lighter Teal */
+    --star-color-3: hsl(0 0% 80%); /* Light Gray */
   }
 
   .dark {
@@ -78,6 +81,9 @@ body {
     --sidebar-accent-foreground: 0 0% 98%; /* Near White */
     --sidebar-border: 210 100% 30%;
     --sidebar-ring: 180 100% 45%; /* Brighter Teal for focus rings */
+    --star-color-1: hsl(210 100% 90%); /* Near White */
+    --star-color-2: hsl(180 100% 70%); /* Light Teal/Cyan */
+    --star-color-3: hsl(0 0% 100%); /* White */
   }
 }
 
@@ -88,6 +94,56 @@ body {
   body {
     @apply bg-background text-foreground;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  }
+}
+
+@layer utilities {
+  /* Star Background Container */
+  .star-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -10; /* Ensure it's behind content */
+    overflow: hidden;
+    pointer-events: none; /* Allow clicks to pass through */
+    background-color: transparent; /* Or match body background */
+  }
+
+  /* Container for rotating stars */
+  .stars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(0deg); /* Initial rotation */
+    animation: rotateStars 300s linear infinite; /* Slow rotation animation */
+  }
+
+  /* Base Star Style */
+  .star {
+    position: absolute;
+    /* background-color: white; Will be set via inline style */
+    border-radius: 50%;
+    animation-name: twinkle;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    opacity: 0; /* Start invisible, animation brings it in */
+     /* Size, position, color, delay, duration set via inline style in component */
+  }
+
+   /* Rotation Animation */
+   @keyframes rotateStars {
+     from { transform: rotate(0deg); }
+     to { transform: rotate(360deg); }
+   }
+
+  /* Twinkle Animation */
+  @keyframes twinkle {
+    0%, 100% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1); }
   }
 }
 
@@ -106,4 +162,3 @@ body {
     }
   }
 }
-

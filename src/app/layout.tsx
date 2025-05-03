@@ -4,6 +4,8 @@ import './globals.css';
 import {Toaster} from '@/components/ui/toaster';
 import {FirebaseProvider} from '@/context/firebase-provider';
 import {QueryClientProviderWrapper} from '@/context/query-client-provider'; // Updated import path
+import { StarBackground } from '@/components/layout/star-background'; // Import the new component
+import { AuthProvider } from '@/context/auth-provider'; // Import AuthProvider
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -24,11 +26,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} antialiased`}>
+         <StarBackground /> {/* Add the star background here */}
         <FirebaseProvider>
-            <QueryClientProviderWrapper>
-              {children}
-              <Toaster />
-           </QueryClientProviderWrapper>
+           <AuthProvider> {/* Wrap with AuthProvider */}
+             <QueryClientProviderWrapper>
+               {children}
+               <Toaster />
+             </QueryClientProviderWrapper>
+           </AuthProvider>
         </FirebaseProvider>
       </body>
     </html>
