@@ -28,6 +28,7 @@ export default function AdminMembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false); // Track offline state
 
   const membersCollectionRef = collection(db, MEMBERS_COLLECTION);
 
@@ -36,6 +37,7 @@ export default function AdminMembersPage() {
     const fetchMembers = async () => {
       setLoading(true);
       setFetchError(null); // Reset error on fetch
+      setIsOffline(false); // Reset offline state
       try {
         // Assuming members have a 'joinedAt' field for ordering
         const q = query(membersCollectionRef, orderBy("joinedAt", "desc"));
@@ -53,23 +55,32 @@ export default function AdminMembersPage() {
           if (error instanceof FirestoreError) {
              if (error.code === 'failed-precondition') {
                  errorMessage = "A Firestore index on 'members' collection by 'joinedAt' descending is needed. Please create it in the Firebase console.";
+                 setFetchError(errorMessage); // Set specific error for UI if needed
                  toast({
                      title: "Firestore Index Required",
                      description: errorMessage,
                      variant: "destructive",
                      duration: 10000, // Show longer
                  });
-                 setFetchError(errorMessage); // Set specific error for UI if needed
              } else if (error.code === 'unavailable' || error.message.includes('offline')) {
                  errorMessage = "Cannot load members. You appear to be offline. Please check your internet connection.";
                  setFetchError(errorMessage);
+                 setIsOffline(true); // Set offline state
                  toast({
-                     title: "Error",
+                     title: "Network Error",
                      description: errorMessage,
                      variant: "destructive",
                  });
+             } else {
+                  setFetchError(errorMessage); // Set generic error message
+                  toast({
+                    title: "Error",
+                    description: errorMessage,
+                    variant: "destructive",
+                  });
              }
          } else {
+             setFetchError(errorMessage); // Set generic error message
              toast({
                title: "Error",
                description: errorMessage,
@@ -89,20 +100,35 @@ export default function AdminMembersPage() {
       <h1 className="text-3xl font-bold">Member Management</h1>
       <p className="text-muted-foreground">View the list of registered club members (read-only).</p>
 
+      {/* Offline Warning */}
+       {isOffline && (
+          <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
+              <WifiOff className="h-4 w-4"/>
+              <AlertTitle>Offline Mode</AlertTitle>
+              <AlertDescription>You are currently offline. Member list may be outdated.</AlertDescription>
+          </Alert>
+        )}
+
       <Card>
         <CardHeader>
           <CardTitle>Registered Members</CardTitle>
-           <CardDescription>Total Members: {loading || fetchError ? '...' : members.length}</CardDescription>
+           <CardDescription>Total Members: {loading || (fetchError && !isOffline) ? '...' : members.length}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Members...</span></div>
-           ) : fetchError ? (
+           ) : fetchError && !isOffline ? ( // Show destructive alert only for non-offline errors
              <Alert variant="destructive">
                <AlertCircle className="h-4 w-4" />
-               <AlertTitle>Network Error</AlertTitle>
+               <AlertTitle>Error</AlertTitle>
                <AlertDescription>{fetchError}</AlertDescription>
              </Alert>
+            ): fetchError && isOffline ? ( // Show warning for offline fetch error
+              <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Network Error</AlertTitle>
+                <AlertDescription>{fetchError}</AlertDescription>
+              </Alert>
           ) : (
             <Table>
               <TableHeader>
@@ -114,7 +140,7 @@ export default function AdminMembersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {members.length === 0 ? (
+                {members.length === 0 && !loading ? ( // Show 'No members' only if not loading and no error
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
                       No members found.
@@ -140,5 +166,3 @@ export default function AdminMembersPage() {
     </div>
   );
 }
-
-    

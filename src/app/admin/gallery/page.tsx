@@ -34,6 +34,7 @@ export default function AdminGalleryPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [deletingRef, setDeletingRef] = useState<StorageReference | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false); // Track offline state
 
 
   const galleryListRef = ref(storage, GALLERY_FOLDER);
@@ -42,6 +43,7 @@ export default function AdminGalleryPage() {
   const fetchImages = async () => {
     setLoading(true);
     setFetchError(null); // Reset error on fetch
+    setIsOffline(false); // Reset offline state
     try {
       const res = await listAll(galleryListRef);
       const fetchedImagesPromises = res.items.map(async (itemRef) => {
@@ -57,6 +59,9 @@ export default function AdminGalleryPage() {
       let errorMessage = "Failed to load gallery images.";
        if (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline'))) {
            errorMessage = "Cannot load gallery. You appear to be offline. Please check your internet connection.";
+           setFetchError(errorMessage);
+           setIsOffline(true); // Set offline state
+       } else {
            setFetchError(errorMessage);
        }
       toast({
@@ -105,6 +110,7 @@ export default function AdminGalleryPage() {
        let errorMessage = "Failed to upload image.";
         if (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline'))) {
            errorMessage = "Cannot upload. You appear to be offline.";
+           setIsOffline(true); // Indicate offline during upload
        }
       toast({
         title: "Error",
@@ -127,6 +133,7 @@ export default function AdminGalleryPage() {
        let errorMessage = "Failed to delete image.";
        if (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline'))) {
           errorMessage = "Cannot delete. You appear to be offline.";
+          setIsOffline(true); // Indicate offline during delete
        }
       toast({
         title: "Error",
@@ -148,6 +155,15 @@ export default function AdminGalleryPage() {
       <h1 className="text-3xl font-bold">Gallery Management</h1>
       <p className="text-muted-foreground">Upload or delete images for the public website gallery.</p>
 
+      {/* Offline Warning */}
+      {isOffline && (
+         <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
+             <WifiOff className="h-4 w-4"/>
+             <AlertTitle>Offline Mode</AlertTitle>
+             <AlertDescription>You are currently offline. Functionality may be limited (uploading, deleting).</AlertDescription>
+         </Alert>
+       )}
+
       {/* Upload Section */}
       <Card>
         <CardHeader>
@@ -157,12 +173,13 @@ export default function AdminGalleryPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
              <Label htmlFor="gallery-upload" className="sr-only">Choose file</Label>
-             <Input id="gallery-upload" type="file" accept="image/*" onChange={handleFileChange} disabled={uploading} />
+             <Input id="gallery-upload" type="file" accept="image/*" onChange={handleFileChange} disabled={uploading || isOffline} />
           </div>
            {selectedFile && <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>}
-          <Button onClick={handleUpload} disabled={!selectedFile || uploading}>
+          <Button onClick={handleUpload} disabled={!selectedFile || uploading || isOffline}>
             {uploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {uploading ? 'Uploading...' : <><Upload className="mr-2 h-4 w-4" /> Upload Image</>}
+            {isOffline ? <WifiOff className="mr-2 h-4 w-4" /> : <Upload className="mr-2 h-4 w-4" />}
+            {uploading ? 'Uploading...' : isOffline ? 'Offline' : 'Upload Image'}
           </Button>
         </CardContent>
       </Card>
@@ -176,13 +193,19 @@ export default function AdminGalleryPage() {
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Images...</span></div>
-          ) : fetchError ? (
+          ) : fetchError && !isOffline ? ( // Show destructive alert only for non-offline fetch errors
              <Alert variant="destructive">
+               <AlertCircle className="h-4 w-4" />
+               <AlertTitle>Error Loading Gallery</AlertTitle>
+               <AlertDescription>{fetchError}</AlertDescription>
+             </Alert>
+          ) : fetchError && isOffline ? ( // Show warning for offline fetch error
+             <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
                <AlertCircle className="h-4 w-4" />
                <AlertTitle>Network Error</AlertTitle>
                <AlertDescription>{fetchError}</AlertDescription>
              </Alert>
-          ) : images.length === 0 ? (
+          ) : images.length === 0 && !loading ? ( // Show 'No images' only if not loading and no error
              <p className="text-center text-muted-foreground p-6">No images in the gallery yet. Upload some!</p>
           ) : (
             <div className="grid grid-cols-gallery gap-4">
@@ -206,7 +229,7 @@ export default function AdminGalleryPage() {
                           <Button
                               variant="destructive"
                               size="icon"
-                              disabled={deletingRef?.fullPath === image.ref.fullPath} // Disable button while this specific image is deleting
+                              disabled={deletingRef?.fullPath === image.ref.fullPath || isOffline} // Disable button while deleting or offline
                               aria-label={`Delete image ${image.name}`} // Add accessible label
                           >
                             {deletingRef?.fullPath === image.ref.fullPath ? (

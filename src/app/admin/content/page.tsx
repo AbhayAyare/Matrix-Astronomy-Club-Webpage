@@ -41,8 +41,8 @@ const defaultContent: SiteContent = {
   newsletterTitle: 'Subscribe to Our Newsletter',
   newsletterDescription: 'Get the latest news, event announcements, and astronomical insights delivered to your inbox.',
   contactEmail: 'info@matrixastronomy.org',
-  contactPhone: 'N/A',
-  contactAddress: 'N/A',
+  contactPhone: '7219690903',
+  contactAddress: 'Kolhapur',
 };
 
 
@@ -53,6 +53,7 @@ export default function AdminContentPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false); // Track offline state
   const [isDirty, setIsDirty] = useState(false); // Track changes
 
   const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
@@ -62,6 +63,7 @@ export default function AdminContentPage() {
     const fetchContent = async () => {
       setLoading(true);
       setFetchError(null); // Reset error on fetch
+      setIsOffline(false); // Reset offline state
       try {
         const docSnap = await getDoc(contentDocRef);
         if (docSnap.exists()) {
@@ -81,6 +83,7 @@ export default function AdminContentPage() {
          if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
             errorMessage = "Cannot load content. You appear to be offline. Please check your internet connection.";
             setFetchError(errorMessage);
+            setIsOffline(true); // Set offline state
          } else {
              // Use the generic error message for other errors
              setFetchError(errorMessage);
@@ -123,6 +126,7 @@ export default function AdminContentPage() {
        let errorMessage = "Failed to update website content.";
         if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
           errorMessage = "Cannot save. You appear to be offline.";
+          setIsOffline(true); // Indicate offline during save attempt
         }
       toast({
         title: "Error",
@@ -138,13 +142,13 @@ export default function AdminContentPage() {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Content...</span></div>;
   }
 
-  if (fetchError) {
+  if (fetchError && !isOffline) { // Show destructive alert only for non-offline errors
      return (
          <div className="space-y-6">
            <h1 className="text-3xl font-bold">Content Management</h1>
            <Alert variant="destructive">
              <AlertCircle className="h-4 w-4" />
-             <AlertTitle>Network Error</AlertTitle>
+             <AlertTitle>Error</AlertTitle>
              <AlertDescription>{fetchError}</AlertDescription>
              <Button onClick={() => window.location.reload()} className="mt-4">Retry</Button>
            </Alert>
@@ -160,12 +164,32 @@ export default function AdminContentPage() {
           <h1 className="text-3xl font-bold">Content Management</h1>
           <p className="text-muted-foreground">Update the text content displayed on the public website.</p>
         </div>
-        <Button type="submit" disabled={saving || !isDirty}>
+        <Button type="submit" disabled={saving || !isDirty || isOffline}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           <Save className="mr-2 h-4 w-4"/>
-          {saving ? 'Saving...' : 'Save All Changes'}
+          {saving ? 'Saving...' : isOffline ? 'Offline - Cannot Save' : 'Save All Changes'}
         </Button>
       </div>
+
+      {/* Offline Warning */}
+      {isOffline && (
+         <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
+             <WifiOff className="h-4 w-4"/>
+             <AlertTitle>Offline Mode</AlertTitle>
+             <AlertDescription>You are currently offline. Content cannot be saved until you reconnect.</AlertDescription>
+         </Alert>
+       )}
+
+      {/* Display fetch error if offline */}
+      {fetchError && isOffline && (
+          <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
+              <AlertCircle className="h-4 w-4"/>
+              <AlertTitle>Loading Issue</AlertTitle>
+              <AlertDescription>{fetchError}</AlertDescription>
+              <Button onClick={() => window.location.reload()} className="mt-4" variant="outline" size="sm">Retry Connection</Button>
+          </Alert>
+      )}
+
 
       {/* Hero Section */}
       <Card>
@@ -181,7 +205,7 @@ export default function AdminContentPage() {
               name="heroTitle"
               value={content.heroTitle}
               onChange={handleInputChange}
-              disabled={saving}
+              disabled={saving || isOffline}
             />
           </div>
           <div className="space-y-2">
@@ -192,7 +216,7 @@ export default function AdminContentPage() {
               value={content.heroSubtitle}
               onChange={handleInputChange}
               rows={3}
-              disabled={saving}
+              disabled={saving || isOffline}
             />
           </div>
         </CardContent>
@@ -214,7 +238,7 @@ export default function AdminContentPage() {
                value={content.about}
                onChange={handleInputChange}
                rows={6}
-               disabled={saving}
+               disabled={saving || isOffline}
              />
            </div>
         </CardContent>
@@ -234,7 +258,7 @@ export default function AdminContentPage() {
               name="joinTitle"
               value={content.joinTitle}
               onChange={handleInputChange}
-              disabled={saving}
+              disabled={saving || isOffline}
             />
           </div>
           <div className="space-y-2">
@@ -245,7 +269,7 @@ export default function AdminContentPage() {
               value={content.joinDescription}
               onChange={handleInputChange}
               rows={3}
-              disabled={saving}
+              disabled={saving || isOffline}
             />
           </div>
         </CardContent>
@@ -265,7 +289,7 @@ export default function AdminContentPage() {
               name="newsletterTitle"
               value={content.newsletterTitle}
               onChange={handleInputChange}
-              disabled={saving}
+              disabled={saving || isOffline}
             />
           </div>
           <div className="space-y-2">
@@ -276,7 +300,7 @@ export default function AdminContentPage() {
               value={content.newsletterDescription}
               onChange={handleInputChange}
               rows={3}
-              disabled={saving}
+              disabled={saving || isOffline}
             />
           </div>
         </CardContent>
@@ -300,7 +324,7 @@ export default function AdminContentPage() {
                  placeholder="info@matrixastronomy.org"
                  value={content.contactEmail}
                  onChange={handleInputChange}
-                 disabled={saving}
+                 disabled={saving || isOffline}
                />
              </div>
               <div className="space-y-2">
@@ -312,7 +336,7 @@ export default function AdminContentPage() {
                  placeholder="+1 (555) 123-4567"
                  value={content.contactPhone}
                  onChange={handleInputChange}
-                 disabled={saving}
+                 disabled={saving || isOffline}
                />
              </div>
              <div className="space-y-2">
@@ -320,11 +344,11 @@ export default function AdminContentPage() {
                <Textarea
                  id="contactAddress"
                  name="contactAddress"
-                 placeholder="123 Cosmos Avenue, Starlight City, ST 98765"
+                 placeholder="Kolhapur"
                  value={content.contactAddress}
                  onChange={handleInputChange}
                  rows={3}
-                 disabled={saving}
+                 disabled={saving || isOffline}
                />
              </div>
           </div>
@@ -332,13 +356,12 @@ export default function AdminContentPage() {
       </Card>
 
        <div className="flex justify-end py-4">
-          <Button type="submit" disabled={saving || !isDirty}>
+          <Button type="submit" disabled={saving || !isDirty || isOffline}>
            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
            <Save className="mr-2 h-4 w-4"/>
-           {saving ? 'Saving...' : 'Save All Changes'}
+           {saving ? 'Saving...' : isOffline ? 'Offline - Cannot Save' : 'Save All Changes'}
          </Button>
        </div>
     </form>
   );
 }
-

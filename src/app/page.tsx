@@ -2,15 +2,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Phone, MapPin } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { getSiteContent, SiteContent } from '@/services/content'; // Import the service and type
-import { collection, getDocs, query, orderBy, Timestamp, where } from 'firebase/firestore';
-import { ref, listAll, getDownloadURL } from 'firebase/storage';
+import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError } from 'firebase/firestore'; // Added FirestoreError
+import { ref, listAll, getDownloadURL, StorageError } from 'firebase/storage'; // Added StorageError
 import { db, storage } from '@/config/firebase';
 import { JoinForm } from '@/components/home/join-form'; // Import JoinForm
 import { NewsletterForm } from '@/components/home/newsletter-form'; // Import NewsletterForm
@@ -35,6 +35,8 @@ interface GalleryImage {
 async function getUpcomingEvents(): Promise<Event[]> {
   const eventsCollectionRef = collection(db, 'events');
   const today = Timestamp.now(); // Get current timestamp
+  const fallbackDate = new Date();
+  fallbackDate.setDate(fallbackDate.getDate() + 7); // 1 week from now
 
   try {
     // Query for events where the date is greater than or equal to today
@@ -53,16 +55,16 @@ async function getUpcomingEvents(): Promise<Event[]> {
   } catch (error) {
     console.error("Error fetching upcoming events:", error);
     // Handle specific errors like missing index or offline
-    if (error instanceof Error && (error.message.includes('offline') || error.message.includes('unavailable'))) {
-        console.warn("Offline: Cannot fetch upcoming events.");
+    if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
+        console.warn("Offline: Cannot fetch upcoming events. Using fallback.");
     } else if (error instanceof Error && error.message.includes('firestore/indexes')) {
         console.error("Firestore index missing for querying/ordering events by date. Please create it.");
+    } else {
+        console.error("An unexpected error occurred fetching events.");
     }
     // Return fallback data on error
-    const fallbackDate = new Date();
-    fallbackDate.setDate(fallbackDate.getDate() + 7); // 1 week from now
     return [
-      { id: 'fallback1', name: 'Deep Sky Observation Night', date: Timestamp.fromDate(fallbackDate), description: 'Join us for a night under the stars observing distant galaxies and nebulae.', imageURL: 'https://picsum.photos/seed/event1/400/250'},
+      { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(fallbackDate), description: 'Join us for a night under the stars observing distant galaxies and nebulae.', imageURL: 'https://picsum.photos/seed/event1/400/250'},
     ];
   }
 }
@@ -73,6 +75,7 @@ async function getGalleryImages(): Promise<GalleryImage[]> {
   try {
     const res = await listAll(galleryListRef);
     if (res.items.length === 0) {
+        console.log("No gallery images found.");
         return []; // Return empty if no images found
     }
     const imagePromises = res.items.map(async (itemRef) => {
@@ -85,14 +88,19 @@ async function getGalleryImages(): Promise<GalleryImage[]> {
     return images;
   } catch (error) {
     console.error("Error fetching gallery images:", error);
-     if (error instanceof Error && (error.message.includes('offline') || error.message.includes('storage/retry-limit-exceeded'))) {
-        console.warn("Offline or network issue: Cannot fetch gallery images.");
+     if (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline'))) {
+        console.warn("Offline or network issue: Cannot fetch gallery images. Using fallback.");
+     } else {
+        console.error("An unexpected error occurred fetching gallery images.");
      }
     // Return fallback data on error - fewer images for fallback
     return [
-      { id: 'g1', src: 'https://picsum.photos/seed/gallery1/300/200', alt: 'Nebula'},
-      { id: 'g2', src: 'https://picsum.photos/seed/gallery2/300/200', alt: 'Galaxy'},
-      { id: 'g3', src: 'https://picsum.photos/seed/gallery3/300/200', alt: 'Moon surface'},
+      { id: 'g1', src: 'https://picsum.photos/seed/gallery1/300/200', alt: 'Nebula (Fallback)'},
+      { id: 'g2', src: 'https://picsum.photos/seed/gallery2/300/200', alt: 'Galaxy (Fallback)'},
+      { id: 'g3', src: 'https://picsum.photos/seed/gallery3/300/200', alt: 'Moon surface (Fallback)'},
+      { id: 'g4', src: 'https://picsum.photos/seed/gallery4/300/200', alt: 'Star cluster (Fallback)'},
+      { id: 'g5', src: 'https://picsum.photos/seed/gallery5/300/200', alt: 'Planet Jupiter (Fallback)'},
+      { id: 'g6', src: 'https://picsum.photos/seed/gallery6/300/200', alt: 'Observatory telescope (Fallback)'},
     ];
   }
 }

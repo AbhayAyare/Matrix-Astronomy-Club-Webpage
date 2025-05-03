@@ -29,8 +29,8 @@ const defaultContent: SiteContent = {
   newsletterTitle: 'Subscribe to Our Newsletter',
   newsletterDescription: 'Get the latest news, event announcements, and astronomical insights delivered to your inbox.',
   contactEmail: 'info@matrixastronomy.org',
-  contactPhone: 'N/A',
-  contactAddress: 'N/A',
+  contactPhone: '7219690903', // Updated phone
+  contactAddress: 'Kolhapur', // Updated address
 };
 
 
@@ -58,6 +58,8 @@ export async function getSiteContent(): Promise<SiteContent> {
     // Provide a specific message for offline errors if possible
     if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
         console.warn("Cannot fetch site content: Client is offline. Returning default content.");
+    } else {
+        console.error("An unexpected error occurred fetching site content.");
     }
     // Return default content as a fallback on any error
     return defaultContent;

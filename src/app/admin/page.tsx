@@ -41,13 +41,14 @@ export default function AdminDashboardPage() {
          const membersCollectionRef = collection(db, MEMBERS_COLLECTION);
          const eventsCollectionRef = collection(db, EVENTS_COLLECTION);
          const newsletterCollectionRef = collection(db, NEWSLETTER_COLLECTION);
+         const galleryListRef = ref(storage, GALLERY_FOLDER);
 
          // Use Promise.allSettled to fetch all stats even if some fail
          const results = await Promise.allSettled([
              getDocs(membersCollectionRef),
              getDocs(eventsCollectionRef),
              getDocs(newsletterCollectionRef),
-             listAll(ref(storage, GALLERY_FOLDER))
+             listAll(galleryListRef) // Fetch gallery list
          ]);
 
          let memberCount = 0;
@@ -55,41 +56,42 @@ export default function AdminDashboardPage() {
          let subscriberCount = 0;
          let galleryImageCount = 0;
          let encounteredError = false;
+         let isOfflineError = false;
 
-         if (results[0].status === 'fulfilled') memberCount = results[0].value.size; else encounteredError = true;
-         if (results[1].status === 'fulfilled') eventCount = results[1].value.size; else encounteredError = true;
-         if (results[2].status === 'fulfilled') subscriberCount = results[2].value.size; else encounteredError = true;
-         if (results[3].status === 'fulfilled') galleryImageCount = results[3].value.items.length; else encounteredError = true;
+         // Process results
+         if (results[0].status === 'fulfilled') memberCount = results[0].value.size; else { encounteredError = true; if (results[0].reason instanceof FirestoreError && (results[0].reason.code === 'unavailable' || results[0].reason.message.includes('offline'))) isOfflineError = true; else console.error("Error fetching members:", results[0].reason); }
+         if (results[1].status === 'fulfilled') eventCount = results[1].value.size; else { encounteredError = true; if (results[1].reason instanceof FirestoreError && (results[1].reason.code === 'unavailable' || results[1].reason.message.includes('offline'))) isOfflineError = true; else console.error("Error fetching events:", results[1].reason); }
+         if (results[2].status === 'fulfilled') subscriberCount = results[2].value.size; else { encounteredError = true; if (results[2].reason instanceof FirestoreError && (results[2].reason.code === 'unavailable' || results[2].reason.message.includes('offline'))) isOfflineError = true; else console.error("Error fetching subscribers:", results[2].reason); }
+         if (results[3].status === 'fulfilled') galleryImageCount = results[3].value.items.length; else { encounteredError = true; if (results[3].reason instanceof StorageError && (results[3].reason.code === 'storage/retry-limit-exceeded' || results[3].reason.code.includes('offline'))) isOfflineError = true; else console.error("Error fetching gallery images:", results[3].reason); }
 
 
          setStats({ memberCount, eventCount, galleryImageCount, subscriberCount });
 
-         // Check for specific offline errors if any promise was rejected
+         // Set specific error message based on findings
          if (encounteredError) {
-             const errors = results.filter(r => r.status === 'rejected').map(r => (r as PromiseRejectedResult).reason);
-             const offlineError = errors.some(err =>
-                 (err instanceof FirestoreError && (err.code === 'unavailable' || err.message.includes('offline'))) ||
-                 (err instanceof StorageError && (err.code === 'storage/retry-limit-exceeded' || err.code.includes('offline')))
-             );
-             if (offlineError) {
-                  setStatsError("Cannot load all stats. You appear to be offline. Some data may be outdated.");
+             if (isOfflineError) {
+                  setStatsError("Cannot load all stats. You appear to be offline. Displayed data might be outdated.");
              } else {
-                  console.error("Error fetching dashboard stats:", errors); // Log other errors
-                  setStatsError("Failed to load some site statistics."); // Generic error for other issues
+                  setStatsError("Failed to load some site statistics due to an unexpected error.");
              }
          }
 
        } catch (error) {
-         // Catch any unexpected top-level error during setup
+         // Catch any unexpected top-level error during setup (less likely with Promise.allSettled)
          console.error("Unexpected error fetching dashboard stats:", error);
          setStatsError("An unexpected error occurred while loading statistics.");
+         // Check if this top-level error is also an offline error
+         if ((error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) || (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline')))){
+             setStatsError("Cannot load stats. You appear to be offline.");
+         }
        } finally {
          setLoadingStats(false);
        }
      };
 
      fetchStats();
-   }, [db, storage]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [db, storage]); // Dependencies db and storage
 
 
   return (
@@ -105,10 +107,11 @@ export default function AdminDashboardPage() {
       <section>
         <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2"><BarChart className="w-6 h-6 text-accent"/> Site Statistics</h2>
         {statsError && ( // Display error message if present
-             <Alert variant="destructive" className="mb-4">
+             <Alert variant={statsError.includes("offline") ? "default" : "destructive"} className={`mb-4 ${statsError.includes("offline") ? 'border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400' : ''}`}>
                <AlertCircle className="h-4 w-4" />
-               <AlertTitle>Data Loading Issue</AlertTitle>
+               <AlertTitle>{statsError.includes("offline") ? "Network Issue" : "Data Loading Issue"}</AlertTitle>
                <AlertDescription>{statsError}</AlertDescription>
+                {statsError.includes("offline") && <WifiOff className="h-4 w-4 absolute right-4 top-4 text-yellow-500 dark:text-yellow-400"/>}
              </Alert>
           )}
         {loadingStats ? (
@@ -177,7 +180,7 @@ export default function AdminDashboardPage() {
             <Card className="hover:shadow-md transition-shadow duration-300">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg"><Settings className="w-5 h-5 text-primary"/> Website Content</CardTitle>
-                    <CardDescription>Edit About Us and Contact Info.</CardDescription>
+                    <CardDescription>Edit hero, about, join, newsletter, and contact info.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Button asChild variant="outline" size="sm">
@@ -240,5 +243,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    

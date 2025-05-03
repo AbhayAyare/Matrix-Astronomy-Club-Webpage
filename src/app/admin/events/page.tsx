@@ -14,6 +14,9 @@ import { Loader2, PlusCircle, Edit, Trash2, Wand2, WifiOff } from 'lucide-react'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
+} from "@/components/ui/alert-dialog"; // Import AlertDialog components
 import { suggestEventDetails, SuggestEventDetailsInput, SuggestEventDetailsOutput } from '@/ai/flows/suggest-event-details'; // Import AI flow
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from 'lucide-react';
@@ -44,6 +47,7 @@ export default function AdminEventsPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false); // Track offline state
 
 
   const eventsCollectionRef = collection(db, EVENTS_COLLECTION);
@@ -53,6 +57,7 @@ export default function AdminEventsPage() {
     const fetchEvents = async () => {
       setLoading(true);
       setFetchError(null); // Reset error on fetch
+      setIsOffline(false); // Reset offline state
       try {
         const q = query(eventsCollectionRef, orderBy("date", "asc")); // Order by event date
         const querySnapshot = await getDocs(q);
@@ -70,12 +75,25 @@ export default function AdminEventsPage() {
          if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
             errorMessage = "Cannot load events. You appear to be offline. Please check your internet connection.";
             setFetchError(errorMessage); // Set specific error message for UI
+            setIsOffline(true); // Set offline state
+         } else if (error instanceof FirestoreError && error.code === 'failed-precondition') {
+             errorMessage = "A Firestore index on 'events' collection by 'date' ascending is needed. Please create it in the Firebase console.";
+             setFetchError(errorMessage);
+             toast({
+                 title: "Firestore Index Required",
+                 description: errorMessage,
+                 variant: "destructive",
+                 duration: 10000, // Show longer
+             });
+         } else {
+            setFetchError(errorMessage); // Set generic error for other cases
+            toast({
+              title: "Error",
+              description: errorMessage,
+              variant: "destructive",
+            });
          }
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
+
       } finally {
         setLoading(false);
       }
@@ -193,6 +211,7 @@ export default function AdminEventsPage() {
        let errorMessage = `Failed to ${editEventId ? 'update' : 'add'} event.`;
         if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
           errorMessage = "Cannot save. You appear to be offline.";
+          setIsOffline(true); // Indicate offline during save
         }
       toast({
         title: "Error",
@@ -216,6 +235,7 @@ export default function AdminEventsPage() {
        let errorMessage = "Failed to delete event.";
         if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
           errorMessage = "Cannot delete. You appear to be offline.";
+           setIsOffline(true); // Indicate offline during delete
         }
       toast({
         title: "Error",
@@ -235,21 +255,36 @@ export default function AdminEventsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Event Management</h1>
-        <Button onClick={() => handleOpenModal()}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add New Event
+        <Button onClick={() => handleOpenModal()} disabled={isOffline}>
+          <PlusCircle className="mr-2 h-4 w-4" /> {isOffline ? "Offline" : "Add New Event"}
         </Button>
       </div>
       <p className="text-muted-foreground">Add, edit, or delete upcoming club events.</p>
 
+      {/* Offline Warning */}
+      {isOffline && (
+         <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
+             <WifiOff className="h-4 w-4"/>
+             <AlertTitle>Offline Mode</AlertTitle>
+             <AlertDescription>You are currently offline. Functionality may be limited (e.g., adding, saving, deleting).</AlertDescription>
+         </Alert>
+       )}
+
       {loading ? (
          <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Events...</span></div>
-      ) : fetchError ? ( // Display fetch error message if present
+      ) : fetchError && !isOffline ? ( // Display destructive alert only for non-offline errors
          <Alert variant="destructive">
            <AlertCircle className="h-4 w-4" />
-           <AlertTitle>Network Error</AlertTitle>
+           <AlertTitle>Error</AlertTitle>
            <AlertDescription>{fetchError}</AlertDescription>
          </Alert>
-      ) : events.length === 0 ? (
+      ): fetchError && isOffline ? ( // Display warning for offline fetch error
+           <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
+             <AlertCircle className="h-4 w-4" />
+             <AlertTitle>Network Error</AlertTitle>
+             <AlertDescription>{fetchError}</AlertDescription>
+           </Alert>
+      ) : events.length === 0 && !loading ? ( // Show 'No events' only if not loading and no error
         <Card>
             <CardContent className="p-6 text-center text-muted-foreground">
                 No events found. Click Add New Event to create one.
@@ -267,14 +302,14 @@ export default function AdminEventsPage() {
                          <CardDescription>{event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
                      </div>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="icon" onClick={() => handleOpenModal(event)} disabled={deletingId === event.id}>
+                        <Button variant="outline" size="icon" onClick={() => handleOpenModal(event)} disabled={deletingId === event.id || isOffline}>
                           <Edit className="h-4 w-4" />
                           <span className="sr-only">Edit</span>
                         </Button>
                          {/* Delete Confirmation Dialog */}
                          <AlertDialog>
                            <AlertDialogTrigger asChild>
-                             <Button variant="destructive" size="icon" disabled={deletingId === event.id}>
+                             <Button variant="destructive" size="icon" disabled={deletingId === event.id || isOffline}>
                                 {deletingId === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                 <span className="sr-only">Delete</span>
                              </Button>
@@ -327,9 +362,9 @@ export default function AdminEventsPage() {
                         placeholder="Enter keywords (e.g., 'meteor shower viewing dark site')"
                         value={aiKeywords}
                         onChange={(e) => setAiKeywords(e.target.value)}
-                        disabled={aiLoading}
+                        disabled={aiLoading || isOffline}
                     />
-                    <Button type="button" onClick={handleSuggestDetails} disabled={!aiKeywords || aiLoading} size="sm">
+                    <Button type="button" onClick={handleSuggestDetails} disabled={!aiKeywords || aiLoading || isOffline} size="sm">
                         {aiLoading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Wand2 className="mr-1 h-4 w-4" />}
                          Suggest
                     </Button>
@@ -346,21 +381,21 @@ export default function AdminEventsPage() {
           <form onSubmit={handleSaveEvent} className="space-y-4 pt-4">
             <div className="space-y-2">
               <Label htmlFor="name">Event Name</Label>
-              <Input id="name" name="name" value={currentEvent?.name || ''} onChange={handleInputChange} required disabled={saving} />
+              <Input id="name" name="name" value={currentEvent?.name || ''} onChange={handleInputChange} required disabled={saving || isOffline} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="date">Date</Label>
-              <Input id="date" name="date" type="date" value={currentEvent?.date || ''} onChange={handleInputChange} required disabled={saving} />
+              <Input id="date" name="date" type="date" value={currentEvent?.date || ''} onChange={handleInputChange} required disabled={saving || isOffline} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description" name="description" value={currentEvent?.description || ''} onChange={handleInputChange} required rows={5} disabled={saving} />
+              <Textarea id="description" name="description" value={currentEvent?.description || ''} onChange={handleInputChange} required rows={5} disabled={saving || isOffline} />
             </div>
             <DialogFooter>
               <DialogClose asChild>
                  <Button type="button" variant="outline" onClick={handleCloseModal} disabled={saving}>Cancel</Button>
               </DialogClose>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || isOffline}>
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {saving ? 'Saving...' : (editEventId ? 'Update Event' : 'Add Event')}
               </Button>
@@ -371,5 +406,3 @@ export default function AdminEventsPage() {
     </div>
   );
 }
-
-    
