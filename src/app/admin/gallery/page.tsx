@@ -9,11 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/context/firebase-provider';
-// Firestore imports
-import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp, Timestamp, FirestoreError, setDoc } from 'firebase/firestore';
-// Storage imports
-import { ref, uploadBytes, getDownloadURL, deleteObject, StorageReference, StorageError } from 'firebase/storage';
-import { Loader2, Upload, Trash2, Image as ImageIcon, WifiOff } from 'lucide-react';
+// Firestore imports remain
+import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp, Timestamp, FirestoreError } from 'firebase/firestore';
+// Storage imports REMOVED
+// import { ref, uploadBytes, getDownloadURL, deleteObject, StorageReference, StorageError } from 'firebase/storage';
+import { Loader2, Upload, Trash2, Image as ImageIcon, WifiOff, Link as LinkIcon } from 'lucide-react'; // Added LinkIcon
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
@@ -22,44 +22,48 @@ import { AlertCircle } from 'lucide-react';
 
 // Collection name in Firestore
 const GALLERY_COLLECTION = 'gallery';
-// Folder in Storage
-const GALLERY_STORAGE_FOLDER = 'gallery';
+// Storage folder REMOVED
+// const GALLERY_STORAGE_FOLDER = 'gallery';
 
 // Interface for Gallery Image Metadata stored in Firestore
+// Removed storagePath
 interface GalleryImageMetadata {
   id: string; // Firestore document ID
-  url: string; // Download URL from Storage
-  name: string; // Original file name or generated name
-  storagePath: string; // Full path in Firebase Storage (for deletion)
+  url: string; // URL of the image (can be external or placeholder)
+  name: string; // Name/description for the image
   createdAt: Timestamp;
 }
 
 export default function AdminGalleryPage() {
-  const { db, storage } = useFirebase(); // Get both db and storage
+  // Remove storage from useFirebase hook
+  const { db } = useFirebase();
   const { toast } = useToast();
   const [images, setImages] = useState<GalleryImageMetadata[]>([]); // State holds Firestore metadata
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // Renamed uploading to savingMetadata as we are not uploading files anymore
+  const [savingMetadata, setSavingMetadata] = useState(false);
+  // State for the image URL input
+  const [imageUrl, setImageUrl] = useState('');
+  // State for the image name/description input
+  const [imageName, setImageName] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null); // Track Firestore doc ID being deleted
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
 
   const galleryCollectionRef = collection(db, GALLERY_COLLECTION);
 
-  // Fetch image metadata from Firestore on load
+  // Fetch image metadata from Firestore on load (no changes needed here)
   const fetchImages = async () => {
     setLoading(true);
     setFetchError(null);
     setIsOffline(false);
     try {
-      // Query Firestore, order by creation time descending
       const q = query(galleryCollectionRef, orderBy("createdAt", "desc"));
       const querySnapshot = await getDocs(q);
       const fetchedImages = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt as Timestamp, // Ensure correct type
+        createdAt: doc.data().createdAt as Timestamp,
       })) as GalleryImageMetadata[];
       setImages(fetchedImages);
     } catch (error) {
@@ -77,7 +81,6 @@ export default function AdminGalleryPage() {
              // Keep generic message for other errors
          }
         setFetchError(errorMessage);
-        // Avoid duplicate toast if index error already shown
         if (!(error instanceof FirestoreError && error.code === 'failed-precondition')) {
             toast({
               title: "Error",
@@ -91,121 +94,81 @@ export default function AdminGalleryPage() {
   };
 
   useEffect(() => {
-    // Check online status initially
     if (typeof navigator !== 'undefined') {
         setIsOffline(!navigator.onLine);
-        const handleOnline = () => { console.log("Network online"); setIsOffline(false); fetchImages(); }; // Refetch on reconnect
-        const handleOffline = () => { console.log("Network offline"); setIsOffline(true); };
+        const handleOnline = () => { setIsOffline(false); fetchImages(); };
+        const handleOffline = () => { setIsOffline(true); };
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
-
-        // Fetch initial data
         fetchImages();
-
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
     } else {
-        // Fallback for SSR or environments without navigator
         fetchImages();
     }
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db]); // Dependency on db instance
+  }, [db]);
 
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      // Basic file type validation (optional but recommended)
-      if (!e.target.files[0].type.startsWith('image/')) {
-           toast({ title: "Invalid File", description: "Please select an image file.", variant: "destructive" });
-           setSelectedFile(null);
-           const fileInput = document.getElementById('gallery-upload') as HTMLInputElement;
-           if(fileInput) fileInput.value = ''; // Clear input
-           return;
-      }
-      setSelectedFile(e.target.files[0]);
-    } else {
-      setSelectedFile(null);
-    }
-  };
+  // REMOVED handleFileChange
 
-  // Handle Upload: Uploads to Storage, then saves metadata to Firestore
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      toast({ title: "No File", description: "Please select an image file.", variant: "destructive" });
+  // Handle Add Metadata: Saves metadata (URL, name) to Firestore
+  const handleAddMetadata = async () => {
+    // Validate inputs
+    if (!imageUrl || !imageName) {
+      toast({ title: "Missing Info", description: "Please enter both an image URL and a name/description.", variant: "destructive" });
       return;
     }
+    // Basic URL validation (optional but recommended)
+    try {
+        new URL(imageUrl); // Check if it's a valid URL structure
+    } catch (_) {
+         toast({ title: "Invalid URL", description: "Please enter a valid image URL (e.g., https://...)", variant: "destructive" });
+         return;
+    }
+
     if (isOffline) {
-        toast({ title: "Offline", description: "Cannot upload image while offline.", variant: "destructive" });
+        toast({ title: "Offline", description: "Cannot save metadata while offline.", variant: "destructive" });
         return;
     }
 
-    setUploading(true); // Set uploading state at the very beginning
-    console.log("Starting image upload...");
-
-    const uniqueFileName = `${Date.now()}_${selectedFile.name}`;
-    const storagePath = `${GALLERY_STORAGE_FOLDER}/${uniqueFileName}`;
-    const imageRef = ref(storage, storagePath); // Ref in Storage
-    let uploadedStoragePath: string | null = null; // Track if upload succeeded
+    setSavingMetadata(true);
+    console.log("Starting metadata save...");
 
     try {
-      // 1. Upload file to Storage
-      console.log(`Uploading ${selectedFile.name} to ${storagePath}...`);
-      const snapshot = await uploadBytes(imageRef, selectedFile);
-      uploadedStoragePath = snapshot.ref.fullPath; // Confirm upload success
-      console.log("File uploaded successfully to Storage:", uploadedStoragePath);
-
-      // 2. Get download URL
-      console.log("Getting download URL...");
-      const url = await getDownloadURL(snapshot.ref);
-      console.log("Download URL obtained:", url);
-
-      // 3. Prepare metadata for Firestore
+      // 1. Prepare metadata for Firestore
       const imageMetadata = {
-        url: url,
-        name: selectedFile.name,
-        storagePath: storagePath,
+        url: imageUrl,
+        name: imageName,
         createdAt: serverTimestamp() // Use server timestamp
       };
 
-      // 4. Add metadata document to Firestore
+      // 2. Add metadata document to Firestore
       console.log("Adding metadata to Firestore collection:", GALLERY_COLLECTION);
-      // Use addDoc to let Firestore generate the ID
       const docRef = await addDoc(galleryCollectionRef, imageMetadata);
       console.log("Metadata added to Firestore with ID:", docRef.id);
 
-
-      // 5. Update local state optimistically
+      // 3. Update local state optimistically
        const newImageMetadata: GalleryImageMetadata = {
          id: docRef.id, // Use the generated Firestore ID
-         url: url,
-         name: selectedFile.name,
-         storagePath: storagePath,
+         url: imageUrl,
+         name: imageName,
          createdAt: Timestamp.now(), // Approximate timestamp locally
        };
        setImages(prevImages => [newImageMetadata, ...prevImages]); // Add to start for newest first
        console.log("Local state updated.");
 
-      toast({ title: "Success", description: "Image uploaded and added to gallery." });
-      setSelectedFile(null); // Clear selection
-      const fileInput = document.getElementById('gallery-upload') as HTMLInputElement;
-      if (fileInput) fileInput.value = ''; // Reset file input
+      toast({ title: "Success", description: "Image metadata added to gallery." });
+      setImageUrl(''); // Clear inputs
+      setImageName('');
 
     } catch (error) {
-      console.error("Error during image upload process:", error);
-      let errorMessage = "Failed to upload image.";
-      // Differentiate between Storage and Firestore errors
-      if (error instanceof StorageError) {
-          errorMessage = `Storage Error: ${error.code}. Check console & rules.`;
-          console.error("Detailed Storage Error:", error.code, error.message, error.serverResponse);
-          if (error.code === 'storage/unauthorized') {
-              errorMessage += " Check Storage security rules.";
-          } else if (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline')) {
-               errorMessage = "Cannot upload. Storage offline or network issue.";
-               setIsOffline(true);
-           }
-      } else if (error instanceof FirestoreError) {
+      console.error("Error during metadata save process:", error);
+      let errorMessage = "Failed to save image metadata.";
+      // Differentiate Firestore errors
+       if (error instanceof FirestoreError) {
           errorMessage = `Firestore Error: ${error.code}. Check console & rules.`;
           console.error("Detailed Firestore Error:", error.code, error.message);
            if (error.code === 'permission-denied') {
@@ -214,44 +177,32 @@ export default function AdminGalleryPage() {
                errorMessage = "Cannot save metadata. Firestore offline or network issue.";
                setIsOffline(true);
            }
-           // Attempt to delete the uploaded file if metadata save failed
-           if (uploadedStoragePath) {
-               console.warn("Firestore save failed after storage upload. Attempting cleanup...");
-               const orphanRef = ref(storage, uploadedStoragePath);
-               try { await deleteObject(orphanRef); console.log("Cleaned up orphaned storage file:", uploadedStoragePath); } catch (cleanupError) { console.error("Failed to clean up orphaned storage file:", cleanupError); }
-           }
       } else {
           // Handle generic errors
           errorMessage = `An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`;
-          console.error("Unexpected upload error:", error);
-          // Attempt cleanup for generic errors too, just in case upload succeeded partially
-          if (uploadedStoragePath) {
-              console.warn("Generic error after storage upload. Attempting cleanup...");
-              const orphanRef = ref(storage, uploadedStoragePath);
-              try { await deleteObject(orphanRef); console.log("Cleaned up potentially orphaned storage file:", uploadedStoragePath); } catch (cleanupError) { console.error("Failed to clean up potentially orphaned storage file:", cleanupError); }
-          }
+          console.error("Unexpected save error:", error);
       }
 
       toast({
-        title: "Upload Error",
+        title: "Save Error",
         description: errorMessage,
         variant: "destructive",
         duration: 9000, // Show longer for errors
       });
     } finally {
-      // THIS IS CRUCIAL: Always reset the uploading state, regardless of success or failure
-      setUploading(false);
-      console.log("Upload process finished, resetting uploading state.");
+      // Crucial: Reset saving state
+      setSavingMetadata(false);
+      console.log("Metadata save process finished, resetting saving state.");
     }
   };
 
-  // Handle Delete: Deletes Firestore doc AND Storage file
+  // Handle Delete: Deletes Firestore doc ONLY
   const handleDelete = async (imageMeta: GalleryImageMetadata) => {
     if (isOffline) {
-        toast({ title: "Offline", description: "Cannot delete image while offline.", variant: "destructive" });
+        toast({ title: "Offline", description: "Cannot delete image metadata while offline.", variant: "destructive" });
         return;
     }
-    setDeletingId(imageMeta.id); // Indicate Firestore doc ID being deleted
+    setDeletingId(imageMeta.id);
     try {
        // 1. Delete Firestore document
        console.log(`Deleting Firestore document: ${GALLERY_COLLECTION}/${imageMeta.id}`);
@@ -259,47 +210,32 @@ export default function AdminGalleryPage() {
        await deleteDoc(imageDocRef);
        console.log("Firestore document deleted successfully.");
 
-       // 2. Delete file from Storage using the stored path
-       console.log(`Deleting file from Storage: ${imageMeta.storagePath}`);
-       const storageRefToDelete = ref(storage, imageMeta.storagePath);
-       await deleteObject(storageRefToDelete);
-       console.log("Storage file deleted successfully.");
+       // Storage deletion REMOVED
 
-      // 3. Update local state
+      // 2. Update local state
       setImages(images.filter(img => img.id !== imageMeta.id));
-      toast({ title: "Success", description: "Image deleted successfully." });
+      toast({ title: "Success", description: "Image metadata deleted successfully." });
 
     } catch (error) {
-       console.error("Error deleting image:", error);
-       let errorMessage = "Failed to delete image.";
+       console.error("Error deleting image metadata:", error);
+       let errorMessage = "Failed to delete image metadata.";
        if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
            errorMessage = "Cannot delete metadata. Firestore offline.";
            setIsOffline(true);
-       } else if (error instanceof StorageError && (error.code === 'storage/object-not-found')) {
-           console.warn("Storage object not found during delete, but proceeding to remove Firestore entry.");
-           // Allow deletion from Firestore even if storage object is missing
-           setImages(images.filter(img => img.id !== imageMeta.id)); // Update state anyway
-           toast({ title: "Partial Success", description: "Image metadata removed, but file was already missing from storage." });
-       } else if (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline'))) {
-            errorMessage = "Cannot delete file. Storage offline.";
-            setIsOffline(true);
        } else {
            errorMessage = `Deletion failed: ${error instanceof Error ? error.message : String(error)}`;
            console.error("Detailed Delete Error:", error);
        }
 
-       // Avoid showing generic error toast if a partial success toast was shown
-       if (!(error instanceof StorageError && error.code === 'storage/object-not-found')) {
-            toast({
-               title: "Deletion Error",
-               description: errorMessage,
-               variant: "destructive",
-               duration: 7000,
-            });
-       }
+        toast({
+           title: "Deletion Error",
+           description: errorMessage,
+           variant: "destructive",
+           duration: 7000,
+        });
 
     } finally {
-      setDeletingId(null); // Reset deleting indicator
+      setDeletingId(null);
     }
   };
 
@@ -311,7 +247,8 @@ export default function AdminGalleryPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Gallery Management</h1>
-      <p className="text-muted-foreground">Upload or delete images for the public website gallery. Uses Firestore for metadata and Storage for files.</p>
+      {/* Updated description */}
+      <p className="text-muted-foreground">Add or delete image metadata (URL and name) for the public gallery. Images are stored elsewhere (e.g., external host, CDN).</p>
 
       {isOffline && (
          <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
@@ -321,22 +258,41 @@ export default function AdminGalleryPage() {
          </Alert>
        )}
 
-      {/* Upload Section */}
+      {/* Add Metadata Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Upload New Image</CardTitle>
-          <CardDescription>Select an image file. It will be uploaded to Storage and its info saved to Firestore.</CardDescription>
+          <CardTitle>Add New Image Metadata</CardTitle>
+          <CardDescription>Enter the direct URL and a name/description for the image.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-             <Label htmlFor="gallery-upload" className="sr-only">Choose file</Label>
-             <Input id="gallery-upload" type="file" accept="image/*" onChange={handleFileChange} disabled={uploading || isOffline} />
+             <Label htmlFor="imageUrl">Image URL</Label>
+             <Input
+                id="imageUrl"
+                type="url"
+                placeholder="https://example.com/path/to/your/image.jpg"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                disabled={savingMetadata || isOffline}
+                className="transition-colors duration-200 focus:border-accent"
+             />
           </div>
-           {selectedFile && <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>}
-          <Button onClick={handleUpload} disabled={!selectedFile || uploading || isOffline}>
-            {uploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isOffline ? <WifiOff className="mr-2 h-4 w-4" /> : <Upload className="mr-2 h-4 w-4" />}
-            {uploading ? 'Uploading...' : isOffline ? 'Offline' : 'Upload Image'}
+          <div className="space-y-2">
+             <Label htmlFor="imageName">Name / Description</Label>
+             <Input
+                id="imageName"
+                type="text"
+                placeholder="e.g., Andromeda Galaxy, Telescope Setup"
+                value={imageName}
+                onChange={(e) => setImageName(e.target.value)}
+                disabled={savingMetadata || isOffline}
+                className="transition-colors duration-200 focus:border-accent"
+             />
+          </div>
+          <Button onClick={handleAddMetadata} disabled={savingMetadata || isOffline || !imageUrl || !imageName}>
+            {savingMetadata && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isOffline ? <WifiOff className="mr-2 h-4 w-4" /> : <LinkIcon className="mr-2 h-4 w-4" />}
+            {savingMetadata ? 'Saving...' : isOffline ? 'Offline' : 'Add Image Metadata'}
           </Button>
         </CardContent>
       </Card>
@@ -345,7 +301,7 @@ export default function AdminGalleryPage() {
       <Card>
         <CardHeader>
           <CardTitle>Current Gallery Images</CardTitle>
-          <CardDescription>Manage existing images stored in Firestore. Hover over an image to delete it.</CardDescription>
+          <CardDescription>Manage existing image metadata stored in Firestore. Hover over an image to delete its entry.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -363,26 +319,29 @@ export default function AdminGalleryPage() {
                <AlertDescription>{fetchError}</AlertDescription>
              </Alert>
           ) : images.length === 0 && !loading ? (
-             <p className="text-center text-muted-foreground p-6">No images in the gallery yet. Upload some!</p>
+             <p className="text-center text-muted-foreground p-6">No image metadata in the gallery yet. Add some!</p>
           ) : (
             <div className="grid grid-cols-gallery gap-4">
               {images.map((imageMeta) => {
                 const titleId = getDialogTitleId(imageMeta.id);
                 const descriptionId = getDialogDescriptionId(imageMeta.id);
+                // Use placeholder if URL is invalid or missing, although validation should prevent saving invalid URLs
+                const imageUrlToDisplay = imageMeta.url || `https://picsum.photos/seed/${imageMeta.id}/300/200`;
+
                 return (
                   <div key={imageMeta.id} className="relative group border rounded-lg overflow-hidden shadow">
                     <Image
-                      src={imageMeta.url} // URL from Firestore document
+                      src={imageUrlToDisplay} // URL from Firestore document
                       alt={imageMeta.name || "Gallery image"} // Name from Firestore document
                       width={300}
                       height={200}
                       className="object-cover w-full h-full aspect-[3/2]"
                       data-ai-hint="astronomy club gallery"
                       onError={(e) => {
-                         console.warn(`Failed to load image: ${imageMeta.url}`);
-                         // Optionally replace src with a placeholder on error
-                         e.currentTarget.src = 'https://picsum.photos/seed/error/300/200'; // Fallback placeholder
+                         console.warn(`Failed to load image: ${imageUrlToDisplay}`);
+                         e.currentTarget.src = `https://picsum.photos/seed/${imageMeta.id}/300/200`; // Fallback placeholder
                        }}
+                       unoptimized={!imageUrlToDisplay.startsWith('/')} // Consider disabling optimization for external URLs
                     />
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <AlertDialog>
@@ -391,14 +350,14 @@ export default function AdminGalleryPage() {
                               variant="destructive"
                               size="icon"
                               disabled={deletingId === imageMeta.id || isOffline}
-                              aria-label={`Delete image ${imageMeta.name}`}
+                              aria-label={`Delete metadata for image ${imageMeta.name}`}
                           >
                             {deletingId === imageMeta.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <Trash2 className="h-4 w-4" />
                             )}
-                            <span className="sr-only">Delete Image</span>
+                            <span className="sr-only">Delete Image Metadata</span>
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent
@@ -408,8 +367,9 @@ export default function AdminGalleryPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle id={titleId}>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription id={descriptionId}>
-                              This action cannot be undone. This will permanently delete the image metadata from Firestore and the file from Storage:
+                              This action cannot be undone. This will permanently delete the image metadata entry from Firestore for:
                               <span className="font-medium break-all block mt-1"> {imageMeta.name} </span>
+                              {/* Removed mention of Storage file */}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -420,6 +380,10 @@ export default function AdminGalleryPage() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
+                    </div>
+                    {/* Optional: Display name overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 text-white text-xs truncate pointer-events-none">
+                      {imageMeta.name}
                     </div>
                   </div>
                 );

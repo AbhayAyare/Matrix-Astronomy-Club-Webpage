@@ -9,11 +9,11 @@ import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Phone, MapPin 
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { getSiteContent, SiteContent } from '@/services/content';
-// Firestore imports for events and gallery
+// Firestore imports for events and gallery metadata
 import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError, limit } from 'firebase/firestore';
-// Storage imports (still needed for event images if they use storage URLs)
-import { ref, listAll, getDownloadURL, StorageError } from 'firebase/storage';
-import { db, storage } from '@/config/firebase';
+// Storage imports REMOVED
+// import { ref, listAll, getDownloadURL, StorageError } from 'firebase/storage';
+import { db } from '@/config/firebase'; // Only need db
 import { JoinForm } from '@/components/home/join-form';
 import { NewsletterForm } from '@/components/home/newsletter-form';
 
@@ -23,26 +23,25 @@ interface Event {
   name: string;
   date: Timestamp; // Use Firestore Timestamp
   description: string;
-  imageURL?: string; // Optional field for image URL (could be Storage URL or external)
+  imageURL?: string; // Optional field for image URL (could be external or placeholder)
 }
 
 // Interface for Gallery Image Metadata fetched from Firestore
 interface GalleryImage {
   id: string; // Firestore document ID
-  url: string; // Download URL from Storage (stored in Firestore)
-  name: string; // Name stored in Firestore
+  url: string; // Image URL stored in Firestore
+  name: string; // Name/description stored in Firestore
 }
 
-// Fetch upcoming events from Firestore
+// Fetch upcoming events from Firestore (no changes needed)
 async function getUpcomingEvents(): Promise<Event[]> {
   const eventsCollectionRef = collection(db, 'events');
-  const today = Timestamp.now(); // Get current timestamp
+  const today = Timestamp.now();
   const fallbackDate = new Date();
-  fallbackDate.setDate(fallbackDate.getDate() + 7); // 1 week from now
+  fallbackDate.setDate(fallbackDate.getDate() + 7);
 
   try {
-    // Query for events where the date is greater than or equal to today, limit results
-    const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6)); // Limit to 6 events
+    const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6));
     const querySnapshot = await getDocs(q);
 
     const events = querySnapshot.docs.map(doc => ({
@@ -58,24 +57,22 @@ async function getUpcomingEvents(): Promise<Event[]> {
     console.error("Error fetching upcoming events:", error);
     if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
         console.warn("Offline: Cannot fetch upcoming events. Using fallback.");
-    } else if (error instanceof Error && error.message.includes('firestore/indexes')) {
+    } else if (error instanceof FirestoreError && error.code === 'failed-precondition') {
         console.error("Firestore index missing for querying/ordering events by date. Please create it.");
     } else {
         console.error("An unexpected error occurred fetching events.");
     }
-    // Return fallback data
     return [
       { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(fallbackDate), description: 'Join us for a night under the stars observing distant galaxies and nebulae.', imageURL: 'https://picsum.photos/seed/event1/400/250'},
     ];
   }
 }
 
-// Fetch gallery image metadata from Cloud Firestore
+// Fetch gallery image metadata from Cloud Firestore (no changes needed)
 async function getGalleryImages(): Promise<GalleryImage[]> {
   const galleryCollectionRef = collection(db, 'gallery');
   try {
-    // Query Firestore, order by creation time descending, limit results
-    const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12)); // Limit to 12 images for the homepage
+    const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
@@ -85,8 +82,8 @@ async function getGalleryImages(): Promise<GalleryImage[]> {
 
     const images = querySnapshot.docs.map(doc => ({
       id: doc.id,
-      url: doc.data().url as string, // Get URL from Firestore data
-      name: doc.data().name as string, // Get name from Firestore data
+      url: doc.data().url as string,
+      name: doc.data().name as string,
     })) as GalleryImage[];
 
     return images;
@@ -118,7 +115,7 @@ export default async function Home() {
   // Fetch dynamic data in the Server Component
   const siteContent: SiteContent = await getSiteContent();
   const upcomingEvents: Event[] = await getUpcomingEvents();
-  const galleryImages: GalleryImage[] = await getGalleryImages(); // Fetches from Firestore now
+  const galleryImages: GalleryImage[] = await getGalleryImages(); // Fetches metadata from Firestore
 
 
   return (
@@ -171,8 +168,9 @@ export default async function Home() {
                        priority={index < 3}
                        onError={(e) => {
                           console.warn(`Failed to load event image: ${event.imageURL}`);
-                          e.currentTarget.src = `https://picsum.photos/seed/${event.id}/400/250`; // Fallback placeholder
+                          e.currentTarget.src = `https://picsum.photos/seed/${event.id}/400/250`;
                        }}
+                       unoptimized={!event.imageURL || !event.imageURL.startsWith('/')} // Disable optimization for external URLs
                      />
                    </div>
                   <CardHeader>
@@ -194,7 +192,7 @@ export default async function Home() {
 
         <Separator />
 
-        {/* Event Gallery Section - Uses Firestore data */}
+        {/* Event Gallery Section - Uses Firestore metadata */}
         <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><ImageIcon className="w-8 h-8 text-accent"/>Event Gallery</h2>
             {galleryImages.length === 0 ? (
@@ -205,24 +203,33 @@ export default async function Home() {
                 </Card>
              ) : (
                 <div className="grid grid-cols-gallery gap-4">
-                 {galleryImages.map((image, index) => (
-                    <div key={image.id} className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group animate-fade-in" style={{ animationDelay: `${1 + index * 0.05}s` }}>
-                      <Image
-                        src={image.url} // URL from Firestore metadata
-                        alt={image.name || `Gallery image ${image.id}`} // Name from Firestore metadata
-                        width={300}
-                        height={200}
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
-                        className="object-cover w-full h-full aspect-[3/2] transform group-hover:scale-105 transition-transform duration-300 ease-in-out"
-                        data-ai-hint="astronomy club gallery space"
-                        loading={index < 6 ? "eager" : "lazy"}
-                        onError={(e) => {
-                           console.warn(`Failed to load gallery image: ${image.url}`);
-                           e.currentTarget.src = `https://picsum.photos/seed/${image.id}/300/200`; // Fallback placeholder
-                         }}
-                      />
-                    </div>
-                  ))}
+                 {galleryImages.map((image, index) => {
+                     // Use placeholder if URL is invalid or missing
+                     const imageUrlToDisplay = image.url || `https://picsum.photos/seed/${image.id}/300/200`;
+                     return (
+                        <div key={image.id} className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group animate-fade-in" style={{ animationDelay: `${1 + index * 0.05}s` }}>
+                          <Image
+                            src={imageUrlToDisplay} // URL from Firestore metadata
+                            alt={image.name || `Gallery image ${image.id}`} // Name from Firestore metadata
+                            width={300}
+                            height={200}
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
+                            className="object-cover w-full h-full aspect-[3/2] transform group-hover:scale-105 transition-transform duration-300 ease-in-out"
+                            data-ai-hint="astronomy club gallery space"
+                            loading={index < 6 ? "eager" : "lazy"}
+                            onError={(e) => {
+                               console.warn(`Failed to load gallery image: ${imageUrlToDisplay}`);
+                               e.currentTarget.src = `https://picsum.photos/seed/${image.id}/300/200`; // Fallback placeholder
+                             }}
+                             unoptimized={!imageUrlToDisplay.startsWith('/')} // Disable optimization for external URLs
+                          />
+                           {/* Optional: Display name overlay */}
+                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 text-white text-xs truncate pointer-events-none">
+                             {image.name}
+                           </div>
+                        </div>
+                      );
+                  })}
                 </div>
              )}
         </section>
@@ -268,7 +275,7 @@ export default async function Home() {
              <CardContent className="p-6 md:p-8 space-y-4">
                <div className="flex items-center gap-3 group">
                  <Mail className="w-5 h-5 text-accent group-hover:animate-pulse"/>
-                 <a href={`mailto:${siteContent.contactEmail}`} className="text-foreground/90 hover:text-accent transition-colors duration-200">{siteContent.contactEmail}</a>
+                 <a href={`mailto:${siteContent.contactEmail}`} className="text-foreground/90 hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail}</a>
                </div>
                <div className="flex items-center gap-3 group">
                  <Phone className="w-5 h-5 text-accent group-hover:animate-pulse"/>
