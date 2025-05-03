@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Phone, MapPin } from 'lucide-react';
+import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Phone, MapPin, WifiOff } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { getSiteContent, SiteContent } from '@/services/content';
@@ -16,6 +16,7 @@ import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError, 
 import { db } from '@/config/firebase'; // Only need db
 import { JoinForm } from '@/components/home/join-form';
 import { NewsletterForm } from '@/components/home/newsletter-form';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
 
 // Interface for events fetched from Firestore
 interface Event {
@@ -33,12 +34,26 @@ interface GalleryImage {
   name: string; // Name/description stored in Firestore
 }
 
-// Fetch upcoming events from Firestore (no changes needed)
-async function getUpcomingEvents(): Promise<Event[]> {
+// Flag to indicate if data fetching resulted in offline errors
+interface FetchResult<T> {
+  data: T[];
+  offlineError: boolean;
+}
+
+
+// Fetch upcoming events from Firestore
+async function getUpcomingEvents(): Promise<FetchResult<Event>> {
   const eventsCollectionRef = collection(db, 'events');
   const today = Timestamp.now();
   const fallbackDate = new Date();
   fallbackDate.setDate(fallbackDate.getDate() + 7);
+  const fallbackEvent: Event = {
+    id: 'fallback1',
+    name: 'Deep Sky Observation Night (Fallback)',
+    date: Timestamp.fromDate(fallbackDate),
+    description: 'Join us for a night under the stars observing distant galaxies and nebulae.',
+    imageURL: 'https://picsum.photos/seed/event1/400/250'
+  };
 
   try {
     const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6));
@@ -52,32 +67,42 @@ async function getUpcomingEvents(): Promise<Event[]> {
       imageURL: doc.data().imageURL || `https://picsum.photos/seed/${doc.id}/400/250`,
     })) as Event[];
 
-    return events;
+    return { data: events, offlineError: false };
   } catch (error) {
+    let offlineError = false;
     console.error("Error fetching upcoming events:", error);
     if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
         console.warn("Offline: Cannot fetch upcoming events. Using fallback.");
+        offlineError = true;
     } else if (error instanceof FirestoreError && error.code === 'failed-precondition') {
         console.error("Firestore index missing for querying/ordering events by date. Please create it.");
     } else {
         console.error("An unexpected error occurred fetching events.");
     }
-    return [
-      { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(fallbackDate), description: 'Join us for a night under the stars observing distant galaxies and nebulae.', imageURL: 'https://picsum.photos/seed/event1/400/250'},
-    ];
+    // Return fallback data on error, indicating if it was an offline error
+    return { data: [fallbackEvent], offlineError };
   }
 }
 
-// Fetch gallery image metadata from Cloud Firestore (no changes needed)
-async function getGalleryImages(): Promise<GalleryImage[]> {
+// Fetch gallery image metadata from Cloud Firestore
+async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
   const galleryCollectionRef = collection(db, 'gallery');
+  const fallbackImages: GalleryImage[] = [
+      { id: 'g1', url: 'https://picsum.photos/seed/gallery1/300/200', name: 'Nebula (Fallback)'},
+      { id: 'g2', url: 'https://picsum.photos/seed/gallery2/300/200', name: 'Galaxy (Fallback)'},
+      { id: 'g3', url: 'https://picsum.photos/seed/gallery3/300/200', name: 'Moon surface (Fallback)'},
+      { id: 'g4', url: 'https://picsum.photos/seed/gallery4/300/200', name: 'Star cluster (Fallback)'},
+      { id: 'g5', url: 'https://picsum.photos/seed/gallery5/300/200', name: 'Planet Jupiter (Fallback)'},
+      { id: 'g6', url: 'https://picsum.photos/seed/gallery6/300/200', name: 'Observatory telescope (Fallback)'},
+    ];
+
   try {
     const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
       console.log("No gallery images found in Firestore.");
-      return [];
+      return { data: [], offlineError: false };
     }
 
     const images = querySnapshot.docs.map(doc => ({
@@ -86,41 +111,49 @@ async function getGalleryImages(): Promise<GalleryImage[]> {
       name: doc.data().name as string,
     })) as GalleryImage[];
 
-    return images;
+    return { data: images, offlineError: false };
   } catch (error) {
+      let offlineError = false;
       console.error("Error fetching gallery images from Firestore:", error);
       if (error instanceof FirestoreError) {
            if (error.code === 'failed-precondition') {
                 console.error(`Firestore index required for '${collection(db, 'gallery').id}' ordered by 'createdAt' descending. Please create it.`);
            } else if (error.code === 'unavailable' || error.message.includes('offline')) {
                console.warn("Offline: Cannot fetch gallery images. Using fallback.");
+               offlineError = true;
            }
       } else {
            console.error("An unexpected error occurred fetching gallery images.");
       }
-    // Return fallback data on error
-    return [
-      { id: 'g1', url: 'https://picsum.photos/seed/gallery1/300/200', name: 'Nebula (Fallback)'},
-      { id: 'g2', url: 'https://picsum.photos/seed/gallery2/300/200', name: 'Galaxy (Fallback)'},
-      { id: 'g3', url: 'https://picsum.photos/seed/gallery3/300/200', name: 'Moon surface (Fallback)'},
-      { id: 'g4', url: 'https://picsum.photos/seed/gallery4/300/200', name: 'Star cluster (Fallback)'},
-      { id: 'g5', url: 'https://picsum.photos/seed/gallery5/300/200', name: 'Planet Jupiter (Fallback)'},
-      { id: 'g6', url: 'https://picsum.photos/seed/gallery6/300/200', name: 'Observatory telescope (Fallback)'},
-    ];
+    // Return fallback data on error, indicating if it was an offline error
+    return { data: fallbackImages, offlineError };
   }
 }
 
 
 export default async function Home() {
   // Fetch dynamic data in the Server Component
-  const siteContent: SiteContent = await getSiteContent();
-  const upcomingEvents: Event[] = await getUpcomingEvents();
-  const galleryImages: GalleryImage[] = await getGalleryImages(); // Fetches metadata from Firestore
+  const { content: siteContent, offlineError: contentOfflineError } = await getSiteContent();
+  const { data: upcomingEvents, offlineError: eventsOfflineError } = await getUpcomingEvents();
+  const { data: galleryImages, offlineError: galleryOfflineError } = await getGalleryImages(); // Fetches metadata from Firestore
+
+  const isOffline = contentOfflineError || eventsOfflineError || galleryOfflineError;
 
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
+
+       {/* Global Offline Warning */}
+       {isOffline && (
+         <div className="container mx-auto px-4 pt-4">
+           <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
+             <WifiOff className="h-4 w-4"/>
+             <AlertTitle>Offline Mode</AlertTitle>
+             <AlertDescription>You appear to be offline. Some content may be outdated or using fallback data.</AlertDescription>
+           </Alert>
+         </div>
+       )}
 
       <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24 overflow-x-hidden">
         {/* Hero Section */}
@@ -147,7 +180,14 @@ export default async function Home() {
         {/* Upcoming Events Section */}
         <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events</h2>
-          {upcomingEvents.length === 0 ? (
+          {eventsOfflineError && (
+            <Alert variant="default" className="mb-4 border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
+              <WifiOff className="h-4 w-4"/>
+              <AlertTitle>Events Unavailable</AlertTitle>
+              <AlertDescription>Could not load latest events due to network issues. Showing fallback data.</AlertDescription>
+            </Alert>
+          )}
+          {upcomingEvents.length === 0 && !eventsOfflineError ? ( // Only show "No events" if not offline
              <Card>
                  <CardContent className="p-6 text-center text-muted-foreground">
                      No upcoming events scheduled yet. Stay tuned!
@@ -182,6 +222,7 @@ export default async function Home() {
                   </CardContent>
                    <CardFooter className="flex justify-between items-center mt-auto pt-4">
                      <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
+                     {/* Maybe link to event details if available */}
                      <Button variant="outline" size="sm" disabled className="transform hover:scale-105 transition-transform duration-200">Learn More</Button>
                    </CardFooter>
                 </Card>
@@ -195,7 +236,14 @@ export default async function Home() {
         {/* Event Gallery Section - Uses Firestore metadata */}
         <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><ImageIcon className="w-8 h-8 text-accent"/>Event Gallery</h2>
-            {galleryImages.length === 0 ? (
+            {galleryOfflineError && (
+              <Alert variant="default" className="mb-4 border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
+                <WifiOff className="h-4 w-4"/>
+                <AlertTitle>Gallery Unavailable</AlertTitle>
+                <AlertDescription>Could not load gallery images due to network issues. Showing fallback data.</AlertDescription>
+              </Alert>
+            )}
+            {galleryImages.length === 0 && !galleryOfflineError ? ( // Only show "empty" if not offline
                  <Card>
                     <CardContent className="p-6 text-center text-muted-foreground">
                         The gallery is currently empty. Check back soon!
@@ -207,7 +255,7 @@ export default async function Home() {
                      // Use placeholder if URL is invalid or missing
                      const imageUrlToDisplay = image.url || `https://picsum.photos/seed/${image.id}/300/200`;
                      return (
-                        <div key={image.id} className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group animate-fade-in" style={{ animationDelay: `${1 + index * 0.05}s` }}>
+                        <div key={image.id} className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group animate-fade-in relative" style={{ animationDelay: `${1 + index * 0.05}s` }}>
                           <Image
                             src={imageUrlToDisplay} // URL from Firestore metadata
                             alt={image.name || `Gallery image ${image.id}`} // Name from Firestore metadata

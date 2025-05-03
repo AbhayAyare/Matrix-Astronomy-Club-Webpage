@@ -33,35 +33,43 @@ const defaultContent: SiteContent = {
   contactAddress: 'Kolhapur', // Updated address
 };
 
+interface GetContentResult {
+    content: SiteContent;
+    offlineError: boolean;
+}
+
 
 /**
  * Fetches the site content from Firestore.
  * Returns default content if the document doesn't exist or on error.
- * @returns Promise<SiteContent>
+ * Includes a flag indicating if an offline error occurred.
+ * @returns Promise<GetContentResult>
  */
-export async function getSiteContent(): Promise<SiteContent> {
+export async function getSiteContent(): Promise<GetContentResult> {
   const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
+  let offlineError = false;
   try {
     const docSnap = await getDoc(contentDocRef);
     if (docSnap.exists()) {
       const data = docSnap.data() as Partial<SiteContent>;
        // Merge fetched data with defaults to ensure all fields exist and provide fallbacks
-       return { ...defaultContent, ...data };
+       return { content: { ...defaultContent, ...data }, offlineError: false };
     } else {
       console.log("Site content document not found, returning default content.");
       // Optionally, you could create the default document here if it's guaranteed to not exist yet
       // await setDoc(contentDocRef, defaultContent);
-      return defaultContent;
+      return { content: defaultContent, offlineError: false };
     }
   } catch (error) {
     console.error("Error fetching site content:", error);
     // Provide a specific message for offline errors if possible
     if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
         console.warn("Cannot fetch site content: Client is offline. Returning default content.");
+        offlineError = true; // Set the offline flag
     } else {
         console.error("An unexpected error occurred fetching site content.");
     }
-    // Return default content as a fallback on any error
-    return defaultContent;
+    // Return default content as a fallback on any error, including the offline flag
+    return { content: defaultContent, offlineError };
   }
 }
