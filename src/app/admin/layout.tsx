@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-// import { useAuth } from "@/context/auth-provider"; // No longer needed for protection
+// Removed AuthProvider and ProtectedRoute imports as login is disabled
 import { LayoutDashboard, Settings, CalendarClock, Image as ImageIcon, Users, Newspaper, HelpCircle } from 'lucide-react';
 import { UserNav } from '@/components/admin/user-nav';
 import {
@@ -47,33 +47,35 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
      // Removed ProtectedRoute wrapper
-        <SidebarProvider defaultOpen>
-             <Sidebar side="left" variant="inset" collapsible="icon" className="border-sidebar-border">
+        <SidebarProvider defaultOpen> {/* Ensures sidebar is open by default on desktop */}
+             <Sidebar side="left" variant="inset" collapsible="icon" className="border-sidebar-border"> {/* Use inset variant and allow icon collapse */}
                  <SidebarHeader className="items-center justify-between p-2">
+                    {/* Title appears when expanded */}
                     <h2 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
                         Admin Panel
                     </h2>
-                    {/* Sidebar Trigger remains, handled by SidebarProvider */}
+                    {/* Sidebar Trigger is automatically handled by SidebarProvider/SidebarRail */}
                  </SidebarHeader>
-                 <SidebarContent className="p-2 flex flex-col justify-between">
+                 <SidebarContent className="p-2 flex flex-col justify-between"> {/* Add padding and flex for structure */}
+                     {/* Main navigation */}
                      <SidebarMenu>
                          {navItems.map((item) => (
                             <SidebarMenuItem key={item.label}>
                                 <SidebarMenuButton
                                     asChild
-                                    isActive={isActive(item.href)}
-                                    tooltip={{ children: item.label }}
+                                    isActive={isActive(item.href)} // Highlight active link
+                                    tooltip={{ children: item.label }} // Show tooltip when collapsed
                                 >
                                     <Link href={item.href}>
-                                        <item.icon />
-                                        <span>{item.label}</span>
+                                        <item.icon /> {/* Icon always visible */}
+                                        <span>{item.label}</span> {/* Label hides when collapsed */}
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                          ))}
                      </SidebarMenu>
-                     {/* Help Link (Optional) */}
-                     <SidebarMenu className="mt-auto">
+                     {/* Optional: Help/Support link at the bottom */}
+                     <SidebarMenu className="mt-auto"> {/* Pushes this menu to the bottom */}
                          <SidebarMenuItem>
                              <SidebarMenuButton asChild tooltip={{ children: 'Help / Support' }}>
                                 <Link href="/admin/support"> {/* Example link */}
@@ -84,15 +86,15 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
                          </SidebarMenuItem>
                      </SidebarMenu>
                  </SidebarContent>
-                 <SidebarSeparator />
+                 <SidebarSeparator /> {/* Separator before the footer */}
                  <SidebarFooter className="p-2">
                     <UserNav /> {/* UserNav already adapted for collapsible */}
                  </SidebarFooter>
                  <SidebarRail /> {/* Add the rail for resizing/toggling */}
             </Sidebar>
 
+            {/* Main content area adjusts based on sidebar state */}
             <SidebarInset className="p-4 md:p-6 lg:p-8 overflow-auto">
-                 {/* Main content area */}
                  {children}
             </SidebarInset>
         </SidebarProvider>
