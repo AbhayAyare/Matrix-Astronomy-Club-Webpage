@@ -10,32 +10,50 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/context/firebase-provider';
 import { doc, getDoc, setDoc, updateDoc, FirestoreError } from 'firebase/firestore';
-import { Loader2, WifiOff } from 'lucide-react';
+import { Loader2, WifiOff, Save } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from 'lucide-react';
-
 
 const CONTENT_DOC_ID = 'siteContent'; // Single document to store content
 const CONTENT_COLLECTION = 'config'; // Collection name
 
+// Updated interface to include all editable fields
 interface SiteContent {
+  heroTitle: string;
+  heroSubtitle: string;
   about: string;
+  joinTitle: string;
+  joinDescription: string;
+  newsletterTitle: string;
+  newsletterDescription: string;
   contactEmail: string;
   contactPhone: string;
   contactAddress: string;
 }
 
+// Default content structure
+const defaultContent: SiteContent = {
+  heroTitle: 'Welcome to Matrix Astronomy Club',
+  heroSubtitle: 'Your gateway to the cosmos. Explore, learn, and connect with fellow space enthusiasts.',
+  about: 'Matrix is a passionate community dedicated to exploring the wonders of the universe. We organize stargazing sessions, workshops, and talks for enthusiasts of all levels.',
+  joinTitle: 'Become a Member',
+  joinDescription: 'Fill out the form below to start your cosmic journey with us.',
+  newsletterTitle: 'Subscribe to Our Newsletter',
+  newsletterDescription: 'Get the latest news, event announcements, and astronomical insights delivered to your inbox.',
+  contactEmail: 'info@matrixastronomy.org',
+  contactPhone: 'N/A',
+  contactAddress: 'N/A',
+};
+
+
 export default function AdminContentPage() {
   const { db } = useFirebase();
   const { toast } = useToast();
-  const [aboutContent, setAboutContent] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [contactAddress, setContactAddress] = useState('');
+  const [content, setContent] = useState<SiteContent>(defaultContent);
   const [loading, setLoading] = useState(true);
-  const [savingAbout, setSavingAbout] = useState(false);
-  const [savingContact, setSavingContact] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false); // Track changes
 
   const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
 
@@ -47,32 +65,25 @@ export default function AdminContentPage() {
       try {
         const docSnap = await getDoc(contentDocRef);
         if (docSnap.exists()) {
-          const data = docSnap.data() as SiteContent;
-          setAboutContent(data.about || '');
-          setContactEmail(data.contactEmail || '');
-          setContactPhone(data.contactPhone || '');
-          setContactAddress(data.contactAddress || '');
+          const data = docSnap.data() as Partial<SiteContent>; // Use partial in case some fields are missing
+           // Merge fetched data with defaults to ensure all fields exist
+           setContent({ ...defaultContent, ...data });
         } else {
           console.log("No such document! Creating default content.");
-           // Optional: Create a default document if it doesn't exist
-           await setDoc(contentDocRef, {
-             about: 'Default about content.',
-             contactEmail: 'default@example.com',
-             contactPhone: 'N/A',
-             contactAddress: 'N/A',
-           });
-           // Set initial state after creating
-           setAboutContent('Default about content.');
-           setContactEmail('default@example.com');
-           setContactPhone('N/A');
-           setContactAddress('N/A');
+           // Create the document with default content if it doesn't exist
+           await setDoc(contentDocRef, defaultContent);
+           setContent(defaultContent); // Set state to defaults
         }
+        setIsDirty(false); // Reset dirty state after fetch/creation
       } catch (error) {
         console.error("Error fetching content:", error);
         let errorMessage = "Failed to load website content.";
          if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
             errorMessage = "Cannot load content. You appear to be offline. Please check your internet connection.";
             setFetchError(errorMessage);
+         } else {
+             // Use the generic error message for other errors
+             setFetchError(errorMessage);
          }
         toast({
           title: "Error",
@@ -87,18 +98,29 @@ export default function AdminContentPage() {
      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db]); // Rerun if db instance changes
 
-  const handleSaveAbout = async (e: React.FormEvent) => {
+  // Generic handler for input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setContent(prevContent => ({ ...prevContent, [name]: value }));
+    setIsDirty(true); // Mark as dirty when changed
+  };
+
+
+  // Single save function for all content
+  const handleSaveContent = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavingAbout(true);
+    setSaving(true);
     try {
-      await updateDoc(contentDocRef, { about: aboutContent });
+      // Use updateDoc to only change fields, or setDoc with merge: true if you prefer
+      await updateDoc(contentDocRef, content);
       toast({
         title: "Success",
-        description: "About section updated successfully.",
+        description: "Website content updated successfully.",
       });
+      setIsDirty(false); // Reset dirty state after successful save
     } catch (error) {
-      console.error("Error updating about content:", error);
-       let errorMessage = "Failed to update About section.";
+      console.error("Error updating content:", error);
+       let errorMessage = "Failed to update website content.";
         if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
           errorMessage = "Cannot save. You appear to be offline.";
         }
@@ -108,41 +130,12 @@ export default function AdminContentPage() {
         variant: "destructive",
       });
     } finally {
-      setSavingAbout(false);
+      setSaving(false);
     }
   };
 
-  const handleSaveContact = async (e: React.FormEvent) => {
-     e.preventDefault();
-     setSavingContact(true);
-     try {
-       await updateDoc(contentDocRef, {
-         contactEmail: contactEmail,
-         contactPhone: contactPhone,
-         contactAddress: contactAddress,
-       });
-       toast({
-         title: "Success",
-         description: "Contact information updated successfully.",
-       });
-     } catch (error) {
-       console.error("Error updating contact info:", error);
-        let errorMessage = "Failed to update contact information.";
-        if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
-          errorMessage = "Cannot save. You appear to be offline.";
-        }
-       toast({
-         title: "Error",
-         description: errorMessage,
-         variant: "destructive",
-       });
-     } finally {
-       setSavingContact(false);
-     }
-   };
-
   if (loading) {
-    return <div className="flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Content...</span></div>;
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Content...</span></div>;
   }
 
   if (fetchError) {
@@ -153,6 +146,7 @@ export default function AdminContentPage() {
              <AlertCircle className="h-4 w-4" />
              <AlertTitle>Network Error</AlertTitle>
              <AlertDescription>{fetchError}</AlertDescription>
+             <Button onClick={() => window.location.reload()} className="mt-4">Retry</Button>
            </Alert>
          </div>
      );
@@ -160,9 +154,49 @@ export default function AdminContentPage() {
 
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Content Management</h1>
-      <p className="text-muted-foreground">Update the text content displayed on the public website.</p>
+     <form onSubmit={handleSaveContent} className="space-y-6">
+      <div className="flex items-center justify-between sticky top-0 py-4 bg-background/90 backdrop-blur z-10">
+        <div>
+          <h1 className="text-3xl font-bold">Content Management</h1>
+          <p className="text-muted-foreground">Update the text content displayed on the public website.</p>
+        </div>
+        <Button type="submit" disabled={saving || !isDirty}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Save className="mr-2 h-4 w-4"/>
+          {saving ? 'Saving...' : 'Save All Changes'}
+        </Button>
+      </div>
+
+      {/* Hero Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Hero Section</CardTitle>
+          <CardDescription>Edit the main title and subtitle shown at the top of the homepage.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="heroTitle">Hero Title</Label>
+            <Input
+              id="heroTitle"
+              name="heroTitle"
+              value={content.heroTitle}
+              onChange={handleInputChange}
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="heroSubtitle">Hero Subtitle</Label>
+            <Textarea
+              id="heroSubtitle"
+              name="heroSubtitle"
+              value={content.heroSubtitle}
+              onChange={handleInputChange}
+              rows={3}
+              disabled={saving}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* About Matrix Section */}
       <Card>
@@ -171,21 +205,83 @@ export default function AdminContentPage() {
           <CardDescription>Edit the introductory text for the club.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSaveAbout} className="space-y-4">
-            <Textarea
-              placeholder="Enter the 'About Matrix' content here..."
-              value={aboutContent}
-              onChange={(e) => setAboutContent(e.target.value)}
-              rows={6}
-              disabled={savingAbout}
-            />
-            <Button type="submit" disabled={savingAbout}>
-              {savingAbout && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {savingAbout ? 'Saving...' : 'Save About Section'}
-            </Button>
-          </form>
+          <div className="space-y-2">
+             <Label htmlFor="about">About Content</Label>
+             <Textarea
+               id="about"
+               name="about"
+               placeholder="Enter the 'About Matrix' content here..."
+               value={content.about}
+               onChange={handleInputChange}
+               rows={6}
+               disabled={saving}
+             />
+           </div>
         </CardContent>
       </Card>
+
+       {/* Join Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Join Section</CardTitle>
+          <CardDescription>Edit the title and description for the membership join section.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="joinTitle">Join Title</Label>
+            <Input
+              id="joinTitle"
+              name="joinTitle"
+              value={content.joinTitle}
+              onChange={handleInputChange}
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="joinDescription">Join Description</Label>
+            <Textarea
+              id="joinDescription"
+              name="joinDescription"
+              value={content.joinDescription}
+              onChange={handleInputChange}
+              rows={3}
+              disabled={saving}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+       {/* Newsletter Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Newsletter Section</CardTitle>
+          <CardDescription>Edit the title and description for the newsletter signup section.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="newsletterTitle">Newsletter Title</Label>
+            <Input
+              id="newsletterTitle"
+              name="newsletterTitle"
+              value={content.newsletterTitle}
+              onChange={handleInputChange}
+              disabled={saving}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="newsletterDescription">Newsletter Description</Label>
+            <Textarea
+              id="newsletterDescription"
+              name="newsletterDescription"
+              value={content.newsletterDescription}
+              onChange={handleInputChange}
+              rows={3}
+              disabled={saving}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
 
       {/* Contact Info Section */}
       <Card>
@@ -194,50 +290,55 @@ export default function AdminContentPage() {
           <CardDescription>Update the contact details shown on the website.</CardDescription>
         </CardHeader>
         <CardContent>
-           <form onSubmit={handleSaveContact} className="space-y-4">
+           <div className="space-y-4">
              <div className="space-y-2">
-               <Label htmlFor="contact-email">Email Address</Label>
+               <Label htmlFor="contactEmail">Email Address</Label>
                <Input
-                 id="contact-email"
+                 id="contactEmail"
+                 name="contactEmail"
                  type="email"
                  placeholder="info@matrixastronomy.org"
-                 value={contactEmail}
-                 onChange={(e) => setContactEmail(e.target.value)}
-                 disabled={savingContact}
+                 value={content.contactEmail}
+                 onChange={handleInputChange}
+                 disabled={saving}
                />
              </div>
               <div className="space-y-2">
-               <Label htmlFor="contact-phone">Phone Number</Label>
+               <Label htmlFor="contactPhone">Phone Number</Label>
                <Input
-                 id="contact-phone"
+                 id="contactPhone"
+                 name="contactPhone"
                  type="tel"
                  placeholder="+1 (555) 123-4567"
-                 value={contactPhone}
-                 onChange={(e) => setContactPhone(e.target.value)}
-                 disabled={savingContact}
+                 value={content.contactPhone}
+                 onChange={handleInputChange}
+                 disabled={saving}
                />
              </div>
              <div className="space-y-2">
-               <Label htmlFor="contact-address">Address</Label>
+               <Label htmlFor="contactAddress">Address</Label>
                <Textarea
-                 id="contact-address"
+                 id="contactAddress"
+                 name="contactAddress"
                  placeholder="123 Cosmos Avenue, Starlight City, ST 98765"
-                 value={contactAddress}
-                 onChange={(e) => setContactAddress(e.target.value)}
+                 value={content.contactAddress}
+                 onChange={handleInputChange}
                  rows={3}
-                 disabled={savingContact}
+                 disabled={saving}
                />
              </div>
-            <Button type="submit" disabled={savingContact}>
-              {savingContact && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {savingContact ? 'Saving...' : 'Save Contact Info'}
-            </Button>
-          </form>
+          </div>
         </CardContent>
       </Card>
-    </div>
+
+       <div className="flex justify-end py-4">
+          <Button type="submit" disabled={saving || !isDirty}>
+           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+           <Save className="mr-2 h-4 w-4"/>
+           {saving ? 'Saving...' : 'Save All Changes'}
+         </Button>
+       </div>
+    </form>
   );
 }
 
-
-    
