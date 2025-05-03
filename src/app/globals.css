@@ -42,9 +42,9 @@ body {
     --sidebar-accent-foreground: 0 0% 98%; /* Near White */
     --sidebar-border: 210 100% 25%;
     --sidebar-ring: 180 100% 35%; /* Teal for focus rings */
-    --star-color-1: hsl(210 100% 60%); /* Lighter Blue */
-    --star-color-2: hsl(180 100% 40%); /* Lighter Teal */
-    --star-color-3: hsl(0 0% 80%); /* Light Gray */
+    --star-color-1: hsl(210 100% 75%); /* Brighter Blue */
+    --star-color-2: hsl(180 100% 60%); /* Brighter Teal */
+    --star-color-3: hsl(0 0% 95%); /* Very Light Gray */
   }
 
   .dark {
@@ -109,7 +109,8 @@ body {
     z-index: -10; /* Ensure it's behind content */
     overflow: hidden;
     pointer-events: none; /* Allow clicks to pass through */
-    background-color: transparent; /* Or match body background */
+    /* Background is handled by body */
+    background-color: transparent;
   }
 
   /* Container for rotating stars */
@@ -120,19 +121,22 @@ body {
     width: 100%;
     height: 100%;
     transform: rotate(0deg); /* Initial rotation */
-    animation: rotateStars 300s linear infinite; /* Slow rotation animation */
+    /* Slow rotation animation - increased duration */
+    animation: rotateStars 600s linear infinite;
   }
 
   /* Base Star Style */
   .star {
     position: absolute;
-    /* background-color: white; Will be set via inline style */
     border-radius: 50%;
+    /* Twinkle animation applied */
     animation-name: twinkle;
-    animation-timing-function: ease-in-out;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); /* Smoother ease */
     animation-iteration-count: infinite;
     opacity: 0; /* Start invisible, animation brings it in */
      /* Size, position, color, delay, duration set via inline style in component */
+    transform-origin: center center; /* Ensure scaling originates from center */
+    box-shadow: 0 0 3px 0px var(--star-glow-color, rgba(255, 255, 255, 0.3)); /* Subtle glow */
   }
 
    /* Rotation Animation */
@@ -141,26 +145,40 @@ body {
      to { transform: rotate(360deg); }
    }
 
-  /* Twinkle Animation */
+  /* Enhanced Twinkle Animation */
   @keyframes twinkle {
-    0%, 100% { opacity: 0; transform: scale(0.5); }
-    50% { opacity: 1; transform: scale(1); }
+    0%, 100% {
+      opacity: 0;
+      transform: scale(0.5) rotate(0deg); /* Start small and fade out */
+    }
+    20% {
+       opacity: 0.8; /* Fade in */
+    }
+    50% {
+       opacity: 1;
+       transform: scale(1) rotate(10deg); /* Fully visible, slightly larger and rotated */
+    }
+    80% {
+        opacity: 0.6; /* Fade out */
+    }
   }
 
-  /* Simple Fade-in Animation */
+
+  /* Simple Fade-in Animation (for content) */
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(15px); } /* Slightly larger initial offset */
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Simple Pulse Animation */
+  /* Subtle Pulse Animation (for buttons/highlights) */
   @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.7; transform: scale(1.05); }
+    50% { opacity: 0.85; transform: scale(1.03); } /* Less drastic pulse */
   }
 
+  /* Apply animations */
   .animate-fade-in {
-    animation: fadeIn 0.5s ease-out forwards;
+    animation: fadeIn 0.6s ease-out forwards; /* Slightly longer duration */
     opacity: 0; /* Start hidden */
   }
 
@@ -171,14 +189,20 @@ body {
 }
 
 @layer components {
+  /* Gallery Grid - refined breakpoints */
   .grid-cols-gallery {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); /* Smaller base for mobile */
   }
   @screen sm {
     .grid-cols-gallery {
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     }
   }
+  @screen md {
+     .grid-cols-gallery {
+       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+     }
+   }
   @screen lg {
     .grid-cols-gallery {
       grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
