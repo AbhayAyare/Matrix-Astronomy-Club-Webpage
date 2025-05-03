@@ -92,7 +92,8 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    /* Apply a subtle gradient background */
+    @apply bg-gradient-to-b from-background to-secondary/10 text-foreground;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   }
 }
@@ -146,7 +147,7 @@ body {
     50% { opacity: 1; transform: scale(1); }
   }
 
-  /* Simple Fade-in Animation */
+  /* Simple Fade-in Animation (AddedPreviously) */
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -154,6 +155,7 @@ body {
 
   .animate-fade-in {
     animation: fadeIn 0.5s ease-out forwards;
+    opacity: 0; /* Start hidden */
   }
 }
 

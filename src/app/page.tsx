@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Send, Phone, MapPin } from 'lucide-react';
+import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Send, Phone, MapPin, Palette } from 'lucide-react'; // Added Palette icon
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 
@@ -38,16 +38,16 @@ export default function Home() {
 
       <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24">
         {/* Hero Section */}
-        <section id="hero" className="text-center py-16 md:py-24 bg-gradient-to-b from-primary/10 to-background rounded-lg shadow-inner animate-fade-in">
-           <h1 className="text-4xl md:text-6xl font-bold mb-4 text-primary">Welcome to Matrix Astronomy Hub</h1>
-           <p className="text-lg md:text-xl text-foreground/80 max-w-3xl mx-auto mb-8">Your gateway to the cosmos. Explore, learn, and connect with fellow space enthusiasts.</p>
-           <Button size="lg" asChild className="transform hover:scale-105 transition-transform duration-200">
+        <section id="hero" className="text-center py-16 md:py-24 bg-gradient-to-b from-primary/10 to-transparent rounded-lg shadow-inner animate-fade-in">
+           <h1 className="text-4xl md:text-6xl font-bold mb-4 text-primary animate-fade-in" style={{ animationDelay: '0.1s' }}>Welcome to Matrix Astronomy Hub</h1>
+           <p className="text-lg md:text-xl text-foreground/80 max-w-3xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>Your gateway to the cosmos. Explore, learn, and connect with fellow space enthusiasts.</p>
+           <Button size="lg" asChild className="transform hover:scale-105 transition-transform duration-200 animate-fade-in" style={{ animationDelay: '0.3s' }}>
              <Link href="#join">Join the Club</Link>
            </Button>
         </section>
 
         {/* About Matrix Section */}
-        <section id="about" className="scroll-mt-20">
+        <section id="about" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.4s' }}>
           <h2 className="text-3xl md:text-4xl font-semibold mb-6 text-primary flex items-center justify-center gap-2"><Globe className="w-8 h-8 text-accent"/>About Matrix</h2>
           <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-6 md:p-8">
@@ -59,21 +59,22 @@ export default function Home() {
         <Separator />
 
         {/* Upcoming Events Section */}
-        <section id="events" className="scroll-mt-20">
+        <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {upcomingEvents.map((event) => (
-              <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 ease-in-out">
-                <div className="relative h-48 w-full overflow-hidden">
+            {upcomingEvents.map((event, index) => (
+              <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
+                 <div className="relative h-48 w-full overflow-hidden group"> {/* Added group here */}
                    <Image
                      src={event.image}
                      alt={event.name}
-                     layout="fill"
-                     objectFit="cover"
+                     fill // Use fill instead of layout="fill"
+                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Provide sizes prop
+                     className="object-cover transition-transform duration-300 group-hover:scale-105" // Use fill
                      data-ai-hint={event.dataAiHint}
-                     className="transition-transform duration-300 group-hover:scale-105" // Added group-hover for image zoom on card hover
+                     priority={index < 3} // Prioritize loading images in the initial viewport
                    />
-                </div>
+                 </div>
                 <CardHeader>
                   <CardTitle className="text-xl">{event.name}</CardTitle>
                   <CardDescription>{new Date(event.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
@@ -81,8 +82,8 @@ export default function Home() {
                 <CardContent className="flex-grow">
                   <p className="text-foreground/80">{event.description}</p>
                 </CardContent>
-                <CardFooter className="flex justify-between items-center mt-auto">
-                   <Badge variant="secondary" className="bg-accent text-accent-foreground">Paid Event</Badge>
+                 <CardFooter className="flex justify-between items-center mt-auto">
+                   <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
                    <Button variant="outline" size="sm" className="transform hover:scale-105 transition-transform duration-200">Learn More</Button>
                  </CardFooter>
               </Card>
@@ -93,20 +94,22 @@ export default function Home() {
         <Separator />
 
         {/* Event Gallery Section */}
-        <section id="gallery" className="scroll-mt-20">
+        <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><ImageIcon className="w-8 h-8 text-accent"/>Event Gallery</h2>
           <div className="grid grid-cols-gallery gap-4">
-            {galleryImages.map((image) => (
-              <div key={image.id} className="aspect-w-3 aspect-h-2 overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group">
-                <Image
-                  src={image.src}
-                  alt={image.alt}
-                  width={300}
-                  height={200}
-                  className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-300 ease-in-out" // Simplified hover effect
+            {galleryImages.map((image, index) => (
+               <div key={image.id} className="aspect-w-16 aspect-h-9 overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group animate-fade-in" style={{ animationDelay: `${1 + index * 0.05}s` }}>
+                 <Image
+                   src={image.src}
+                   alt={image.alt}
+                   width={300} // Provide base width
+                   height={200} // Provide base height
+                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px" // Example sizes
+                   className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-300 ease-in-out"
                    data-ai-hint={image.dataAiHint}
-                />
-              </div>
+                   loading={index < 6 ? "eager" : "lazy"} // Eager load first few, lazy load rest
+                 />
+               </div>
             ))}
           </div>
         </section>
@@ -114,7 +117,7 @@ export default function Home() {
         <Separator />
 
         {/* Join Matrix Section */}
-        <section id="join" className="scroll-mt-20">
+        <section id="join" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.2s' }}>
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><UserPlus className="w-8 h-8 text-accent"/>Join Matrix</h2>
           <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardHeader>
@@ -135,7 +138,7 @@ export default function Home() {
         <Separator />
 
         {/* Newsletter Subscription Section */}
-        <section id="newsletter" className="scroll-mt-20">
+        <section id="newsletter" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.3s' }}>
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Mail className="w-8 h-8 text-accent"/>Stay Updated</h2>
           <Card className="max-w-2xl mx-auto shadow-lg bg-secondary/50 hover:shadow-xl transition-shadow duration-300">
              <CardHeader>
@@ -156,8 +159,35 @@ export default function Home() {
 
         <Separator />
 
+         {/* Design Section (Placeholder) */}
+         <section id="design" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.4s' }}>
+           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Palette className="w-8 h-8 text-accent"/>Design & Aesthetics</h2>
+           <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+             <CardContent className="p-6 md:p-8">
+               <p className="text-lg leading-relaxed text-foreground/90">
+                 This section can showcase design elements, visual concepts, or themes related to the Matrix Astronomy Hub brand.
+                 Maybe display logos, color palettes, or mood boards here.
+               </p>
+               {/* Add design-related content here */}
+               <div className="mt-6 flex justify-center">
+                 <Image
+                    src="https://picsum.photos/seed/design1/500/300"
+                    alt="Design Concept Placeholder"
+                    width={500}
+                    height={300}
+                    className="rounded-lg shadow-md"
+                    data-ai-hint="abstract space design concept"
+                    loading="lazy"
+                 />
+               </div>
+             </CardContent>
+           </Card>
+         </section>
+
+        <Separator />
+
         {/* Contact Us Section */}
-        <section id="contact" className="scroll-mt-20">
+        <section id="contact" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.5s' }}>
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
            <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
              <CardContent className="p-6 md:p-8 space-y-4">

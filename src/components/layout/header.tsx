@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Telescope } from 'lucide-react';
+import { Menu, Telescope, Palette } from 'lucide-react'; // Added Palette icon
 
 const navItems = [
   { href: '#about', label: 'About' },
@@ -9,22 +9,26 @@ const navItems = [
   { href: '#gallery', label: 'Gallery' },
   { href: '#join', label: 'Join Us' },
   { href: '#newsletter', label: 'Newsletter' },
+  { href: '#design', label: 'Design' }, // Added Design link
   { href: '#contact', label: 'Contact' },
-  // { href: '/admin', label: 'Admin Login', admin: true }, // Temporarily removed
+  // { href: '/admin', label: 'Admin Login', admin: true }, // Login remains disabled
 ];
 
 export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 animate-fade-in">
       <div className="container flex h-14 items-center">
-        <Link href="/" className="mr-6 flex items-center space-x-2">
+        {/* Site Title/Logo */}
+        <Link href="/" className="mr-auto flex items-center space-x-2 md:mr-6">
           <Telescope className="h-6 w-6 text-primary" />
-          <span className="font-bold sm:inline-block">
+          <span className="hidden font-bold sm:inline-block">
             Matrix Astronomy Hub
           </span>
         </Link>
-        <nav className="hidden flex-1 gap-6 md:flex">
-          {navItems.map((item) => !item.admin && ( // Ensure admin check remains if item is uncommented later
+
+        {/* Desktop Navigation */}
+        <nav className="hidden flex-1 justify-center gap-4 md:flex lg:gap-6">
+          {navItems.map((item) => !item.admin && ( // Ensure admin check remains
             <Link
               key={item.label}
               href={item.href}
@@ -34,14 +38,12 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          {/* <Button variant="outline" size="sm" asChild className="hidden md:inline-flex">
-            <Link href="/admin">Admin Login</Link>
-          </Button> */}
-          {/* Mobile Menu */}
+
+        {/* Mobile Menu Trigger */}
+        <div className="ml-auto flex items-center md:hidden">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
+              <Button variant="ghost" size="icon">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle Menu</span>
               </Button>
@@ -61,7 +63,7 @@ export function Header() {
                     {item.label}
                   </Link>
                 ))}
-                 {/* Removed Admin Login from mobile menu as well */}
+                 {/* Login button removed from mobile menu as well */}
               </div>
             </SheetContent>
           </Sheet>
