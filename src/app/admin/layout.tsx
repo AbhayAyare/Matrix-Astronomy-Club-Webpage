@@ -1,10 +1,10 @@
-
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-// Removed AuthProvider and ProtectedRoute imports as login is disabled
+import { AuthProvider } from '@/context/auth-provider'; // Import AuthProvider
+import ProtectedRoute from '@/components/layout/protected-route'; // Import ProtectedRoute
 import { LayoutDashboard, Settings, CalendarClock, Image as ImageIcon, Users, Newspaper, HelpCircle } from 'lucide-react';
 import { UserNav } from '@/components/admin/user-nav';
 import {
@@ -19,17 +19,11 @@ import {
   SidebarInset,
   SidebarRail,
   SidebarSeparator,
-} from '@/components/ui/sidebar'; // Import Sidebar components
+} from '@/components/ui/sidebar';
 
-
-// Admin Layout Component - No longer protected
-function AdminLayout({ children }: { children: React.ReactNode }) {
+// Internal layout component that assumes authentication has been handled
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-
-     // No need for login page check, as it's removed/bypassed
-     // if (pathname === '/admin/login') {
-     //     return <>{children}</>;
-     // }
 
      const navItems = [
         { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -47,7 +41,6 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
     };
 
   return (
-     // Removed ProtectedRoute wrapper
         <SidebarProvider defaultOpen> {/* Ensures sidebar is open by default on desktop */}
              <Sidebar side="left" variant="inset" collapsible="icon" className="border-sidebar-border"> {/* Use inset variant and allow icon collapse */}
                  <SidebarHeader className="items-center justify-between p-2">
@@ -99,11 +92,17 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
                  {children}
             </SidebarInset>
         </SidebarProvider>
-     // Removed ProtectedRoute wrapper
   );
 }
 
 
-// Default export remains the layout component
-export default AdminLayout;
-
+// Main export: Wraps the layout content with Auth and Protection
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+   return (
+     <AuthProvider>
+        <ProtectedRoute>
+           <AdminLayoutContent>{children}</AdminLayoutContent>
+        </ProtectedRoute>
+     </AuthProvider>
+   );
+}
