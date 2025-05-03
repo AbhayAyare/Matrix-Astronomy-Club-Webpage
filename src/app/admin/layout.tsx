@@ -1,11 +1,13 @@
+'use client'; // Add this directive
+
 import { ReactNode } from 'react';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarTrigger, SidebarInset, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { AuthProvider, useAuth } from '@/context/auth-provider'; // Assuming auth context setup
+import { AuthProvider, useAuth } from '@/context/auth-provider';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Settings, CalendarClock, Users, Newspaper, Image as ImageIcon, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { UserNav } from '@/components/admin/user-nav'; // Placeholder for user dropdown
+import { LayoutDashboard, Settings, CalendarClock, Users, Newspaper, Image as ImageIcon } from 'lucide-react'; // Removed LogOut as UserNav handles it
+import { UserNav } from '@/components/admin/user-nav';
+import { Loader2 } from 'lucide-react'; // Import Loader2
 
 
 // Component to protect routes
@@ -13,7 +15,12 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen"><p>Loading...</p></div>; // Or a spinner
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading authentication...</span>
+      </div>
+    );
   }
 
   if (!user) {
@@ -25,6 +32,9 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  // Since AuthProvider wraps ProtectedRoute which uses useAuth,
+  // AuthProvider needs to be inside a client component context.
+  // By adding 'use client' at the top, this entire layout becomes a client component.
   return (
     <AuthProvider>
       <ProtectedRoute>
@@ -69,7 +79,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </SidebarMenu>
             </SidebarContent>
              <SidebarFooter className="p-2 mt-auto">
-               {/* Add UserNav/Logout here if needed, or keep it simple */}
                <UserNav />
              </SidebarFooter>
           </Sidebar>
