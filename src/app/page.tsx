@@ -39,7 +39,7 @@ export default function Home() {
       <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24 overflow-x-hidden"> {/* Prevent horizontal scroll from animations */}
         {/* Hero Section */}
         <section id="hero" className="text-center py-16 md:py-24 bg-gradient-to-b from-primary/10 to-transparent rounded-lg shadow-inner animate-fade-in">
-           <h1 className="text-4xl md:text-6xl font-bold mb-4 text-primary animate-fade-in" style={{ animationDelay: '0.1s' }}>Welcome to Matrix Astronomy Hub</h1>
+           <h1 className="text-4xl md:text-6xl font-bold mb-4 text-primary animate-fade-in" style={{ animationDelay: '0.1s' }}>Welcome to Matrix Astronomy Club</h1> {/* Updated Heading */}
            <p className="text-lg md:text-xl text-foreground/80 max-w-3xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>Your gateway to the cosmos. Explore, learn, and connect with fellow space enthusiasts.</p>
            <Button size="lg" asChild className="transform hover:scale-105 transition-transform duration-300 ease-in-out animate-fade-in" style={{ animationDelay: '0.3s' }}>
              <Link href="#join">Join the Club</Link>

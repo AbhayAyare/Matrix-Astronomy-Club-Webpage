@@ -21,7 +21,7 @@ export function Header() {
         <Link href="/" className="mr-auto flex items-center space-x-2 md:mr-6 transform transition-transform duration-200 hover:scale-105">
           <Telescope className="h-6 w-6 text-primary" />
           <span className="hidden font-bold sm:inline-block">
-            Matrix Astronomy Hub
+            Matrix Astronomy Club {/* Updated Name */}
           </span>
         </Link>
 
@@ -51,7 +51,7 @@ export function Header() {
               <div className="flex flex-col gap-4 p-4">
                  <Link href="/" className="mb-4 flex items-center space-x-2">
                   <Telescope className="h-6 w-6 text-primary" />
-                  <span className="font-bold">Matrix Hub</span>
+                  <span className="font-bold">Matrix Club</span> {/* Updated Mobile Name */}
                  </Link>
                  {navItems.map((item) => (
                   <Link

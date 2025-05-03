@@ -14,7 +14,7 @@ const geistSans = Geist({
 
 
 export const metadata: Metadata = {
-  title: 'Matrix Astronomy Hub',
+  title: 'Matrix Astronomy Club', // Updated Title
   description: 'Explore the cosmos with Matrix Astronomy Club.',
 };
 
