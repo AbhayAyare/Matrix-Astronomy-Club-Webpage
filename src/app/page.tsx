@@ -38,10 +38,10 @@ export default function Home() {
 
       <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24">
         {/* Hero Section */}
-        <section id="hero" className="text-center py-16 md:py-24 bg-gradient-to-b from-primary/10 to-background rounded-lg shadow-inner">
+        <section id="hero" className="text-center py-16 md:py-24 bg-gradient-to-b from-primary/10 to-background rounded-lg shadow-inner animate-fade-in">
            <h1 className="text-4xl md:text-6xl font-bold mb-4 text-primary">Welcome to Matrix Astronomy Hub</h1>
            <p className="text-lg md:text-xl text-foreground/80 max-w-3xl mx-auto mb-8">Your gateway to the cosmos. Explore, learn, and connect with fellow space enthusiasts.</p>
-           <Button size="lg" asChild>
+           <Button size="lg" asChild className="transform hover:scale-105 transition-transform duration-200">
              <Link href="#join">Join the Club</Link>
            </Button>
         </section>
@@ -49,7 +49,7 @@ export default function Home() {
         {/* About Matrix Section */}
         <section id="about" className="scroll-mt-20">
           <h2 className="text-3xl md:text-4xl font-semibold mb-6 text-primary flex items-center justify-center gap-2"><Globe className="w-8 h-8 text-accent"/>About Matrix</h2>
-          <Card className="shadow-lg">
+          <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-6 md:p-8">
               <p className="text-lg leading-relaxed text-foreground/90">{aboutContent}</p>
             </CardContent>
@@ -63,14 +63,15 @@ export default function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {upcomingEvents.map((event) => (
-              <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
-                <div className="relative h-48 w-full">
+              <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 ease-in-out">
+                <div className="relative h-48 w-full overflow-hidden">
                    <Image
                      src={event.image}
                      alt={event.name}
                      layout="fill"
                      objectFit="cover"
                      data-ai-hint={event.dataAiHint}
+                     className="transition-transform duration-300 group-hover:scale-105" // Added group-hover for image zoom on card hover
                    />
                 </div>
                 <CardHeader>
@@ -80,9 +81,9 @@ export default function Home() {
                 <CardContent className="flex-grow">
                   <p className="text-foreground/80">{event.description}</p>
                 </CardContent>
-                <CardFooter className="flex justify-between items-center">
+                <CardFooter className="flex justify-between items-center mt-auto">
                    <Badge variant="secondary" className="bg-accent text-accent-foreground">Paid Event</Badge>
-                   <Button variant="outline" size="sm">Learn More</Button>
+                   <Button variant="outline" size="sm" className="transform hover:scale-105 transition-transform duration-200">Learn More</Button>
                  </CardFooter>
               </Card>
             ))}
@@ -96,13 +97,13 @@ export default function Home() {
            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><ImageIcon className="w-8 h-8 text-accent"/>Event Gallery</h2>
           <div className="grid grid-cols-gallery gap-4">
             {galleryImages.map((image) => (
-              <div key={image.id} className="aspect-w-3 aspect-h-2 overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+              <div key={image.id} className="aspect-w-3 aspect-h-2 overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group">
                 <Image
                   src={image.src}
                   alt={image.alt}
                   width={300}
                   height={200}
-                  className="object-cover w-full h-full transform hover:scale-105 transition-transform duration-300"
+                  className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-300 ease-in-out" // Simplified hover effect
                    data-ai-hint={image.dataAiHint}
                 />
               </div>
@@ -115,7 +116,7 @@ export default function Home() {
         {/* Join Matrix Section */}
         <section id="join" className="scroll-mt-20">
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><UserPlus className="w-8 h-8 text-accent"/>Join Matrix</h2>
-          <Card className="max-w-2xl mx-auto shadow-lg">
+          <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardHeader>
               <CardTitle>Become a Member</CardTitle>
               <CardDescription>Fill out the form below to start your cosmic journey with us.</CardDescription>
@@ -125,7 +126,7 @@ export default function Home() {
                 <Input placeholder="Full Name" required />
                 <Input type="email" placeholder="Email Address" required />
                 <Textarea placeholder="Tell us a bit about your interest in astronomy (optional)" />
-                <Button type="submit" className="w-full">Submit Application</Button>
+                <Button type="submit" className="w-full transform hover:scale-105 transition-transform duration-200">Submit Application</Button>
               </form>
             </CardContent>
           </Card>
@@ -136,7 +137,7 @@ export default function Home() {
         {/* Newsletter Subscription Section */}
         <section id="newsletter" className="scroll-mt-20">
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Mail className="w-8 h-8 text-accent"/>Stay Updated</h2>
-          <Card className="max-w-2xl mx-auto shadow-lg bg-secondary/50">
+          <Card className="max-w-2xl mx-auto shadow-lg bg-secondary/50 hover:shadow-xl transition-shadow duration-300">
              <CardHeader>
                <CardTitle>Subscribe to Our Newsletter</CardTitle>
                <CardDescription>Get the latest news, event announcements, and astronomical insights delivered to your inbox.</CardDescription>
@@ -144,7 +145,7 @@ export default function Home() {
              <CardContent>
               <form className="flex gap-2">
                 <Input type="email" placeholder="Enter your email" required className="flex-grow" />
-                <Button type="submit" variant="default">
+                <Button type="submit" variant="default" className="transform hover:scale-105 transition-transform duration-200">
                    <Send className="w-4 h-4 mr-2"/>
                    Subscribe
                  </Button>
@@ -158,7 +159,7 @@ export default function Home() {
         {/* Contact Us Section */}
         <section id="contact" className="scroll-mt-20">
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
-           <Card className="max-w-2xl mx-auto shadow-lg">
+           <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
              <CardContent className="p-6 md:p-8 space-y-4">
                <div className="flex items-center gap-3">
                  <Mail className="w-5 h-5 text-accent"/>
