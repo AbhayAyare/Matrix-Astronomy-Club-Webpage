@@ -1,47 +1,49 @@
 
-// Import the functions you need from the SDKs you need
-import { initializeApp, getApp, getApps } from "firebase/app"; // Keep getApp/getApps for potential safety, though often simplified now.
+// Import the core Firebase app functions
+import { initializeApp, getApps, getApp } from "firebase/app";
+
+// Import the Firebase services you want to use
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore"; // Keep Firestore initialization
+import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Hardcoded Firebase project configuration based on user input
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCWqQMAguYi6-JkOM3AlTy-3Omh18kWoCA",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "matrixclub-bb0db.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "matrixclub-bb0db",
-  // Ensure storage bucket uses the .appspot.com domain consistent with others
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "matrixclub-bb0db.appspot.com", // Reverted to .appspot.com as per original file structure unless specifically told otherwise. Check Firebase Console for correct value.
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "801204253639",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:801204253639:web:422e423828577fe2cb1fe2",
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-SEPQZFGK23" // Optional
+  apiKey: "AIzaSyA4hCoqr1HGpa2Ink0rU-ASU0oTfafchvg",
+  authDomain: "matrix-astronomy-hub.firebaseapp.com",
+  projectId: "matrix-astronomy-hub",
+  storageBucket: "matrix-astronomy-hub.firebasestorage.app", // Note: Typically ends with .appspot.com, but using user-provided value. Double-check this in your Firebase console.
+  messagingSenderId: "1010550441917",
+  appId: "1:1010550441917:web:7e5037ac27e995599c74d4",
+  // measurementId is optional but recommended for Analytics
+  // measurementId: "G-XXXXXXXXXX" // Add your measurement ID if you have one
 };
 
-// Initialize Firebase - Use getApps check for robustness against HMR or multiple initializations
+// Initialize Firebase app. Use getApps check for robustness.
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+// Initialize Firebase services
 const auth = getAuth(app);
-const db = getFirestore(app); // Initialize Firestore
+const db = getFirestore(app); // Assuming Firestore is needed based on previous files
 const storage = getStorage(app);
 
 // Initialize Analytics only if supported (runs only on client-side)
 let analytics;
 if (typeof window !== 'undefined') {
     isSupported().then((supported) => {
-        if (supported && firebaseConfig.measurementId) { // Also check if measurementId exists
+        // Add check for measurementId if you include it in the config
+        // if (supported && firebaseConfig.measurementId) {
+        if (supported) { // Initialize if supported, even without measurementId for now
             analytics = getAnalytics(app);
-            // console.log("Firebase Analytics initialized."); // Keep console logs minimal
+            // console.log("Firebase Analytics initialized.");
         } else {
-             if(!supported) console.log("Firebase Analytics is not supported in this environment.");
-             if(!firebaseConfig.measurementId) console.log("Firebase measurementId is missing, skipping Analytics initialization.");
+             // console.log("Firebase Analytics not supported or measurementId missing.");
         }
     }).catch(err => {
-        console.error("Error checking Firebase Analytics support:", err); // Add error handling
+        console.error("Error checking Firebase Analytics support:", err);
     });
 }
 
-
+// Export the initialized app and services
 export { app, auth, db, storage, analytics };
