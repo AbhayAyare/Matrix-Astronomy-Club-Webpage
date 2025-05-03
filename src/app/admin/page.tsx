@@ -4,11 +4,11 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { Users, CalendarCheck, BarChart, Settings, CalendarClock, Image as ImageIcon, Newspaper, ArrowRight } from "lucide-react";
-import { useAuth } from "@/context/auth-provider";
+import { Users, CalendarCheck, BarChart, Settings, CalendarClock, Image as ImageIconProp, Newspaper, ArrowRight } from "lucide-react"; // Renamed Image to avoid conflict
+// import { useAuth } from "@/context/auth-provider"; // No longer needed
 import { useFirebase } from '@/context/firebase-provider';
-import { collection, getDocs } from 'firebase/firestore';
-import { listAll } from 'firebase/storage';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore'; // Added getDoc
+import { ref, listAll } from 'firebase/storage'; // Added ref
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -21,7 +21,7 @@ const CONTENT_COLLECTION = 'config';
 const CONTENT_DOC_ID = 'siteContent';
 
 export default function AdminDashboardPage() {
-   const { user } = useAuth();
+   // const { user } = useAuth(); // No longer needed
    const { db, storage } = useFirebase();
    const [stats, setStats] = useState({
      memberCount: 0,
@@ -35,9 +35,13 @@ export default function AdminDashboardPage() {
      const fetchStats = async () => {
        setLoadingStats(true);
        try {
-         const memberSnap = await getDocs(collection(db, MEMBERS_COLLECTION));
-         const eventSnap = await getDocs(collection(db, EVENTS_COLLECTION));
-         const subscriberSnap = await getDocs(collection(db, NEWSLETTER_COLLECTION));
+         const membersCollectionRef = collection(db, MEMBERS_COLLECTION);
+         const eventsCollectionRef = collection(db, EVENTS_COLLECTION);
+         const newsletterCollectionRef = collection(db, NEWSLETTER_COLLECTION);
+
+         const memberSnap = await getDocs(membersCollectionRef);
+         const eventSnap = await getDocs(eventsCollectionRef);
+         const subscriberSnap = await getDocs(newsletterCollectionRef);
          const galleryListRef = ref(storage, GALLERY_FOLDER);
          const galleryRes = await listAll(galleryListRef);
 
@@ -63,7 +67,8 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back, {user?.email || 'Admin'}! Overview of your site.</p>
+        {/* Updated welcome message */}
+        <p className="text-muted-foreground">Welcome, Admin! Overview of your site.</p>
       </div>
 
 
@@ -108,7 +113,7 @@ export default function AdminDashboardPage() {
              <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Gallery Images</CardTitle>
-                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                <ImageIconProp className="h-4 w-4 text-muted-foreground" /> {/* Use renamed import */}
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.galleryImageCount}</div>
@@ -133,7 +138,7 @@ export default function AdminDashboardPage() {
       <section>
          <h2 className="text-2xl font-semibold mb-4">Manage Site</h2>
          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="hover:shadow-md transition-shadow duration-300">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg"><Settings className="w-5 h-5 text-primary"/> Website Content</CardTitle>
                     <CardDescription>Edit About Us and Contact Info.</CardDescription>
@@ -144,7 +149,7 @@ export default function AdminDashboardPage() {
                     </Button>
                 </CardContent>
             </Card>
-             <Card className="hover:shadow-md transition-shadow">
+             <Card className="hover:shadow-md transition-shadow duration-300">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg"><CalendarClock className="w-5 h-5 text-primary"/> Events</CardTitle>
                     <CardDescription>Add, edit, or delete club events.</CardDescription>
@@ -155,9 +160,9 @@ export default function AdminDashboardPage() {
                     </Button>
                 </CardContent>
             </Card>
-             <Card className="hover:shadow-md transition-shadow">
+             <Card className="hover:shadow-md transition-shadow duration-300">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg"><ImageIcon className="w-5 h-5 text-primary"/> Gallery</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-lg"><ImageIconProp className="w-5 h-5 text-primary"/> Gallery</CardTitle> {/* Use renamed import */}
                     <CardDescription>Upload or remove gallery images.</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -166,7 +171,7 @@ export default function AdminDashboardPage() {
                     </Button>
                 </CardContent>
             </Card>
-             <Card className="hover:shadow-md transition-shadow">
+             <Card className="hover:shadow-md transition-shadow duration-300">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg"><Users className="w-5 h-5 text-primary"/> Members</CardTitle>
                     <CardDescription>View registered club members.</CardDescription>
@@ -177,7 +182,7 @@ export default function AdminDashboardPage() {
                     </Button>
                 </CardContent>
             </Card>
-             <Card className="hover:shadow-md transition-shadow">
+             <Card className="hover:shadow-md transition-shadow duration-300">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg"><Newspaper className="w-5 h-5 text-primary"/> Newsletter</CardTitle>
                     <CardDescription>Manage newsletter subscribers.</CardDescription>

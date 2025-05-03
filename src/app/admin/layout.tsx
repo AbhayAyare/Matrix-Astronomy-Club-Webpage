@@ -1,21 +1,17 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from "@/context/auth-provider";
-import { Loader2, LogOut, LayoutDashboard, Settings, CalendarClock, Image as ImageIcon, Users, Newspaper, HelpCircle, PanelLeft } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+// import { useAuth } from "@/context/auth-provider"; // No longer needed for protection
+import { LayoutDashboard, Settings, CalendarClock, Image as ImageIcon, Users, Newspaper, HelpCircle } from 'lucide-react';
 import { UserNav } from '@/components/admin/user-nav';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from '@/lib/utils';
 import {
   SidebarProvider,
   Sidebar,
   SidebarHeader,
   SidebarContent,
   SidebarFooter,
-  SidebarTrigger,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -24,59 +20,15 @@ import {
   SidebarSeparator,
 } from '@/components/ui/sidebar'; // Import Sidebar components
 
-// Higher-Order Component for route protection
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname(); // Get current path
 
-   useEffect(() => {
-     // console.log("ProtectedRoute Effect: loading =", loading, "user =", !!user);
-     if (!loading && !user && pathname !== '/admin/login') {
-        // console.log("ProtectedRoute: Not loading, no user, not on login page. Redirecting to /admin/login");
-       router.replace('/admin/login'); // Use replace to avoid adding current page to history
-     }
-   }, [user, loading, router, pathname]); // Add pathname to dependencies
-
-   // If loading, show a loading indicator
-   if (loading) {
-    // console.log("ProtectedRoute: Auth loading, showing loading indicator.");
-    return (
-        <div className="flex min-h-screen items-center justify-center bg-background">
-             <div className="flex items-center space-x-2">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="text-lg text-muted-foreground">Verifying access...</span>
-            </div>
-        </div>
-    );
-   }
-
-   // If not loading and no user, and already on login page, render null or children (login page content)
-   if (!user && pathname === '/admin/login') {
-      // console.log("ProtectedRoute: No user, on login page. Rendering children (Login page).");
-     return <>{children}</>; // Render the login page content
-   }
-
-   // If not loading and user exists, render the protected content
-   if (!loading && user) {
-      // console.log("ProtectedRoute: User authenticated. Rendering protected children.");
-     return <>{children}</>;
-   }
-
-   // Fallback (should ideally not be reached due to redirects)
-   // console.log("ProtectedRoute: Fallback - Returning null.");
-   return null;
-};
-
-
-// Admin Layout Component (now assumes authentication is handled by ProtectedRoute)
+// Admin Layout Component - No longer protected
 function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
-     // Don't render sidebar/header on the login page itself
-     if (pathname === '/admin/login') {
-         return <>{children}</>;
-     }
+     // No need for login page check, as it's removed/bypassed
+     // if (pathname === '/admin/login') {
+     //     return <>{children}</>;
+     // }
 
      const navItems = [
         { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -94,7 +46,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
     };
 
   return (
-     <ProtectedRoute>
+     // Removed ProtectedRoute wrapper
         <SidebarProvider defaultOpen>
              <Sidebar side="left" variant="inset" collapsible="icon" className="border-sidebar-border">
                  <SidebarHeader className="items-center justify-between p-2">
@@ -144,7 +96,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
                  {children}
             </SidebarInset>
         </SidebarProvider>
-     </ProtectedRoute>
+     // Removed ProtectedRoute wrapper
   );
 }
 
