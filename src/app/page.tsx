@@ -27,8 +27,8 @@ const galleryImages = [
 ];
 const contactInfo = {
   email: "info@matrixastronomy.org",
-  phone: "+1 (555) 123-4567",
-  address: "123 Cosmos Avenue, Starlight City, ST 98765"
+  phone: "7219690903", // Updated phone number
+  address: "Kolhapur" // Updated address
 };
 
 export default function Home() {
@@ -170,7 +170,7 @@ export default function Home() {
                </div>
                <div className="flex items-center gap-3 group">
                  <Phone className="w-5 h-5 text-accent group-hover:animate-pulse"/>
-                 <span className="text-foreground/90">{contactInfo.phone}</span>
+                 <a href={`tel:${contactInfo.phone}`} className="text-foreground/90 hover:text-accent transition-colors duration-200">{contactInfo.phone}</a> {/* Make phone number clickable */}
                </div>
                <div className="flex items-start gap-3 group">
                  <MapPin className="w-5 h-5 text-accent mt-1 group-hover:animate-pulse"/>
