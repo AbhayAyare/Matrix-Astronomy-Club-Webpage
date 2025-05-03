@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, ChangeEvent } from 'react';
@@ -76,20 +77,42 @@ export default function AdminGalleryPage() {
              // Keep generic message for other errors
          }
         setFetchError(errorMessage);
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
+        // Avoid duplicate toast if index error already shown
+        if (!(error instanceof FirestoreError && error.code === 'failed-precondition')) {
+            toast({
+              title: "Error",
+              description: errorMessage,
+              variant: "destructive",
+            });
+        }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchImages();
+    // Check online status initially
+    if (typeof navigator !== 'undefined') {
+        setIsOffline(!navigator.onLine);
+        const handleOnline = () => { console.log("Network online"); setIsOffline(false); fetchImages(); }; // Refetch on reconnect
+        const handleOffline = () => { console.log("Network offline"); setIsOffline(true); };
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        // Fetch initial data
+        fetchImages();
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    } else {
+        // Fallback for SSR or environments without navigator
+        fetchImages();
+    }
      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db]); // Dependency on db instance
+
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -113,7 +136,12 @@ export default function AdminGalleryPage() {
       toast({ title: "No File", description: "Please select an image file.", variant: "destructive" });
       return;
     }
-    setUploading(true);
+    if (isOffline) {
+        toast({ title: "Offline", description: "Cannot upload image while offline.", variant: "destructive" });
+        return;
+    }
+
+    setUploading(true); // Set uploading state at the very beginning
     console.log("Starting image upload...");
 
     const uniqueFileName = `${Date.now()}_${selectedFile.name}`;
@@ -167,8 +195,10 @@ export default function AdminGalleryPage() {
     } catch (error) {
       console.error("Error during image upload process:", error);
       let errorMessage = "Failed to upload image.";
+      // Differentiate between Storage and Firestore errors
       if (error instanceof StorageError) {
-          errorMessage = `Storage Error: ${error.code}. ${error.message}`;
+          errorMessage = `Storage Error: ${error.code}. Check console & rules.`;
+          console.error("Detailed Storage Error:", error.code, error.message, error.serverResponse);
           if (error.code === 'storage/unauthorized') {
               errorMessage += " Check Storage security rules.";
           } else if (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline')) {
@@ -176,7 +206,8 @@ export default function AdminGalleryPage() {
                setIsOffline(true);
            }
       } else if (error instanceof FirestoreError) {
-          errorMessage = `Firestore Error: ${error.code}. ${error.message}`;
+          errorMessage = `Firestore Error: ${error.code}. Check console & rules.`;
+          console.error("Detailed Firestore Error:", error.code, error.message);
            if (error.code === 'permission-denied') {
                errorMessage += " Check Firestore security rules.";
            } else if (error.code === 'unavailable' || error.message.includes('offline')) {
@@ -192,6 +223,7 @@ export default function AdminGalleryPage() {
       } else {
           // Handle generic errors
           errorMessage = `An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`;
+          console.error("Unexpected upload error:", error);
           // Attempt cleanup for generic errors too, just in case upload succeeded partially
           if (uploadedStoragePath) {
               console.warn("Generic error after storage upload. Attempting cleanup...");
@@ -204,16 +236,21 @@ export default function AdminGalleryPage() {
         title: "Upload Error",
         description: errorMessage,
         variant: "destructive",
+        duration: 9000, // Show longer for errors
       });
     } finally {
-      // THIS IS CRUCIAL: Always reset the uploading state
+      // THIS IS CRUCIAL: Always reset the uploading state, regardless of success or failure
       setUploading(false);
-      console.log("Upload process finished, resetting loading state.");
+      console.log("Upload process finished, resetting uploading state.");
     }
   };
 
   // Handle Delete: Deletes Firestore doc AND Storage file
   const handleDelete = async (imageMeta: GalleryImageMetadata) => {
+    if (isOffline) {
+        toast({ title: "Offline", description: "Cannot delete image while offline.", variant: "destructive" });
+        return;
+    }
     setDeletingId(imageMeta.id); // Indicate Firestore doc ID being deleted
     try {
        // 1. Delete Firestore document
@@ -248,6 +285,7 @@ export default function AdminGalleryPage() {
             setIsOffline(true);
        } else {
            errorMessage = `Deletion failed: ${error instanceof Error ? error.message : String(error)}`;
+           console.error("Detailed Delete Error:", error);
        }
 
        // Avoid showing generic error toast if a partial success toast was shown
@@ -256,6 +294,7 @@ export default function AdminGalleryPage() {
                title: "Deletion Error",
                description: errorMessage,
                variant: "destructive",
+               duration: 7000,
             });
        }
 
