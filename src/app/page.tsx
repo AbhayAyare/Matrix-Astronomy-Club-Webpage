@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Phone, MapPin, WifiOff } from 'lucide-react';
+import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Phone, MapPin, WifiOff, AlertCircle } from 'lucide-react'; // Added AlertCircle
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { getSiteContent, SiteContent } from '@/services/content';
@@ -34,10 +34,10 @@ interface GalleryImage {
   name: string; // Name/description stored in Firestore
 }
 
-// Flag to indicate if data fetching resulted in offline errors
+// Flag to indicate if data fetching resulted in offline errors or other fetch errors
 interface FetchResult<T> {
   data: T[];
-  offlineError: boolean;
+  error: string | null; // Changed from offlineError to generic error message
 }
 
 
@@ -54,6 +54,7 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
     description: 'Join us for a night under the stars observing distant galaxies and nebulae.',
     imageURL: 'https://picsum.photos/seed/event1/400/250'
   };
+  let errorMessage: string | null = null;
 
   try {
     const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6));
@@ -67,20 +68,26 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
       imageURL: doc.data().imageURL || `https://picsum.photos/seed/${doc.id}/400/250`,
     })) as Event[];
 
-    return { data: events, offlineError: false };
+    return { data: events, error: null };
   } catch (error) {
-    let offlineError = false;
     console.error("Error fetching upcoming events:", error);
-    if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
-        console.warn("Offline: Cannot fetch upcoming events. Using fallback.");
-        offlineError = true;
-    } else if (error instanceof FirestoreError && error.code === 'failed-precondition') {
-        console.error("Firestore index missing for querying/ordering events by date. Please create it.");
+    if (error instanceof FirestoreError) {
+      if (error.code === 'unavailable' || error.message.includes('offline')) {
+          errorMessage = "Offline: Cannot fetch upcoming events.";
+          console.warn(errorMessage);
+      } else if (error.code === 'failed-precondition') {
+          errorMessage = "Index missing for querying/ordering events by date.";
+          console.error(errorMessage);
+      } else {
+          errorMessage = "An unexpected error occurred fetching events.";
+           console.error(errorMessage, error.code);
+      }
     } else {
-        console.error("An unexpected error occurred fetching events.");
+       errorMessage = "An unexpected error occurred fetching events.";
+        console.error(errorMessage, error);
     }
-    // Return fallback data on error, indicating if it was an offline error
-    return { data: [fallbackEvent], offlineError };
+    // Return fallback data on error, including error message
+    return { data: [fallbackEvent], error: errorMessage };
   }
 }
 
@@ -95,6 +102,7 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
       { id: 'g5', url: 'https://picsum.photos/seed/gallery5/300/200', name: 'Planet Jupiter (Fallback)'},
       { id: 'g6', url: 'https://picsum.photos/seed/gallery6/300/200', name: 'Observatory telescope (Fallback)'},
     ];
+    let errorMessage: string | null = null;
 
   try {
     const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12));
@@ -102,7 +110,7 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
 
     if (querySnapshot.empty) {
       console.log("No gallery images found in Firestore.");
-      return { data: [], offlineError: false };
+      return { data: [], error: null };
     }
 
     const images = querySnapshot.docs.map(doc => ({
@@ -111,46 +119,61 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
       name: doc.data().name as string,
     })) as GalleryImage[];
 
-    return { data: images, offlineError: false };
+    return { data: images, error: null };
   } catch (error) {
-      let offlineError = false;
       console.error("Error fetching gallery images from Firestore:", error);
       if (error instanceof FirestoreError) {
            if (error.code === 'failed-precondition') {
-                console.error(`Firestore index required for '${collection(db, 'gallery').id}' ordered by 'createdAt' descending. Please create it.`);
+                errorMessage = `Index required for '${collection(db, 'gallery').id}' ordered by 'createdAt' descending.`;
+                 console.error(errorMessage);
            } else if (error.code === 'unavailable' || error.message.includes('offline')) {
-               console.warn("Offline: Cannot fetch gallery images. Using fallback.");
-               offlineError = true;
+               errorMessage = "Offline: Cannot fetch gallery images.";
+               console.warn(errorMessage);
+           } else {
+               errorMessage = "An unexpected error occurred fetching gallery images.";
+               console.error(errorMessage, error.code);
            }
       } else {
-           console.error("An unexpected error occurred fetching gallery images.");
+           errorMessage = "An unexpected error occurred fetching gallery images.";
+           console.error(errorMessage, error);
       }
-    // Return fallback data on error, indicating if it was an offline error
-    return { data: fallbackImages, offlineError };
+    // Return fallback data on error, including error message
+    return { data: fallbackImages, error: errorMessage };
   }
 }
 
 
 export default async function Home() {
   // Fetch dynamic data in the Server Component
-  const { content: siteContent, offlineError: contentOfflineError } = await getSiteContent();
-  const { data: upcomingEvents, offlineError: eventsOfflineError } = await getUpcomingEvents();
-  const { data: galleryImages, offlineError: galleryOfflineError } = await getGalleryImages(); // Fetches metadata from Firestore
+  const { content: siteContent, error: contentError } = await getSiteContent();
+  const { data: upcomingEvents, error: eventsError } = await getUpcomingEvents();
+  const { data: galleryImages, error: galleryError } = await getGalleryImages(); // Fetches metadata from Firestore
 
-  const isOffline = contentOfflineError || eventsOfflineError || galleryOfflineError;
+  // Determine if any fetch resulted in an offline-like error
+  const isOffline = [contentError, eventsError, galleryError].some(e => e?.toLowerCase().includes('offline'));
+  const hasFetchError = contentError || eventsError || galleryError; // Any error occurred
 
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
 
-       {/* Global Offline Warning */}
-       {isOffline && (
+       {/* Global Offline/Error Warning */}
+       {hasFetchError && (
          <div className="container mx-auto px-4 pt-4">
-           <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
-             <WifiOff className="h-4 w-4"/>
-             <AlertTitle>Offline Mode</AlertTitle>
-             <AlertDescription>You appear to be offline. Some content may be outdated or using fallback data.</AlertDescription>
+           <Alert variant={isOffline ? "default" : "destructive"} className={isOffline ? "border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400" : ""}>
+             {isOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
+             <AlertTitle>{isOffline ? "Network Issue" : "Data Loading Issue"}</AlertTitle>
+             <AlertDescription>
+               {isOffline
+                 ? "You appear to be offline. Some content may be outdated or using fallback data."
+                 : "Could not load all site data. Some sections might be showing fallback content. Please check your connection or try again later."
+               }
+               {/* Optionally list specific errors for debugging (keep this conditional or remove for production) */}
+               {/* {contentError && <p className="text-xs mt-1">Content Error: {contentError}</p>}
+               {eventsError && <p className="text-xs mt-1">Events Error: {eventsError}</p>}
+               {galleryError && <p className="text-xs mt-1">Gallery Error: {galleryError}</p>} */}
+             </AlertDescription>
            </Alert>
          </div>
        )}
@@ -180,14 +203,15 @@ export default async function Home() {
         {/* Upcoming Events Section */}
         <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events</h2>
-          {eventsOfflineError && (
-            <Alert variant="default" className="mb-4 border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
-              <WifiOff className="h-4 w-4"/>
+          {/* Display specific warning if events failed, separate from global warning */}
+          {eventsError && !isOffline && ( // Show only if error is not the global offline one
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4"/>
               <AlertTitle>Events Unavailable</AlertTitle>
-              <AlertDescription>Could not load latest events due to network issues. Showing fallback data.</AlertDescription>
+              <AlertDescription>Could not load latest events. Showing fallback data. Error: {eventsError}</AlertDescription>
             </Alert>
           )}
-          {upcomingEvents.length === 0 && !eventsOfflineError ? ( // Only show "No events" if not offline
+          {upcomingEvents.length === 0 && !eventsError ? ( // Show "No events" only if no error occurred
              <Card>
                  <CardContent className="p-6 text-center text-muted-foreground">
                      No upcoming events scheduled yet. Stay tuned!
@@ -236,14 +260,15 @@ export default async function Home() {
         {/* Event Gallery Section - Uses Firestore metadata */}
         <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><ImageIcon className="w-8 h-8 text-accent"/>Event Gallery</h2>
-            {galleryOfflineError && (
-              <Alert variant="default" className="mb-4 border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
-                <WifiOff className="h-4 w-4"/>
+            {/* Display specific warning if gallery failed, separate from global warning */}
+            {galleryError && !isOffline && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4"/>
                 <AlertTitle>Gallery Unavailable</AlertTitle>
-                <AlertDescription>Could not load gallery images due to network issues. Showing fallback data.</AlertDescription>
+                <AlertDescription>Could not load gallery images. Showing fallback data. Error: {galleryError}</AlertDescription>
               </Alert>
             )}
-            {galleryImages.length === 0 && !galleryOfflineError ? ( // Only show "empty" if not offline
+            {galleryImages.length === 0 && !galleryError ? ( // Only show "empty" if no error
                  <Card>
                     <CardContent className="p-6 text-center text-muted-foreground">
                         The gallery is currently empty. Check back soon!
