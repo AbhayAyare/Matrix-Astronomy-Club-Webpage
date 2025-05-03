@@ -2,68 +2,77 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { Auth, User } from 'firebase/auth';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'; // Restore imports
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { useFirebase } from './firebase-provider';
 
 interface AuthContextProps {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>; // Restore login type
-  logout: () => Promise<void>; // Restore logout type
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { auth } = useFirebase(); // Use the auth instance
+  const { auth } = useFirebase();
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // Start loading as true
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Firebase auth state listener
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
-      // console.log("AuthProvider: Auth state changed, user:", currentUser?.email, "loading:", false);
+       // console.log("AuthProvider: Auth state changed, user:", currentUser?.email, "loading:", false);
+    }, (error) => {
+       // Added error handling for the listener itself
+       console.error("AuthProvider: Error in onAuthStateChanged listener:", error);
+       setUser(null); // Ensure user is null on listener error
+       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [auth]);
 
-  // Login function implementation
   const login = async (email: string, password: string): Promise<void> => {
-    setLoading(true); // Set loading to true when login starts
+    setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Auth state change will be handled by onAuthStateChanged, which sets loading to false.
-      // console.log("AuthProvider: signInWithEmailAndPassword successful.");
-    } catch (error) {
-      setLoading(false); // Set loading to false on login error
-      // console.error("AuthProvider: Login failed", error);
+      // Auth state change will be handled by onAuthStateChanged.
+    } catch (error: any) {
+      setLoading(false);
+      console.error("AuthProvider: Login failed.", "Email:", email, "Error Code:", error.code, "Message:", error.message);
+      // Log more details for debugging specific auth errors
+      if (error.code === 'auth/operation-not-allowed') {
+         console.error("AuthProvider Detail: Email/Password sign-in might not be enabled in the Firebase project settings.");
+      } else if (error.code === 'auth/invalid-credential') {
+           console.error("AuthProvider Detail: Invalid email or password provided.");
+      } else if (error.code === 'auth/user-not-found') {
+            console.error("AuthProvider Detail: No user found with this email.");
+      } else if (error.code === 'auth/wrong-password') {
+             console.error("AuthProvider Detail: Incorrect password.");
+      }
       throw error; // Re-throw the error to be caught by the calling component
     }
   };
 
-  // Logout function implementation
   const logout = async (): Promise<void> => {
-    setLoading(true); // Optionally set loading during logout
+    setLoading(true);
     try {
       await signOut(auth);
-       // console.log("AuthProvider: signOut successful.");
-       // Auth state change will set user to null and loading to false via listener
+      // Auth state change will set user to null via listener.
     } catch (error) {
-      setLoading(false); // Set loading to false on logout error
-      // console.error("AuthProvider: Logout failed", error);
-      throw error; // Re-throw error if needed
+      setLoading(false);
+      console.error("AuthProvider: Logout failed", error);
+      throw error;
     }
   };
 
   const value: AuthContextProps = {
     user,
     loading,
-    login, // Add login back
-    logout, // Add logout back
+    login,
+    logout,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

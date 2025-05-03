@@ -9,21 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import Image from 'next/image'; // Import Image component
+import Image from 'next/image';
 
 export default function LoginPage() {
-  const { login, loading: authLoading } = useAuth(); // Destructure login and loading state
+  const { login, loading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false); // Local loading state for the button
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null); // Reset error on new login attempt
-    setIsLoggingIn(true); // Set local loading state
+    setError(null);
+    setIsLoggingIn(true);
 
     if (!login) {
       setError("Login function is not available.");
@@ -37,18 +37,25 @@ export default function LoginPage() {
         title: "Login Successful",
         description: "Redirecting to dashboard...",
       });
-      router.push('/admin'); // Redirect to admin dashboard on successful login
-      // No need to setIsLoggingIn(false) here as the page will redirect
+      router.push('/admin');
     } catch (err: any) {
-      console.error("Login error:", err);
-      // Handle specific Firebase auth errors or show a generic message
-      let errorMessage = "Login failed. Please check your credentials.";
+      console.error("Login page error handler:", err);
+      // More specific user-facing messages
+      let errorMessage = "Login failed. Please try again.";
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         errorMessage = "Invalid email or password.";
       } else if (err.code === 'auth/invalid-email') {
          errorMessage = "Invalid email format.";
+      } else if (err.code === 'auth/operation-not-allowed') {
+         errorMessage = "Login method not enabled. Please contact support."; // More user-friendly
+      } else if (err.code === 'auth/too-many-requests') {
+         errorMessage = "Too many login attempts. Please try again later.";
+      } else if (err.message) {
+          // Fallback to Firebase message if available and not too technical
+          if (!err.message.includes('Firebase: Error')) {
+              errorMessage = err.message;
+          }
       }
-      // Add more specific error codes as needed
 
       setError(errorMessage);
       toast({
@@ -56,11 +63,10 @@ export default function LoginPage() {
         description: errorMessage,
         variant: "destructive",
       });
-      setIsLoggingIn(false); // Reset local loading state on error
+      setIsLoggingIn(false);
     }
   };
 
-  // Combine auth loading state and local logging in state for the button
   const isLoading = authLoading || isLoggingIn;
 
   return (
