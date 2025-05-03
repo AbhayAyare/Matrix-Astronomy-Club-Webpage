@@ -13,6 +13,7 @@ const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCWqQMAguYi6-JkOM3AlTy-3Omh18kWoCA",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "matrixclub-bb0db.firebaseapp.com",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "matrixclub-bb0db",
+  // Ensure storage bucket uses the .appspot.com domain consistent with others
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "matrixclub-bb0db.appspot.com",
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "801204253639",
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:801204253639:web:422e423828577fe2cb1fe2",
@@ -31,10 +32,12 @@ if (typeof window !== 'undefined') {
     isSupported().then((supported) => {
         if (supported) {
             analytics = getAnalytics(app);
-            console.log("Firebase Analytics initialized.");
+            // console.log("Firebase Analytics initialized."); // Keep console logs minimal or remove for production
         } else {
             console.log("Firebase Analytics is not supported in this environment.");
         }
+    }).catch(err => {
+        console.error("Error initializing Firebase Analytics:", err); // Add error handling
     });
 }
 
