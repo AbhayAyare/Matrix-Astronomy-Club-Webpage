@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -37,7 +38,12 @@ const nextConfig: NextConfig = {
   },
   experimental: {
       serverActions: {
-        allowedOrigins: ["matrixclub-bb0db.firebaseapp.com", "localhost:9002"] // Add your production domain later
+        allowedOrigins: [
+            "matrixclub-bb0db.firebaseapp.com",
+            "matrixclub-bb0db.web.app", // Add the .web.app domain
+            "localhost:9002",
+            "127.0.0.1:9002" // Add 127.0.0.1 for local dev
+        ]
       }
     }
 };
