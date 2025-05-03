@@ -29,8 +29,8 @@ const defaultContent: SiteContent = {
   newsletterTitle: 'Subscribe to Our Newsletter',
   newsletterDescription: 'Get the latest news, event announcements, and astronomical insights delivered to your inbox.',
   contactEmail: 'info@matrixastronomy.org',
-  contactPhone: '7219690903', // Updated phone
-  contactAddress: 'Kolhapur', // Updated address
+  contactPhone: '7219690903',
+  contactAddress: 'Kolhapur',
 };
 
 // Updated return type to include specific error message
@@ -49,14 +49,16 @@ interface GetContentResult {
 export async function getSiteContent(): Promise<GetContentResult> {
   const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
   let errorMessage: string | null = null;
+  console.log(`Attempting to fetch content from Firestore path: ${CONTENT_COLLECTION}/${CONTENT_DOC_ID}`);
   try {
     const docSnap = await getDoc(contentDocRef);
     if (docSnap.exists()) {
+      console.log("Site content document found.");
       const data = docSnap.data() as Partial<SiteContent>;
        // Merge fetched data with defaults to ensure all fields exist and provide fallbacks
        return { content: { ...defaultContent, ...data }, error: null }; // No error
     } else {
-      console.log("Site content document not found, returning default content.");
+      console.warn("Site content document not found, returning default content.");
       // Optionally, you could create the default document here if it's guaranteed to not exist yet
       // await setDoc(contentDocRef, defaultContent);
       return { content: defaultContent, error: null }; // No error, just using defaults
@@ -65,12 +67,15 @@ export async function getSiteContent(): Promise<GetContentResult> {
     console.error("Error fetching site content:", error);
     // Provide a specific message based on the error type
     if (error instanceof FirestoreError) {
-        if (error.code === 'unavailable' || error.message.includes('offline')) {
-           errorMessage = "Offline: Cannot fetch site content.";
+        if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
+           errorMessage = "Offline: The server could not connect to Firestore to fetch site content. Displaying defaults.";
            console.warn(errorMessage);
-        } else {
-            errorMessage = `Firestore Error (${error.code}): Could not fetch content.`;
+        } else if (error.code === 'permission-denied') {
+            errorMessage = `Permission Denied: Check Firestore rules for reading '${CONTENT_COLLECTION}/${CONTENT_DOC_ID}'.`;
             console.error(errorMessage);
+        } else {
+            errorMessage = `Firestore Error (${error.code}): Could not fetch content. Check console for details.`;
+            console.error(errorMessage, error.message); // Log the original message too
         }
     } else {
          errorMessage = "An unexpected error occurred fetching site content.";

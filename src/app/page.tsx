@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Phone, MapPin, WifiOff, AlertCircle } from 'lucide-react'; // Added AlertCircle
+import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Phone, MapPin, WifiOff, AlertCircle, ServerCrash } from 'lucide-react'; // Added AlertCircle, ServerCrash
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { getSiteContent, SiteContent } from '@/services/content';
 // Firestore imports for events and gallery metadata
 import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError, limit } from 'firebase/firestore';
-// Storage imports REMOVED
-// import { ref, listAll, getDownloadURL, StorageError } from 'firebase/storage';
 import { db } from '@/config/firebase'; // Only need db
 import { JoinForm } from '@/components/home/join-form';
 import { NewsletterForm } from '@/components/home/newsletter-form';
@@ -34,10 +32,10 @@ interface GalleryImage {
   name: string; // Name/description stored in Firestore
 }
 
-// Flag to indicate if data fetching resulted in offline errors or other fetch errors
+// Flag to indicate if data fetching resulted in errors
 interface FetchResult<T> {
   data: T[];
-  error: string | null; // Changed from offlineError to generic error message
+  error: string | null; // Generic error message
 }
 
 
@@ -55,10 +53,12 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
     imageURL: 'https://picsum.photos/seed/event1/400/250'
   };
   let errorMessage: string | null = null;
+  console.log("Attempting to fetch upcoming events from Firestore...");
 
   try {
     const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6));
     const querySnapshot = await getDocs(q);
+    console.log(`Fetched ${querySnapshot.size} upcoming events.`);
 
     const events = querySnapshot.docs.map(doc => ({
       id: doc.id,
@@ -72,15 +72,18 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
   } catch (error) {
     console.error("Error fetching upcoming events:", error);
     if (error instanceof FirestoreError) {
-      if (error.code === 'unavailable' || error.message.includes('offline')) {
-          errorMessage = "Offline: Cannot fetch upcoming events.";
+      if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
+          errorMessage = "Offline: The server could not connect to Firestore to fetch upcoming events. Displaying fallback.";
           console.warn(errorMessage);
       } else if (error.code === 'failed-precondition') {
-          errorMessage = "Index missing for querying/ordering events by date.";
+          errorMessage = "Index Required: Firestore query for events requires a composite index. Please create it in the Firebase console.";
           console.error(errorMessage);
+      } else if (error.code === 'permission-denied') {
+            errorMessage = `Permission Denied: Check Firestore rules for reading 'events' collection.`;
+            console.error(errorMessage);
       } else {
-          errorMessage = "An unexpected error occurred fetching events.";
-           console.error(errorMessage, error.code);
+          errorMessage = `Firestore Error (${error.code}): Could not fetch events. Check console for details.`;
+           console.error(errorMessage, error.message);
       }
     } else {
        errorMessage = "An unexpected error occurred fetching events.";
@@ -103,10 +106,12 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
       { id: 'g6', url: 'https://picsum.photos/seed/gallery6/300/200', name: 'Observatory telescope (Fallback)'},
     ];
     let errorMessage: string | null = null;
+    console.log("Attempting to fetch gallery images from Firestore...");
 
   try {
     const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12));
     const querySnapshot = await getDocs(q);
+    console.log(`Fetched ${querySnapshot.size} gallery images.`);
 
     if (querySnapshot.empty) {
       console.log("No gallery images found in Firestore.");
@@ -124,14 +129,17 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
       console.error("Error fetching gallery images from Firestore:", error);
       if (error instanceof FirestoreError) {
            if (error.code === 'failed-precondition') {
-                errorMessage = `Index required for '${collection(db, 'gallery').id}' ordered by 'createdAt' descending.`;
+                errorMessage = `Index Required: Firestore query for gallery requires an index on 'createdAt' descending. Please create it in the Firebase console.`;
                  console.error(errorMessage);
-           } else if (error.code === 'unavailable' || error.message.includes('offline')) {
-               errorMessage = "Offline: Cannot fetch gallery images.";
+           } else if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
+               errorMessage = "Offline: The server could not connect to Firestore to fetch gallery images. Displaying fallbacks.";
                console.warn(errorMessage);
+           } else if (error.code === 'permission-denied') {
+                errorMessage = `Permission Denied: Check Firestore rules for reading 'gallery' collection.`;
+                console.error(errorMessage);
            } else {
-               errorMessage = "An unexpected error occurred fetching gallery images.";
-               console.error(errorMessage, error.code);
+               errorMessage = `Firestore Error (${error.code}): Could not fetch gallery images. Check console for details.`;
+               console.error(errorMessage, error.message);
            }
       } else {
            errorMessage = "An unexpected error occurred fetching gallery images.";
@@ -151,7 +159,8 @@ export default async function Home() {
 
   // Determine if any fetch resulted in an offline-like error
   const isOffline = [contentError, eventsError, galleryError].some(e => e?.toLowerCase().includes('offline'));
-  const hasFetchError = contentError || eventsError || galleryError; // Any error occurred
+  // Combine all errors for a general error state check
+  const fetchErrors = [contentError, eventsError, galleryError].filter(e => e !== null);
 
 
   return (
@@ -159,20 +168,26 @@ export default async function Home() {
       <Header />
 
        {/* Global Offline/Error Warning */}
-       {hasFetchError && (
+       {fetchErrors.length > 0 && (
          <div className="container mx-auto px-4 pt-4">
-           <Alert variant={isOffline ? "default" : "destructive"} className={isOffline ? "border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400" : ""}>
-             {isOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
-             <AlertTitle>{isOffline ? "Network Issue" : "Data Loading Issue"}</AlertTitle>
+           <Alert
+             variant={isOffline ? "default" : "destructive"}
+             className={isOffline ? "border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400" : ""}
+           >
+             {isOffline ? <WifiOff className="h-4 w-4"/> : <ServerCrash className="h-4 w-4"/>}
+             <AlertTitle>{isOffline ? "Network Connectivity Issue" : "Data Loading Issue"}</AlertTitle>
              <AlertDescription>
                {isOffline
-                 ? "You appear to be offline. Some content may be outdated or using fallback data."
-                 : "Could not load all site data. Some sections might be showing fallback content. Please check your connection or try again later."
+                 ? "The server had trouble connecting to the database (possibly offline). Some content may be outdated or showing default values."
+                 : "Could not load all site data due to server-side errors. Some sections might be showing default content."
                }
-               {/* Optionally list specific errors for debugging (keep this conditional or remove for production) */}
-               {/* {contentError && <p className="text-xs mt-1">Content Error: {contentError}</p>}
-               {eventsError && <p className="text-xs mt-1">Events Error: {eventsError}</p>}
-               {galleryError && <p className="text-xs mt-1">Gallery Error: {galleryError}</p>} */}
+               {/* List specific errors concisely */}
+               <ul className="list-disc list-inside mt-2 text-xs">
+                 {contentError && <li>Website Content: {contentError}</li>}
+                 {eventsError && <li>Upcoming Events: {eventsError}</li>}
+                 {galleryError && <li>Gallery Images: {galleryError}</li>}
+               </ul>
+               Please try refreshing the page. If the problem persists, contact support.
              </AlertDescription>
            </Alert>
          </div>
@@ -193,6 +208,14 @@ export default async function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold mb-6 text-primary flex items-center justify-center gap-2"><Globe className="w-8 h-8 text-accent"/>About Matrix</h2>
           <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-6 md:p-8">
+              {/* Display content error specifically for this section if it occurred */}
+              {contentError && !isOffline && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4"/>
+                  <AlertTitle>Content Error</AlertTitle>
+                  <AlertDescription>Could not load the 'About' content. Displaying default text. Error: {contentError}</AlertDescription>
+                </Alert>
+              )}
               <p className="text-lg leading-relaxed text-foreground/90">{siteContent.about}</p>
             </CardContent>
           </Card>
@@ -318,7 +341,7 @@ export default async function Home() {
               <CardDescription>{siteContent.joinDescription}</CardDescription>
             </CardHeader>
             <CardContent>
-              <JoinForm />
+              <JoinForm /> {/* Client Component for form handling */}
             </CardContent>
           </Card>
         </section>
@@ -334,7 +357,7 @@ export default async function Home() {
                <CardDescription>{siteContent.newsletterDescription}</CardDescription>
              </CardHeader>
              <CardContent>
-              <NewsletterForm />
+              <NewsletterForm /> {/* Client Component for form handling */}
              </CardContent>
           </Card>
         </section>
@@ -346,9 +369,17 @@ export default async function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
            <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
              <CardContent className="p-6 md:p-8 space-y-4">
+               {/* Display content error specifically for this section if it occurred */}
+              {contentError && !isOffline && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4"/>
+                  <AlertTitle>Content Error</AlertTitle>
+                  <AlertDescription>Could not load contact details. Displaying defaults. Error: {contentError}</AlertDescription>
+                </Alert>
+              )}
                <div className="flex items-center gap-3 group">
                  <Mail className="w-5 h-5 text-accent group-hover:animate-pulse"/>
-                 <a href={`mailto:${siteContent.contactEmail}`} className="text-foreground/90 hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail}</a>
+                 <a href={`mailto:${siteContent.contactEmail}`} className="text-foreground/90 hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail || 'N/A'}</a>
                </div>
                <div className="flex items-center gap-3 group">
                  <Phone className="w-5 h-5 text-accent group-hover:animate-pulse"/>
