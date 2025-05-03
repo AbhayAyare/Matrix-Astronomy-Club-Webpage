@@ -10,12 +10,12 @@ const navItems = [
   { href: '#join', label: 'Join Us' },
   { href: '#newsletter', label: 'Newsletter' },
   { href: '#contact', label: 'Contact' },
-  { href: '/admin', label: 'Admin Login', admin: true },
+  // { href: '/admin', label: 'Admin Login', admin: true }, // Temporarily removed
 ];
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 animate-fade-in">
       <div className="container flex h-14 items-center">
         <Link href="/" className="mr-6 flex items-center space-x-2">
           <Telescope className="h-6 w-6 text-primary" />
@@ -24,20 +24,20 @@ export function Header() {
           </span>
         </Link>
         <nav className="hidden flex-1 gap-6 md:flex">
-          {navItems.map((item) => !item.admin && (
+          {navItems.map((item) => !item.admin && ( // Ensure admin check remains if item is uncommented later
             <Link
               key={item.label}
               href={item.href}
-              className="text-sm font-medium text-foreground/70 transition-colors hover:text-foreground"
+              className="text-sm font-medium text-foreground/70 transition-colors hover:text-foreground hover:scale-105 motion-safe:animate-[fade-in_0.5s_ease-out_forwards]"
             >
               {item.label}
             </Link>
           ))}
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-4">
-          <Button variant="outline" size="sm" asChild className="hidden md:inline-flex">
+          {/* <Button variant="outline" size="sm" asChild className="hidden md:inline-flex">
             <Link href="/admin">Admin Login</Link>
-          </Button>
+          </Button> */}
           {/* Mobile Menu */}
           <Sheet>
             <SheetTrigger asChild>
@@ -52,7 +52,7 @@ export function Header() {
                   <Telescope className="h-6 w-6 text-primary" />
                   <span className="font-bold">Matrix Hub</span>
                  </Link>
-                 {navItems.map((item) => (
+                 {navItems.map((item) => ( // Map over potentially filtered items
                   <Link
                     key={item.label}
                     href={item.href}
@@ -61,6 +61,7 @@ export function Header() {
                     {item.label}
                   </Link>
                 ))}
+                 {/* Removed Admin Login from mobile menu as well */}
               </div>
             </SheetContent>
           </Sheet>
