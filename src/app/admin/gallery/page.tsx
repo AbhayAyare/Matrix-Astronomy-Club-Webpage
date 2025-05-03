@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, ChangeEvent } from 'react';
@@ -10,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from '@/context/firebase-provider';
 // Firestore imports
-import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp, Timestamp, FirestoreError } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp, Timestamp, FirestoreError, setDoc } from 'firebase/firestore';
 // Storage imports
 import { ref, uploadBytes, getDownloadURL, deleteObject, StorageReference, StorageError } from 'firebase/storage';
 import { Loader2, Upload, Trash2, Image as ImageIcon, WifiOff } from 'lucide-react';
@@ -115,63 +114,101 @@ export default function AdminGalleryPage() {
       return;
     }
     setUploading(true);
+    console.log("Starting image upload...");
 
     const uniqueFileName = `${Date.now()}_${selectedFile.name}`;
     const storagePath = `${GALLERY_STORAGE_FOLDER}/${uniqueFileName}`;
     const imageRef = ref(storage, storagePath); // Ref in Storage
+    let uploadedStoragePath: string | null = null; // Track if upload succeeded
 
     try {
       // 1. Upload file to Storage
+      console.log(`Uploading ${selectedFile.name} to ${storagePath}...`);
       const snapshot = await uploadBytes(imageRef, selectedFile);
+      uploadedStoragePath = snapshot.ref.fullPath; // Confirm upload success
+      console.log("File uploaded successfully to Storage:", uploadedStoragePath);
+
       // 2. Get download URL
+      console.log("Getting download URL...");
       const url = await getDownloadURL(snapshot.ref);
+      console.log("Download URL obtained:", url);
 
-      // 3. Add metadata document to Firestore
-      const docRef = await addDoc(galleryCollectionRef, {
+      // 3. Prepare metadata for Firestore
+      const imageMetadata = {
         url: url,
-        name: selectedFile.name, // Store original name
-        storagePath: storagePath, // Store the path for deletion
+        name: selectedFile.name,
+        storagePath: storagePath,
         createdAt: serverTimestamp() // Use server timestamp
-      });
+      };
 
-      // 4. Update local state optimistically or refetch
+      // 4. Add metadata document to Firestore
+      console.log("Adding metadata to Firestore collection:", GALLERY_COLLECTION);
+      // Use addDoc to let Firestore generate the ID
+      const docRef = await addDoc(galleryCollectionRef, imageMetadata);
+      console.log("Metadata added to Firestore with ID:", docRef.id);
+
+
+      // 5. Update local state optimistically
        const newImageMetadata: GalleryImageMetadata = {
-         id: docRef.id,
+         id: docRef.id, // Use the generated Firestore ID
          url: url,
          name: selectedFile.name,
          storagePath: storagePath,
          createdAt: Timestamp.now(), // Approximate timestamp locally
        };
        setImages(prevImages => [newImageMetadata, ...prevImages]); // Add to start for newest first
+       console.log("Local state updated.");
 
       toast({ title: "Success", description: "Image uploaded and added to gallery." });
-      setSelectedFile(null);
+      setSelectedFile(null); // Clear selection
       const fileInput = document.getElementById('gallery-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = ''; // Reset file input
 
     } catch (error) {
-      console.error("Error uploading image or saving metadata:", error);
+      console.error("Error during image upload process:", error);
       let errorMessage = "Failed to upload image.";
-       if (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline'))) {
-           errorMessage = "Cannot upload. Storage offline.";
-           setIsOffline(true);
-       } else if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
-           errorMessage = "Cannot save metadata. Firestore offline.";
-           setIsOffline(true);
-            // Attempt to delete the uploaded file if metadata save failed
-            try { await deleteObject(imageRef); console.log("Cleaned up orphaned storage file."); } catch (cleanupError) { console.error("Failed to clean up orphaned storage file:", cleanupError); }
-       } else {
-            // Attempt to delete the potentially uploaded file on other errors too
-            try { await deleteObject(imageRef); console.log("Cleaned up potentially orphaned storage file."); } catch (cleanupError) { console.error("Failed to clean up potentially orphaned storage file:", cleanupError); }
-       }
+      if (error instanceof StorageError) {
+          errorMessage = `Storage Error: ${error.code}. ${error.message}`;
+          if (error.code === 'storage/unauthorized') {
+              errorMessage += " Check Storage security rules.";
+          } else if (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline')) {
+               errorMessage = "Cannot upload. Storage offline or network issue.";
+               setIsOffline(true);
+           }
+      } else if (error instanceof FirestoreError) {
+          errorMessage = `Firestore Error: ${error.code}. ${error.message}`;
+           if (error.code === 'permission-denied') {
+               errorMessage += " Check Firestore security rules.";
+           } else if (error.code === 'unavailable' || error.message.includes('offline')) {
+               errorMessage = "Cannot save metadata. Firestore offline or network issue.";
+               setIsOffline(true);
+           }
+           // Attempt to delete the uploaded file if metadata save failed
+           if (uploadedStoragePath) {
+               console.warn("Firestore save failed after storage upload. Attempting cleanup...");
+               const orphanRef = ref(storage, uploadedStoragePath);
+               try { await deleteObject(orphanRef); console.log("Cleaned up orphaned storage file:", uploadedStoragePath); } catch (cleanupError) { console.error("Failed to clean up orphaned storage file:", cleanupError); }
+           }
+      } else {
+          // Handle generic errors
+          errorMessage = `An unexpected error occurred: ${error instanceof Error ? error.message : String(error)}`;
+          // Attempt cleanup for generic errors too, just in case upload succeeded partially
+          if (uploadedStoragePath) {
+              console.warn("Generic error after storage upload. Attempting cleanup...");
+              const orphanRef = ref(storage, uploadedStoragePath);
+              try { await deleteObject(orphanRef); console.log("Cleaned up potentially orphaned storage file:", uploadedStoragePath); } catch (cleanupError) { console.error("Failed to clean up potentially orphaned storage file:", cleanupError); }
+          }
+      }
 
       toast({
-        title: "Error",
+        title: "Upload Error",
         description: errorMessage,
         variant: "destructive",
       });
     } finally {
+      // THIS IS CRUCIAL: Always reset the uploading state
       setUploading(false);
+      console.log("Upload process finished, resetting loading state.");
     }
   };
 
@@ -180,12 +217,16 @@ export default function AdminGalleryPage() {
     setDeletingId(imageMeta.id); // Indicate Firestore doc ID being deleted
     try {
        // 1. Delete Firestore document
+       console.log(`Deleting Firestore document: ${GALLERY_COLLECTION}/${imageMeta.id}`);
        const imageDocRef = doc(db, GALLERY_COLLECTION, imageMeta.id);
        await deleteDoc(imageDocRef);
+       console.log("Firestore document deleted successfully.");
 
        // 2. Delete file from Storage using the stored path
+       console.log(`Deleting file from Storage: ${imageMeta.storagePath}`);
        const storageRefToDelete = ref(storage, imageMeta.storagePath);
        await deleteObject(storageRefToDelete);
+       console.log("Storage file deleted successfully.");
 
       // 3. Update local state
       setImages(images.filter(img => img.id !== imageMeta.id));
@@ -206,13 +247,13 @@ export default function AdminGalleryPage() {
             errorMessage = "Cannot delete file. Storage offline.";
             setIsOffline(true);
        } else {
-           // Keep generic error for other cases
+           errorMessage = `Deletion failed: ${error instanceof Error ? error.message : String(error)}`;
        }
 
        // Avoid showing generic error toast if a partial success toast was shown
        if (!(error instanceof StorageError && error.code === 'storage/object-not-found')) {
             toast({
-               title: "Error",
+               title: "Deletion Error",
                description: errorMessage,
                variant: "destructive",
             });
@@ -231,7 +272,7 @@ export default function AdminGalleryPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Gallery Management</h1>
-      <p className="text-muted-foreground">Upload or delete images for the public website gallery. Uses Firestore for metadata.</p>
+      <p className="text-muted-foreground">Upload or delete images for the public website gallery. Uses Firestore for metadata and Storage for files.</p>
 
       {isOffline && (
          <Alert variant="default" className="border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400">
@@ -351,4 +392,3 @@ export default function AdminGalleryPage() {
     </div>
   );
 }
-
