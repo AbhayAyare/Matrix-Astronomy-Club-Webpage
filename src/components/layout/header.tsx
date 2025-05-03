@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Telescope, Palette } from 'lucide-react'; // Added Palette icon
+import { Menu, Telescope } from 'lucide-react'; // Removed Palette icon
 
 const navItems = [
   { href: '#about', label: 'About' },
@@ -9,7 +9,7 @@ const navItems = [
   { href: '#gallery', label: 'Gallery' },
   { href: '#join', label: 'Join Us' },
   { href: '#newsletter', label: 'Newsletter' },
-  { href: '#design', label: 'Design' }, // Added Design link
+  // { href: '#design', label: 'Design' }, // Removed Design link
   { href: '#contact', label: 'Contact' },
   // { href: '/admin', label: 'Admin Login', admin: true }, // Login remains disabled
 ];

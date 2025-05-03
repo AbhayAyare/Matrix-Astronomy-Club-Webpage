@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Send, Phone, MapPin, Palette } from 'lucide-react'; // Added Palette icon
+import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Send, Phone, MapPin } from 'lucide-react'; // Removed Palette icon
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 
@@ -159,35 +159,10 @@ export default function Home() {
 
         <Separator />
 
-         {/* Design Section (Placeholder) */}
-         <section id="design" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.4s' }}>
-           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Palette className="w-8 h-8 text-accent"/>Design & Aesthetics</h2>
-           <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-             <CardContent className="p-6 md:p-8">
-               <p className="text-lg leading-relaxed text-foreground/90">
-                 This section can showcase design elements, visual concepts, or themes related to the Matrix Astronomy Hub brand.
-                 Maybe display logos, color palettes, or mood boards here.
-               </p>
-               {/* Add design-related content here */}
-               <div className="mt-6 flex justify-center">
-                 <Image
-                    src="https://picsum.photos/seed/design1/500/300"
-                    alt="Design Concept Placeholder"
-                    width={500}
-                    height={300}
-                    className="rounded-lg shadow-md"
-                    data-ai-hint="abstract space design concept"
-                    loading="lazy"
-                 />
-               </div>
-             </CardContent>
-           </Card>
-         </section>
-
-        <Separator />
+        {/* Removed Design & Aesthetics Section */}
 
         {/* Contact Us Section */}
-        <section id="contact" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.5s' }}>
+        <section id="contact" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.4s' }}> {/* Adjusted delay */}
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
            <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
              <CardContent className="p-6 md:p-8 space-y-4">
