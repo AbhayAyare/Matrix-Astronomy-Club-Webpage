@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 
 // Helper function for random number generation (client-side only)
 const randomRange = (min: number, max: number): number => {
+  // Ensure this only runs client-side if Math.random is used directly for style generation
+  // Since it's called within useEffect triggered by isClient, it's safe here.
   return Math.random() * (max - min) + min;
 };
 
@@ -32,17 +34,20 @@ export function StarBackground() {
     if (isClient) {
       const styles: StarStyle[] = [];
       for (let i = 0; i < numStars; i++) {
-        const size = randomRange(0.5, 2.5); // Adjusted size range (smaller minimum, slightly larger max)
+        const size = randomRange(0.5, 2.5); // Adjusted size range
         const color = starColors[Math.floor(randomRange(0, starColors.length))];
         styles.push({
-          top: `${randomRange(-10, 110)}%`, // Allow stars slightly off-screen initially for rotation effect
+          top: `${randomRange(-10, 110)}%`, // Allow stars slightly off-screen
           left: `${randomRange(-10, 110)}%`, // Allow stars slightly off-screen
           width: `${size}px`,
           height: `${size}px`,
           backgroundColor: color,
           animationDelay: `${randomRange(0, 10)}s`, // Wider range of delays
           animationDuration: `${randomRange(5, 15)}s`, // Wider range of durations
-          '--star-glow-color': color.replace('hsl', 'hsla').replace(')', ', 0.4)'), // Add alpha for glow
+          // Optional: Define glow color using the star's color with alpha
+          '--star-glow-color': color.startsWith('hsl')
+             ? color.replace('hsl', 'hsla').replace(')', ', 0.4)') // Add alpha for HSL glow
+             : 'rgba(255, 255, 255, 0.3)', // Default glow for non-HSL colors
         });
       }
       setStarStyles(styles);

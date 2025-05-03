@@ -5,7 +5,7 @@ import {Toaster} from '@/components/ui/toaster';
 import {FirebaseProvider} from '@/context/firebase-provider';
 import {QueryClientProviderWrapper} from '@/context/query-client-provider'; // Updated import path
 import { StarBackground } from '@/components/layout/star-background'; // Import the new component
-import { AuthProvider } from '@/context/auth-provider'; // Import AuthProvider
+// Removed AuthProvider import as login is disabled
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -25,15 +25,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} antialiased`}>
+      <body className={`${geistSans.variable} antialiased relative`}> {/* Added relative positioning for potential absolute children */}
          <StarBackground /> {/* Add the star background here */}
         <FirebaseProvider>
-           <AuthProvider> {/* Wrap with AuthProvider */}
+           {/* Removed AuthProvider wrapper */}
              <QueryClientProviderWrapper>
-               {children}
+                <div className="relative z-10"> {/* Ensure content is above the background */}
+                  {children}
+                </div>
                <Toaster />
              </QueryClientProviderWrapper>
-           </AuthProvider>
+           {/* Removed AuthProvider wrapper */}
         </FirebaseProvider>
       </body>
     </html>

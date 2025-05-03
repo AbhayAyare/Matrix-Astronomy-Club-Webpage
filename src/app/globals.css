@@ -42,9 +42,10 @@ body {
     --sidebar-accent-foreground: 0 0% 98%; /* Near White */
     --sidebar-border: 210 100% 25%;
     --sidebar-ring: 180 100% 35%; /* Teal for focus rings */
-    --star-color-1: hsl(210 100% 75%); /* Brighter Blue */
-    --star-color-2: hsl(180 100% 60%); /* Brighter Teal */
-    --star-color-3: hsl(0 0% 95%); /* Very Light Gray */
+    /* Star Colors for Light Theme (More visible) */
+    --star-color-1: hsl(210 100% 65%); /* Medium Blue */
+    --star-color-2: hsl(180 100% 45%); /* Medium Teal */
+    --star-color-3: hsl(0 0% 80%);   /* Light Gray */
   }
 
   .dark {
@@ -81,6 +82,7 @@ body {
     --sidebar-accent-foreground: 0 0% 98%; /* Near White */
     --sidebar-border: 210 100% 30%;
     --sidebar-ring: 180 100% 45%; /* Brighter Teal for focus rings */
+    /* Star Colors for Dark Theme */
     --star-color-1: hsl(210 100% 90%); /* Near White */
     --star-color-2: hsl(180 100% 70%); /* Light Teal/Cyan */
     --star-color-3: hsl(0 0% 100%); /* White */
@@ -109,8 +111,8 @@ body {
     z-index: -10; /* Ensure it's behind content */
     overflow: hidden;
     pointer-events: none; /* Allow clicks to pass through */
-    /* Background is handled by body */
-    background-color: transparent;
+    /* Use body background color */
+    background-color: hsl(var(--background)); /* Use the theme background */
   }
 
   /* Container for rotating stars */
@@ -136,7 +138,7 @@ body {
     opacity: 0; /* Start invisible, animation brings it in */
      /* Size, position, color, delay, duration set via inline style in component */
     transform-origin: center center; /* Ensure scaling originates from center */
-    box-shadow: 0 0 3px 0px var(--star-glow-color, rgba(255, 255, 255, 0.3)); /* Subtle glow */
+    box-shadow: 0 0 3px 0px var(--star-glow-color, hsla(0, 0%, 100%, 0.3)); /* Subtle glow, uses CSS var or default */
   }
 
    /* Rotation Animation */
