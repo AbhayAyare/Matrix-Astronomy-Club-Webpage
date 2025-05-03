@@ -29,8 +29,8 @@ const defaultContent: SiteContent = {
   newsletterTitle: 'Subscribe to Our Newsletter',
   newsletterDescription: 'Get the latest news, event announcements, and astronomical insights delivered to your inbox.',
   contactEmail: 'info@matrixastronomy.org',
-  contactPhone: '7219690903',
-  contactAddress: 'Kolhapur',
+  contactPhone: '7219690903', // Updated phone number
+  contactAddress: 'Kolhapur', // Updated address
 };
 
 // Updated return type to include specific error message
@@ -56,7 +56,9 @@ export async function getSiteContent(): Promise<GetContentResult> {
       console.log("Site content document found.");
       const data = docSnap.data() as Partial<SiteContent>;
        // Merge fetched data with defaults to ensure all fields exist and provide fallbacks
-       return { content: { ...defaultContent, ...data }, error: null }; // No error
+       const mergedContent = { ...defaultContent, ...data };
+       console.log("Merged content:", mergedContent); // Log the content being returned
+       return { content: mergedContent, error: null }; // No error
     } else {
       console.warn("Site content document not found, returning default content.");
       // Optionally, you could create the default document here if it's guaranteed to not exist yet
@@ -64,22 +66,25 @@ export async function getSiteContent(): Promise<GetContentResult> {
       return { content: defaultContent, error: null }; // No error, just using defaults
     }
   } catch (error) {
-    console.error("Error fetching site content:", error);
+    console.error("[getSiteContent] Detailed Error fetching site content:", error); // Log the full error object
     // Provide a specific message based on the error type
     if (error instanceof FirestoreError) {
         if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
            errorMessage = "Offline: The server could not connect to Firestore to fetch site content. Displaying defaults.";
-           console.warn(errorMessage);
+           console.warn(`[getSiteContent] ${errorMessage}`);
         } else if (error.code === 'permission-denied') {
-            errorMessage = `Permission Denied: Check Firestore rules for reading '${CONTENT_COLLECTION}/${CONTENT_DOC_ID}'.`;
-            console.error(errorMessage);
+            errorMessage = `Permission Denied: Check Firestore rules for reading '${CONTENT_COLLECTION}/${CONTENT_DOC_ID}'. Server-side reads might need public access.`;
+            console.error(`[getSiteContent] ${errorMessage}`);
         } else {
-            errorMessage = `Firestore Error (${error.code}): Could not fetch content. Check console for details.`;
-            console.error(errorMessage, error.message); // Log the original message too
+            errorMessage = `Firestore Error (${error.code}): Could not fetch content. Check console for details. Message: ${error.message}`;
+            console.error(`[getSiteContent] ${errorMessage}`);
         }
+    } else if (error instanceof Error) {
+         errorMessage = `An unexpected error occurred fetching site content: ${error.message}`;
+         console.error(`[getSiteContent] ${errorMessage}`);
     } else {
-         errorMessage = "An unexpected error occurred fetching site content.";
-         console.error(errorMessage, error);
+        errorMessage = "An unknown error occurred fetching site content.";
+        console.error(`[getSiteContent] ${errorMessage}`);
     }
     // Return default content as a fallback on any error, including the error message
     return { content: defaultContent, error: errorMessage };

@@ -53,12 +53,12 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
     imageURL: 'https://picsum.photos/seed/event1/400/250'
   };
   let errorMessage: string | null = null;
-  console.log("Attempting to fetch upcoming events from Firestore...");
+  console.log("[getUpcomingEvents] Attempting to fetch upcoming events from Firestore...");
 
   try {
     const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6));
     const querySnapshot = await getDocs(q);
-    console.log(`Fetched ${querySnapshot.size} upcoming events.`);
+    console.log(`[getUpcomingEvents] Fetched ${querySnapshot.size} upcoming events.`);
 
     const events = querySnapshot.docs.map(doc => ({
       id: doc.id,
@@ -70,24 +70,27 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
 
     return { data: events, error: null };
   } catch (error) {
-    console.error("Error fetching upcoming events:", error);
+    console.error("[getUpcomingEvents] Error fetching upcoming events:", error);
     if (error instanceof FirestoreError) {
       if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
           errorMessage = "Offline: The server could not connect to Firestore to fetch upcoming events. Displaying fallback.";
-          console.warn(errorMessage);
+          console.warn(`[getUpcomingEvents] ${errorMessage}`);
       } else if (error.code === 'failed-precondition') {
           errorMessage = "Index Required: Firestore query for events requires a composite index. Please create it in the Firebase console.";
-          console.error(errorMessage);
+          console.error(`[getUpcomingEvents] ${errorMessage}`);
       } else if (error.code === 'permission-denied') {
             errorMessage = `Permission Denied: Check Firestore rules for reading 'events' collection.`;
-            console.error(errorMessage);
+            console.error(`[getUpcomingEvents] ${errorMessage}`);
       } else {
-          errorMessage = `Firestore Error (${error.code}): Could not fetch events. Check console for details.`;
-           console.error(errorMessage, error.message);
+          errorMessage = `Firestore Error (${error.code}): Could not fetch events. Check console for details. Message: ${error.message}`;
+           console.error(`[getUpcomingEvents] ${errorMessage}`);
       }
+    } else if (error instanceof Error) {
+       errorMessage = `An unexpected error occurred fetching events: ${error.message}`;
+        console.error(`[getUpcomingEvents] ${errorMessage}`);
     } else {
-       errorMessage = "An unexpected error occurred fetching events.";
-        console.error(errorMessage, error);
+       errorMessage = "An unknown error occurred fetching events.";
+       console.error(`[getUpcomingEvents] ${errorMessage}`);
     }
     // Return fallback data on error, including error message
     return { data: [fallbackEvent], error: errorMessage };
@@ -106,44 +109,48 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
       { id: 'g6', url: 'https://picsum.photos/seed/gallery6/300/200', name: 'Observatory telescope (Fallback)'},
     ];
     let errorMessage: string | null = null;
-    console.log("Attempting to fetch gallery images from Firestore...");
+    console.log("[getGalleryImages] Attempting to fetch gallery images from Firestore...");
 
   try {
+    // Make sure Firestore rules allow public read on 'gallery' collection
     const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12));
     const querySnapshot = await getDocs(q);
-    console.log(`Fetched ${querySnapshot.size} gallery images.`);
+    console.log(`[getGalleryImages] Fetched ${querySnapshot.size} gallery images.`);
 
     if (querySnapshot.empty) {
-      console.log("No gallery images found in Firestore.");
+      console.log("[getGalleryImages] No gallery images found in Firestore.");
       return { data: [], error: null };
     }
 
     const images = querySnapshot.docs.map(doc => ({
       id: doc.id,
-      url: doc.data().url as string,
-      name: doc.data().name as string,
+      url: doc.data().url as string, // Ensure 'url' field exists and is a string
+      name: doc.data().name as string, // Ensure 'name' field exists and is a string
     })) as GalleryImage[];
 
     return { data: images, error: null };
   } catch (error) {
-      console.error("Error fetching gallery images from Firestore:", error);
+      console.error("[getGalleryImages] Error fetching gallery images from Firestore:", error);
       if (error instanceof FirestoreError) {
            if (error.code === 'failed-precondition') {
                 errorMessage = `Index Required: Firestore query for gallery requires an index on 'createdAt' descending. Please create it in the Firebase console.`;
-                 console.error(errorMessage);
+                 console.error(`[getGalleryImages] ${errorMessage}`);
            } else if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
                errorMessage = "Offline: The server could not connect to Firestore to fetch gallery images. Displaying fallbacks.";
-               console.warn(errorMessage);
+               console.warn(`[getGalleryImages] ${errorMessage}`);
            } else if (error.code === 'permission-denied') {
-                errorMessage = `Permission Denied: Check Firestore rules for reading 'gallery' collection.`;
-                console.error(errorMessage);
+                errorMessage = `Permission Denied: Check Firestore rules for reading 'gallery' collection. Public read might be needed.`;
+                console.error(`[getGalleryImages] ${errorMessage}`);
            } else {
-               errorMessage = `Firestore Error (${error.code}): Could not fetch gallery images. Check console for details.`;
-               console.error(errorMessage, error.message);
+               errorMessage = `Firestore Error (${error.code}): Could not fetch gallery images. Check console for details. Message: ${error.message}`;
+               console.error(`[getGalleryImages] ${errorMessage}`);
            }
+      } else if (error instanceof Error) {
+           errorMessage = `An unexpected error occurred fetching gallery images: ${error.message}`;
+           console.error(`[getGalleryImages] ${errorMessage}`);
       } else {
-           errorMessage = "An unexpected error occurred fetching gallery images.";
-           console.error(errorMessage, error);
+           errorMessage = "An unknown error occurred fetching gallery images.";
+           console.error(`[getGalleryImages] ${errorMessage}`);
       }
     // Return fallback data on error, including error message
     return { data: fallbackImages, error: errorMessage };
@@ -159,8 +166,8 @@ export default async function Home() {
 
   // Determine if any fetch resulted in an offline-like error
   const isOffline = [contentError, eventsError, galleryError].some(e => e?.toLowerCase().includes('offline'));
-  // Combine all errors for a general error state check
-  const fetchErrors = [contentError, eventsError, galleryError].filter(e => e !== null);
+  // Combine all non-null errors for a general error state check
+  const fetchErrors = [contentError, eventsError, galleryError].filter((e): e is string => e !== null);
 
 
   return (
@@ -183,9 +190,9 @@ export default async function Home() {
                }
                {/* List specific errors concisely */}
                <ul className="list-disc list-inside mt-2 text-xs">
-                 {contentError && <li>Website Content: {contentError}</li>}
-                 {eventsError && <li>Upcoming Events: {eventsError}</li>}
-                 {galleryError && <li>Gallery Images: {galleryError}</li>}
+                 {fetchErrors.map((error, index) => (
+                   <li key={index}>{error}</li>
+                 ))}
                </ul>
                Please try refreshing the page. If the problem persists, contact support.
              </AlertDescription>
@@ -208,14 +215,16 @@ export default async function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold mb-6 text-primary flex items-center justify-center gap-2"><Globe className="w-8 h-8 text-accent"/>About Matrix</h2>
           <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-6 md:p-8">
-              {/* Display content error specifically for this section if it occurred */}
+              {/* Display content error specifically for this section if it occurred and is NOT an offline error */}
               {contentError && !isOffline && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4"/>
                   <AlertTitle>Content Error</AlertTitle>
-                  <AlertDescription>Could not load the 'About' content. Displaying default text. Error: {contentError}</AlertDescription>
+                  {/* Provide a clearer message indicating default text is shown */}
+                  <AlertDescription>Could not load the 'About' content due to a server error. Displaying default text. Error: {contentError}</AlertDescription>
                 </Alert>
               )}
+              {/* Always display the 'about' content (either fetched or default) */}
               <p className="text-lg leading-relaxed text-foreground/90">{siteContent.about}</p>
             </CardContent>
           </Card>
@@ -231,7 +240,7 @@ export default async function Home() {
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4"/>
               <AlertTitle>Events Unavailable</AlertTitle>
-              <AlertDescription>Could not load latest events. Showing fallback data. Error: {eventsError}</AlertDescription>
+              <AlertDescription>Could not load latest events due to a server error. Showing fallback data. Error: {eventsError}</AlertDescription>
             </Alert>
           )}
           {upcomingEvents.length === 0 && !eventsError ? ( // Show "No events" only if no error occurred
@@ -254,7 +263,7 @@ export default async function Home() {
                        data-ai-hint="astronomy club event"
                        priority={index < 3}
                        onError={(e) => {
-                          console.warn(`Failed to load event image: ${event.imageURL}`);
+                          console.warn(`[Event Image] Failed to load: ${event.imageURL}. Falling back to placeholder.`);
                           e.currentTarget.src = `https://picsum.photos/seed/${event.id}/400/250`;
                        }}
                        unoptimized={!event.imageURL || !event.imageURL.startsWith('/')} // Disable optimization for external URLs
@@ -288,7 +297,7 @@ export default async function Home() {
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4"/>
                 <AlertTitle>Gallery Unavailable</AlertTitle>
-                <AlertDescription>Could not load gallery images. Showing fallback data. Error: {galleryError}</AlertDescription>
+                <AlertDescription>Could not load gallery images due to a server error. Showing fallback data. Error: {galleryError}</AlertDescription>
               </Alert>
             )}
             {galleryImages.length === 0 && !galleryError ? ( // Only show "empty" if no error
@@ -314,7 +323,7 @@ export default async function Home() {
                             data-ai-hint="astronomy club gallery space"
                             loading={index < 6 ? "eager" : "lazy"}
                             onError={(e) => {
-                               console.warn(`Failed to load gallery image: ${imageUrlToDisplay}`);
+                               console.warn(`[Gallery Image] Failed to load: ${imageUrlToDisplay}. Falling back to placeholder.`);
                                e.currentTarget.src = `https://picsum.photos/seed/${image.id}/300/200`; // Fallback placeholder
                              }}
                              unoptimized={!imageUrlToDisplay.startsWith('/')} // Disable optimization for external URLs
@@ -373,8 +382,8 @@ export default async function Home() {
               {contentError && !isOffline && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4"/>
-                  <AlertTitle>Content Error</AlertTitle>
-                  <AlertDescription>Could not load contact details. Displaying defaults. Error: {contentError}</AlertDescription>
+                  <AlertTitle>Contact Details Error</AlertTitle>
+                  <AlertDescription>Could not load contact details due to a server error. Displaying defaults. Error: {contentError}</AlertDescription>
                 </Alert>
               )}
                <div className="flex items-center gap-3 group">
