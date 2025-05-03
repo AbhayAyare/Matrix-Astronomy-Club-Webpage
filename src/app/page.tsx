@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Send, Phone, MapPin } from 'lucide-react'; // Removed Palette icon
+import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Send, Phone, MapPin } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 
@@ -36,12 +36,12 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <Header />
 
-      <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24">
+      <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24 overflow-x-hidden"> {/* Prevent horizontal scroll from animations */}
         {/* Hero Section */}
         <section id="hero" className="text-center py-16 md:py-24 bg-gradient-to-b from-primary/10 to-transparent rounded-lg shadow-inner animate-fade-in">
            <h1 className="text-4xl md:text-6xl font-bold mb-4 text-primary animate-fade-in" style={{ animationDelay: '0.1s' }}>Welcome to Matrix Astronomy Hub</h1>
            <p className="text-lg md:text-xl text-foreground/80 max-w-3xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>Your gateway to the cosmos. Explore, learn, and connect with fellow space enthusiasts.</p>
-           <Button size="lg" asChild className="transform hover:scale-105 transition-transform duration-200 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+           <Button size="lg" asChild className="transform hover:scale-105 transition-transform duration-300 ease-in-out animate-fade-in" style={{ animationDelay: '0.3s' }}>
              <Link href="#join">Join the Club</Link>
            </Button>
         </section>
@@ -63,16 +63,16 @@ export default function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {upcomingEvents.map((event, index) => (
-              <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
-                 <div className="relative h-48 w-full overflow-hidden group"> {/* Added group here */}
+              <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
+                 <div className="relative h-48 w-full overflow-hidden group">
                    <Image
                      src={event.image}
                      alt={event.name}
-                     fill // Use fill instead of layout="fill"
-                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Provide sizes prop
-                     className="object-cover transition-transform duration-300 group-hover:scale-105" // Use fill
+                     fill
+                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                      data-ai-hint={event.dataAiHint}
-                     priority={index < 3} // Prioritize loading images in the initial viewport
+                     priority={index < 3}
                    />
                  </div>
                 <CardHeader>
@@ -82,7 +82,7 @@ export default function Home() {
                 <CardContent className="flex-grow">
                   <p className="text-foreground/80">{event.description}</p>
                 </CardContent>
-                 <CardFooter className="flex justify-between items-center mt-auto">
+                 <CardFooter className="flex justify-between items-center mt-auto pt-4"> {/* Added pt-4 */}
                    <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
                    <Button variant="outline" size="sm" className="transform hover:scale-105 transition-transform duration-200">Learn More</Button>
                  </CardFooter>
@@ -98,16 +98,16 @@ export default function Home() {
            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><ImageIcon className="w-8 h-8 text-accent"/>Event Gallery</h2>
           <div className="grid grid-cols-gallery gap-4">
             {galleryImages.map((image, index) => (
-               <div key={image.id} className="aspect-w-16 aspect-h-9 overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group animate-fade-in" style={{ animationDelay: `${1 + index * 0.05}s` }}>
+               <div key={image.id} className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group animate-fade-in" style={{ animationDelay: `${1 + index * 0.05}s` }}>
                  <Image
                    src={image.src}
                    alt={image.alt}
-                   width={300} // Provide base width
-                   height={200} // Provide base height
-                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px" // Example sizes
-                   className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-300 ease-in-out"
+                   width={300}
+                   height={200}
+                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
+                   className="object-cover w-full h-full aspect-[3/2] transform group-hover:scale-105 transition-transform duration-300 ease-in-out" // Added aspect ratio
                    data-ai-hint={image.dataAiHint}
-                   loading={index < 6 ? "eager" : "lazy"} // Eager load first few, lazy load rest
+                   loading={index < 6 ? "eager" : "lazy"}
                  />
                </div>
             ))}
@@ -126,10 +126,10 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <form className="space-y-4">
-                <Input placeholder="Full Name" required />
-                <Input type="email" placeholder="Email Address" required />
-                <Textarea placeholder="Tell us a bit about your interest in astronomy (optional)" />
-                <Button type="submit" className="w-full transform hover:scale-105 transition-transform duration-200">Submit Application</Button>
+                <Input placeholder="Full Name" required className="transition-colors duration-200 focus:border-accent"/>
+                <Input type="email" placeholder="Email Address" required className="transition-colors duration-200 focus:border-accent"/>
+                <Textarea placeholder="Tell us a bit about your interest in astronomy (optional)" className="transition-colors duration-200 focus:border-accent"/>
+                <Button type="submit" className="w-full transform hover:scale-[1.02] transition-transform duration-200 ease-in-out">Submit Application</Button>
               </form>
             </CardContent>
           </Card>
@@ -146,9 +146,9 @@ export default function Home() {
                <CardDescription>Get the latest news, event announcements, and astronomical insights delivered to your inbox.</CardDescription>
              </CardHeader>
              <CardContent>
-              <form className="flex gap-2">
-                <Input type="email" placeholder="Enter your email" required className="flex-grow" />
-                <Button type="submit" variant="default" className="transform hover:scale-105 transition-transform duration-200">
+              <form className="flex flex-col sm:flex-row gap-2">
+                <Input type="email" placeholder="Enter your email" required className="flex-grow transition-colors duration-200 focus:border-accent"/>
+                <Button type="submit" variant="default" className="transform hover:scale-105 transition-transform duration-200 ease-in-out">
                    <Send className="w-4 h-4 mr-2"/>
                    Subscribe
                  </Button>
@@ -159,23 +159,21 @@ export default function Home() {
 
         <Separator />
 
-        {/* Removed Design & Aesthetics Section */}
-
         {/* Contact Us Section */}
-        <section id="contact" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.4s' }}> {/* Adjusted delay */}
+        <section id="contact" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.4s' }}>
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
            <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
              <CardContent className="p-6 md:p-8 space-y-4">
-               <div className="flex items-center gap-3">
-                 <Mail className="w-5 h-5 text-accent"/>
-                 <a href={`mailto:${contactInfo.email}`} className="text-foreground/90 hover:text-accent transition-colors">{contactInfo.email}</a>
+               <div className="flex items-center gap-3 group">
+                 <Mail className="w-5 h-5 text-accent group-hover:animate-pulse"/>
+                 <a href={`mailto:${contactInfo.email}`} className="text-foreground/90 hover:text-accent transition-colors duration-200">{contactInfo.email}</a>
                </div>
-               <div className="flex items-center gap-3">
-                 <Phone className="w-5 h-5 text-accent"/>
+               <div className="flex items-center gap-3 group">
+                 <Phone className="w-5 h-5 text-accent group-hover:animate-pulse"/>
                  <span className="text-foreground/90">{contactInfo.phone}</span>
                </div>
-               <div className="flex items-start gap-3">
-                 <MapPin className="w-5 h-5 text-accent mt-1"/>
+               <div className="flex items-start gap-3 group">
+                 <MapPin className="w-5 h-5 text-accent mt-1 group-hover:animate-pulse"/>
                  <span className="text-foreground/90">{contactInfo.address}</span>
                </div>
              </CardContent>

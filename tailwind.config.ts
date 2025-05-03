@@ -83,15 +83,20 @@ export default {
   					height: '0'
   				}
   			},
-          'fade-in': { // Added fade-in keyframe
+          'fade-in': {
             '0%': { opacity: '0', transform: 'translateY(10px)' },
             '100%': { opacity: '1', transform: 'translateY(0)' },
+           },
+           'pulse': { // Added pulse keyframe
+             '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+             '50%': { opacity: '0.7', transform: 'scale(1.05)' },
            },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
-          'fade-in': 'fade-in 0.5s ease-out forwards', // Added fade-in animation
+          'fade-in': 'fade-in 0.5s ease-out forwards',
+          'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite', // Added pulse animation utility
   		}
   	}
   },
