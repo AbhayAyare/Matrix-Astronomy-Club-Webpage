@@ -1,18 +1,28 @@
-'use client'; // Add this directive
+'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react'; // Import useEffect
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarTrigger, SidebarInset, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { AuthProvider, useAuth } from '@/context/auth-provider';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Import useRouter
 import Link from 'next/link';
-import { LayoutDashboard, Settings, CalendarClock, Users, Newspaper, Image as ImageIcon } from 'lucide-react'; // Removed LogOut as UserNav handles it
+import { LayoutDashboard, Settings, CalendarClock, Users, Newspaper, Image as ImageIcon } from 'lucide-react';
 import { UserNav } from '@/components/admin/user-nav';
-import { Loader2 } from 'lucide-react'; // Import Loader2
+import { Loader2 } from 'lucide-react';
 
 
 // Component to protect routes
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+  const router = useRouter(); // Get router instance
+
+  useEffect(() => {
+    // Redirect logic inside useEffect, runs only on the client after hydration
+    // and when dependencies change.
+    if (!loading && !user) {
+      router.push('/admin/login');
+    }
+  }, [user, loading, router]); // Dependencies for the effect
+
 
   if (loading) {
     return (
@@ -23,16 +33,25 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
     );
   }
 
+  // If user exists, render the children.
+  // If user doesn't exist (and loading is false), the useEffect will have initiated
+  // the redirect. Render null or a minimal loader while redirecting.
   if (!user) {
-    redirect('/admin/login');
+     return (
+        <div className="flex justify-center items-center h-screen">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             <span className="ml-2">Redirecting to login...</span>
+        </div>
+     ); // Render null or a minimal loader while redirect is happening
   }
 
+
+  // User is authenticated and loading is complete
   return <>{children}</>;
 }
 
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  // Since AuthProvider wraps ProtectedRoute which uses useAuth,
   // AuthProvider needs to be inside a client component context.
   // By adding 'use client' at the top, this entire layout becomes a client component.
   return (
