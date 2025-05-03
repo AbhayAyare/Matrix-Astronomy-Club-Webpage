@@ -18,13 +18,18 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Redirect logic inside useEffect, runs only on the client after hydration
     // and when dependencies change.
+    // If loading is finished and there's no user, redirect to login.
     if (!loading && !user) {
+      // console.log("ProtectedRoute: Not loading, no user. Redirecting to /admin/login");
       router.push('/admin/login');
     }
+    // No need for an else block here, rendering is handled below
   }, [user, loading, router]); // Dependencies for the effect
 
 
   if (loading) {
+    // While checking auth state, show a loading indicator
+    // console.log("ProtectedRoute: Rendering loading state");
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -33,20 +38,21 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
     );
   }
 
-  // If user exists, render the children.
-  // If user doesn't exist (and loading is false), the useEffect will have initiated
-  // the redirect. Render null or a minimal loader while redirecting.
+  // If loading is finished:
   if (!user) {
+    // If there's no user, the useEffect above should be triggering a redirect.
+    // Show a message indicating redirection is happening.
+    // console.log("ProtectedRoute: Loading false, user null. Showing redirect message...");
      return (
         <div className="flex justify-center items-center h-screen">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
              <span className="ml-2">Redirecting to login...</span>
         </div>
-     ); // Render null or a minimal loader while redirect is happening
+     ); // Or return null, but a message is slightly better UX
   }
 
-
-  // User is authenticated and loading is complete
+  // If loading is finished and user exists, render the protected content
+  // console.log("ProtectedRoute: Rendering children for user:", user.email);
   return <>{children}</>;
 }
 
