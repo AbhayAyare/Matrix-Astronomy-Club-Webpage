@@ -1,200 +1,153 @@
 'use client';
 
+import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from '@/components/ui/button';
-import { Users, CalendarCheck, BarChart, Settings, CalendarClock, Image as ImageIcon, Newspaper, ArrowRight } from "lucide-react";
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from "@/context/auth-provider";
-import { useFirebase } from '@/context/firebase-provider';
-import { collection, getDocs } from 'firebase/firestore';
-import { listAll } from 'firebase/storage';
-import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, LogOut, LayoutDashboard, Settings, CalendarClock, Image as ImageIcon, Users, Newspaper, HelpCircle, PanelLeft } from 'lucide-react';
+import { UserNav } from '@/components/admin/user-nav';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from '@/lib/utils';
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarFooter,
+  SidebarTrigger,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarInset,
+  SidebarRail,
+  SidebarSeparator,
+} from '@/components/ui/sidebar'; // Import Sidebar components
 
-// Collections and Storage Folders
-const MEMBERS_COLLECTION = 'members';
-const EVENTS_COLLECTION = 'events';
-const NEWSLETTER_COLLECTION = 'newsletterSubscribers';
-const GALLERY_FOLDER = 'gallery';
-const CONTENT_COLLECTION = 'config';
-const CONTENT_DOC_ID = 'siteContent';
-
-export default function AdminDashboardPage() {
-   const { user } = useAuth();
-   const { db, storage } = useFirebase();
-   const [stats, setStats] = useState({
-     memberCount: 0,
-     eventCount: 0,
-     galleryImageCount: 0,
-     subscriberCount: 0,
-   });
-   const [loadingStats, setLoadingStats] = useState(true);
+// Higher-Order Component for route protection
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname(); // Get current path
 
    useEffect(() => {
-     const fetchStats = async () => {
-       setLoadingStats(true);
-       try {
-         const memberSnap = await getDocs(collection(db, MEMBERS_COLLECTION));
-         const eventSnap = await getDocs(collection(db, EVENTS_COLLECTION));
-         const subscriberSnap = await getDocs(collection(db, NEWSLETTER_COLLECTION));
-         const galleryListRef = ref(storage, GALLERY_FOLDER);
-         const galleryRes = await listAll(galleryListRef);
+     // console.log("ProtectedRoute Effect: loading =", loading, "user =", !!user);
+     if (!loading && !user && pathname !== '/admin/login') {
+        // console.log("ProtectedRoute: Not loading, no user, not on login page. Redirecting to /admin/login");
+       router.replace('/admin/login'); // Use replace to avoid adding current page to history
+     }
+   }, [user, loading, router, pathname]); // Add pathname to dependencies
 
-         setStats({
-           memberCount: memberSnap.size,
-           eventCount: eventSnap.size,
-           galleryImageCount: galleryRes.items.length,
-           subscriberCount: subscriberSnap.size,
-         });
-       } catch (error) {
-         console.error("Error fetching dashboard stats:", error);
-         // Handle error display if needed
-       } finally {
-         setLoadingStats(false);
-       }
-     };
+   // If loading, show a loading indicator
+   if (loading) {
+    // console.log("ProtectedRoute: Auth loading, showing loading indicator.");
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-background">
+             <div className="flex items-center space-x-2">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="text-lg text-muted-foreground">Verifying access...</span>
+            </div>
+        </div>
+    );
+   }
 
-     fetchStats();
-   }, [db, storage]);
+   // If not loading and no user, and already on login page, render null or children (login page content)
+   if (!user && pathname === '/admin/login') {
+      // console.log("ProtectedRoute: No user, on login page. Rendering children (Login page).");
+     return <>{children}</>; // Render the login page content
+   }
 
+   // If not loading and user exists, render the protected content
+   if (!loading && user) {
+      // console.log("ProtectedRoute: User authenticated. Rendering protected children.");
+     return <>{children}</>;
+   }
+
+   // Fallback (should ideally not be reached due to redirects)
+   // console.log("ProtectedRoute: Fallback - Returning null.");
+   return null;
+};
+
+
+// Admin Layout Component (now assumes authentication is handled by ProtectedRoute)
+function AdminLayout({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname();
+
+     // Don't render sidebar/header on the login page itself
+     if (pathname === '/admin/login') {
+         return <>{children}</>;
+     }
+
+     const navItems = [
+        { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+        { href: '/admin/content', label: 'Website Content', icon: Settings },
+        { href: '/admin/events', label: 'Events', icon: CalendarClock },
+        { href: '/admin/gallery', label: 'Gallery', icon: ImageIcon },
+        { href: '/admin/members', label: 'Members', icon: Users },
+        { href: '/admin/newsletter', label: 'Newsletter', icon: Newspaper },
+     ];
+
+     // Determine active link
+    const isActive = (href: string) => {
+        // Exact match for dashboard, startsWith for others
+        return href === '/admin' ? pathname === href : pathname.startsWith(href);
+    };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back, {user?.email || 'Admin'}! Overview of your site.</p>
-      </div>
+     <ProtectedRoute>
+        <SidebarProvider defaultOpen>
+             <Sidebar side="left" variant="inset" collapsible="icon" className="border-sidebar-border">
+                 <SidebarHeader className="items-center justify-between p-2">
+                    <h2 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+                        Admin Panel
+                    </h2>
+                    {/* Sidebar Trigger remains, handled by SidebarProvider */}
+                 </SidebarHeader>
+                 <SidebarContent className="p-2 flex flex-col justify-between">
+                     <SidebarMenu>
+                         {navItems.map((item) => (
+                            <SidebarMenuItem key={item.label}>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={isActive(item.href)}
+                                    tooltip={{ children: item.label }}
+                                >
+                                    <Link href={item.href}>
+                                        <item.icon />
+                                        <span>{item.label}</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                         ))}
+                     </SidebarMenu>
+                     {/* Help Link (Optional) */}
+                     <SidebarMenu className="mt-auto">
+                         <SidebarMenuItem>
+                             <SidebarMenuButton asChild tooltip={{ children: 'Help / Support' }}>
+                                <Link href="/admin/support"> {/* Example link */}
+                                     <HelpCircle />
+                                     <span>Help</span>
+                                </Link>
+                             </SidebarMenuButton>
+                         </SidebarMenuItem>
+                     </SidebarMenu>
+                 </SidebarContent>
+                 <SidebarSeparator />
+                 <SidebarFooter className="p-2">
+                    <UserNav /> {/* UserNav already adapted for collapsible */}
+                 </SidebarFooter>
+                 <SidebarRail /> {/* Add the rail for resizing/toggling */}
+            </Sidebar>
 
-
-      {/* Analytics Section */}
-      <section>
-        <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2"><BarChart className="w-6 h-6 text-accent"/> Site Statistics</h2>
-        {loadingStats ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-             {[...Array(4)].map((_, i) => (
-               <Card key={i}>
-                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                   <CardTitle className="text-sm font-medium text-muted-foreground">Loading...</CardTitle>
-                 </CardHeader>
-                 <CardContent>
-                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                 </CardContent>
-               </Card>
-             ))}
-           </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Members</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.memberCount}</div>
-                <p className="text-xs text-muted-foreground">Registered members</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
-                <CalendarCheck className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.eventCount}</div>
-                <p className="text-xs text-muted-foreground">Scheduled events</p>
-              </CardContent>
-            </Card>
-             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gallery Images</CardTitle>
-                <ImageIcon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.galleryImageCount}</div>
-                <p className="text-xs text-muted-foreground">Images in gallery</p>
-              </CardContent>
-            </Card>
-             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Newsletter Subs</CardTitle>
-                 <Newspaper className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.subscriberCount}</div>
-                <p className="text-xs text-muted-foreground">Active subscribers</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </section>
-
-      {/* Quick Actions / Management Links Section */}
-      <section>
-         <h2 className="text-2xl font-semibold mb-4">Manage Site</h2>
-         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg"><Settings className="w-5 h-5 text-primary"/> Website Content</CardTitle>
-                    <CardDescription>Edit About Us and Contact Info.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button asChild variant="outline" size="sm">
-                       <Link href="/admin/content">Edit Content <ArrowRight className="ml-2 h-4 w-4"/></Link>
-                    </Button>
-                </CardContent>
-            </Card>
-             <Card className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg"><CalendarClock className="w-5 h-5 text-primary"/> Events</CardTitle>
-                    <CardDescription>Add, edit, or delete club events.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button asChild variant="outline" size="sm">
-                       <Link href="/admin/events">Manage Events <ArrowRight className="ml-2 h-4 w-4"/></Link>
-                    </Button>
-                </CardContent>
-            </Card>
-             <Card className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg"><ImageIcon className="w-5 h-5 text-primary"/> Gallery</CardTitle>
-                    <CardDescription>Upload or remove gallery images.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button asChild variant="outline" size="sm">
-                       <Link href="/admin/gallery">Manage Gallery <ArrowRight className="ml-2 h-4 w-4"/></Link>
-                    </Button>
-                </CardContent>
-            </Card>
-             <Card className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg"><Users className="w-5 h-5 text-primary"/> Members</CardTitle>
-                    <CardDescription>View registered club members.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button asChild variant="outline" size="sm">
-                       <Link href="/admin/members">View Members <ArrowRight className="ml-2 h-4 w-4"/></Link>
-                    </Button>
-                </CardContent>
-            </Card>
-             <Card className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg"><Newspaper className="w-5 h-5 text-primary"/> Newsletter</CardTitle>
-                    <CardDescription>Manage newsletter subscribers.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button asChild variant="outline" size="sm">
-                       <Link href="/admin/newsletter">Manage Subscribers <ArrowRight className="ml-2 h-4 w-4"/></Link>
-                    </Button>
-                </CardContent>
-            </Card>
-             {/* Placeholder for future sections */}
-             <Card className="bg-secondary/30 border-dashed flex flex-col justify-center items-center">
-                <CardContent className="p-6 text-center">
-                    <p className="text-sm text-muted-foreground">More management sections coming soon...</p>
-                </CardContent>
-            </Card>
-         </div>
-       </section>
-    </div>
+            <SidebarInset className="p-4 md:p-6 lg:p-8 overflow-auto">
+                 {/* Main content area */}
+                 {children}
+            </SidebarInset>
+        </SidebarProvider>
+     </ProtectedRoute>
   );
 }
+
+
+// Default export remains the layout component
+export default AdminLayout;
