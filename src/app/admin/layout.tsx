@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AuthProvider } from '@/context/auth-provider'; // Import AuthProvider
 import ProtectedRoute from '@/components/layout/protected-route'; // Import ProtectedRoute
-import { LayoutDashboard, Settings, CalendarClock, Image as ImageIcon, Users, Newspaper, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, Settings, CalendarClock, Image as ImageIcon, Users, Newspaper, HelpCircle, Home } from 'lucide-react'; // Added Home icon
 import { UserNav } from '@/components/admin/user-nav';
 import {
   SidebarProvider,
@@ -68,8 +68,16 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                             </SidebarMenuItem>
                          ))}
                      </SidebarMenu>
-                     {/* Optional: Help/Support link at the bottom */}
+                     {/* Bottom navigation group */}
                      <SidebarMenu className="mt-auto"> {/* Pushes this menu to the bottom */}
+                          <SidebarMenuItem>
+                             <SidebarMenuButton asChild tooltip={{ children: 'Go to Homepage' }}>
+                                <Link href="/"> {/* Link to homepage */}
+                                     <Home /> {/* Home icon */}
+                                     <span>Homepage</span>
+                                </Link>
+                             </SidebarMenuButton>
+                         </SidebarMenuItem>
                          <SidebarMenuItem>
                              <SidebarMenuButton asChild tooltip={{ children: 'Help / Support' }}>
                                 <Link href="/admin/support"> {/* Example link */}
