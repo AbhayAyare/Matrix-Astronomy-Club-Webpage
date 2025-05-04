@@ -28,6 +28,7 @@ interface Event {
   name: string;
   date: Timestamp; // Use Firestore Timestamp
   description: string;
+  imageURL?: string; // Add optional imageURL field
   createdAt: Timestamp;
 }
 
@@ -63,9 +64,11 @@ export default function AdminEventsPage() {
       setLoading(true);
       setFetchError(null); // Reset error on fetch
       setIsOffline(false); // Reset offline state
+      console.log("[AdminEvents] Fetching events...");
       try {
         const q = query(eventsCollectionRef, orderBy("date", "asc")); // Order by event date
         const querySnapshot = await getDocs(q);
+        console.log(`[AdminEvents] Fetched ${querySnapshot.size} events.`);
         const fetchedEvents = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
@@ -74,8 +77,9 @@ export default function AdminEventsPage() {
           createdAt: doc.data().createdAt as Timestamp,
         })) as Event[];
         setEvents(fetchedEvents);
+         console.log("[AdminEvents] Events state updated:", fetchedEvents);
       } catch (error) {
-        console.error("Error fetching events:", error);
+        console.error("[AdminEvents] Error fetching events:", error);
         let errorMessage = "Failed to load events.";
          if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
             errorMessage = "Cannot load events. You appear to be offline. Please check your internet connection.";
@@ -101,6 +105,7 @@ export default function AdminEventsPage() {
 
       } finally {
         setLoading(false);
+        console.log("[AdminEvents] Fetching complete.");
       }
     };
     fetchEvents();
@@ -116,9 +121,11 @@ export default function AdminEventsPage() {
        // Convert Timestamp to 'yyyy-MM-dd' string for input
        const dateString = eventToEdit.date.toDate().toISOString().split('T')[0];
       setCurrentEvent({ ...eventToEdit, date: dateString });
+       console.log("[AdminEvents] Opening modal to edit event:", eventToEdit);
     } else {
       setEditEventId(null);
-      setCurrentEvent({ name: '', date: '', description: '' }); // Reset form for new event
+      setCurrentEvent({ name: '', date: '', description: '', imageURL: '' }); // Reset form for new event, include imageURL
+       console.log("[AdminEvents] Opening modal to add new event.");
     }
     setIsModalOpen(true);
   };
@@ -130,18 +137,21 @@ export default function AdminEventsPage() {
     setAiKeywords('');
     setAiLoading(false);
     setAiError(null);
+    console.log("[AdminEvents] Modal closed.");
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (!currentEvent) return;
     const { name, value } = e.target;
     setCurrentEvent({ ...currentEvent, [name]: value });
+     console.log(`[AdminEvents] Input change - ${name}: ${value}`);
   };
 
    const handleSuggestDetails = async () => {
        if (!aiKeywords || !currentEvent) return;
        setAiLoading(true);
        setAiError(null);
+       console.log("[AdminEvents] Requesting AI suggestions for keywords:", aiKeywords);
        try {
            const input: SuggestEventDetailsInput = { keywords: aiKeywords };
            const result: SuggestEventDetailsOutput = await suggestEventDetails(input);
@@ -151,8 +161,9 @@ export default function AdminEventsPage() {
              description: result.description,
            });
            toast({ title: "AI Suggestion", description: "Title and description populated." });
+           console.log("[AdminEvents] AI suggestions applied:", result);
        } catch (error) {
-           console.error("AI suggestion error:", error);
+           console.error("[AdminEvents] AI suggestion error:", error);
            setAiError("Failed to get AI suggestions. Please try again.");
            toast({ title: "AI Error", description: "Could not generate suggestions.", variant: "destructive" });
        } finally {
@@ -163,8 +174,10 @@ export default function AdminEventsPage() {
 
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[AdminEvents] Attempting to save event...");
     if (!currentEvent || !currentEvent.name || !currentEvent.date || !currentEvent.description) {
-       toast({ title: "Missing Fields", description: "Please fill in all event details.", variant: "destructive" });
+       toast({ title: "Missing Fields", description: "Please fill in all required event details (Name, Date, Description).", variant: "destructive" });
+       console.warn("[AdminEvents] Save cancelled: Missing required fields.");
        return;
     }
     setSaving(true);
@@ -172,13 +185,27 @@ export default function AdminEventsPage() {
     // Convert date string back to Firestore Timestamp
     let eventDateTimestamp: Timestamp;
     try {
-        // Important: Ensure the date string is treated as local time, not UTC, if that's the intent.
-        // Adding time part prevents potential timezone issues where just 'yyyy-MM-dd' might shift the day.
-        const dateWithTime = `${currentEvent.date}T12:00:00`; // Assume midday local time
-        eventDateTimestamp = Timestamp.fromDate(new Date(dateWithTime));
-    } catch (dateError) {
-        console.error("Invalid date format:", dateError);
-        toast({ title: "Invalid Date", description: "Please enter a valid date (YYYY-MM-DD).", variant: "destructive" });
+        // Important: Ensure the date string is treated as local time, not UTC.
+        // Construct date with a fixed time (e.g., midday) to avoid timezone shifts.
+        const dateInput = currentEvent.date; // e.g., "2024-05-15"
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+            throw new Error("Invalid date format. Use YYYY-MM-DD.");
+        }
+        // Use Date constructor carefully. Parsing 'YYYY-MM-DD' directly might interpret it as UTC midnight.
+        // Create date parts and construct locally.
+        const [year, month, day] = dateInput.split('-').map(Number);
+        // Month is 0-indexed in Date constructor (0 = January)
+        const localDate = new Date(year, month - 1, day, 12, 0, 0); // Use midday local time
+
+        if (isNaN(localDate.getTime())) {
+            throw new Error("Invalid date created.");
+        }
+
+        eventDateTimestamp = Timestamp.fromDate(localDate);
+         console.log(`[AdminEvents] Date string "${currentEvent.date}" converted to Timestamp:`, eventDateTimestamp.toDate().toISOString());
+    } catch (dateError: any) {
+        console.error("[AdminEvents] Invalid date format:", dateError);
+        toast({ title: "Invalid Date", description: `Please enter a valid date (YYYY-MM-DD). Error: ${dateError.message}`, variant: "destructive" });
         setSaving(false);
         return;
     }
@@ -188,31 +215,45 @@ export default function AdminEventsPage() {
       name: currentEvent.name,
       date: eventDateTimestamp,
       description: currentEvent.description,
+      imageURL: currentEvent.imageURL || '', // Add imageURL, default to empty string if not provided
     };
+
+    console.log("[AdminEvents] Saving event data:", eventData);
 
     try {
       if (editEventId) {
         // Update existing event
+        console.log(`[AdminEvents] Updating event with ID: ${editEventId}`);
         const eventDocRef = doc(db, EVENTS_COLLECTION, editEventId);
         await updateDoc(eventDocRef, eventData);
-        setEvents(events.map(ev => ev.id === editEventId ? { ...ev, ...eventData, date: eventDateTimestamp } : ev));
+        // Update local state correctly, ensuring date is the new timestamp
+        setEvents(prevEvents =>
+            prevEvents.map(ev =>
+              ev.id === editEventId ? { ...ev, ...eventData, date: eventDateTimestamp } : ev
+            ).sort((a, b) => a.date.toMillis() - b.date.toMillis()) // Keep sorted
+         );
         toast({ title: "Success", description: "Event updated successfully." });
+         console.log("[AdminEvents] Event updated successfully.");
       } else {
         // Add new event
+        console.log("[AdminEvents] Adding new event.");
         const docRef = await addDoc(eventsCollectionRef, { ...eventData, createdAt: serverTimestamp() });
-         // Fetch the newly added doc to get server timestamp correctly if needed, or approximate locally
+         // Optimistically add to local state or refetch for accuracy
          const newEvent: Event = {
             id: docRef.id,
             ...eventData,
-            date: eventDateTimestamp,
+            date: eventDateTimestamp, // Use the correct timestamp
             createdAt: Timestamp.now() // Use local timestamp as approximation until refetch
          };
-        setEvents([...events, newEvent].sort((a, b) => a.date.toMillis() - b.date.toMillis())); // Keep sorted
+         setEvents(prevEvents =>
+            [...prevEvents, newEvent].sort((a, b) => a.date.toMillis() - b.date.toMillis()) // Add and keep sorted
+          );
         toast({ title: "Success", description: "Event added successfully." });
+        console.log("[AdminEvents] New event added with ID:", docRef.id);
       }
       handleCloseModal();
     } catch (error) {
-       console.error("Error saving event:", error);
+       console.error("[AdminEvents] Error saving event:", error);
        let errorMessage = `Failed to ${editEventId ? 'update' : 'add'} event.`;
         if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
           errorMessage = "Cannot save. You appear to be offline.";
@@ -225,18 +266,21 @@ export default function AdminEventsPage() {
       });
     } finally {
       setSaving(false);
+       console.log("[AdminEvents] Save operation finished.");
     }
   };
 
   const handleDeleteEvent = async (id: string) => {
     setDeletingId(id);
+    console.log(`[AdminEvents] Attempting to delete event with ID: ${id}`);
     try {
       const eventDocRef = doc(db, EVENTS_COLLECTION, id);
       await deleteDoc(eventDocRef);
       setEvents(events.filter(ev => ev.id !== id));
       toast({ title: "Success", description: "Event deleted successfully." });
+      console.log(`[AdminEvents] Event deleted successfully: ${id}`);
     } catch (error) {
-      console.error("Error deleting event:", error);
+      console.error("[AdminEvents] Error deleting event:", error);
        let errorMessage = "Failed to delete event.";
         if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
           errorMessage = "Cannot delete. You appear to be offline.";
@@ -249,6 +293,7 @@ export default function AdminEventsPage() {
       });
     } finally {
       setDeletingId(null);
+       console.log("[AdminEvents] Delete operation finished.");
     }
   };
 
@@ -301,7 +346,7 @@ export default function AdminEventsPage() {
                      <div>
                          <CardTitle>{event.name}</CardTitle>
                          {/* Format Timestamp to readable date string */}
-                         <CardDescription>{event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
+                         <CardDescription>{event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date Missing'}</CardDescription>
                      </div>
                       <div className="flex space-x-2">
                         <Button variant="outline" size="icon" onClick={() => handleOpenModal(event)} disabled={deletingId === event.id || isOffline}>
@@ -336,6 +381,12 @@ export default function AdminEventsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-foreground/80">{event.description}</p>
+                 {/* Display Image URL if available */}
+                 {event.imageURL && (
+                   <p className="text-xs text-muted-foreground mt-2 truncate">
+                     Image: <a href={event.imageURL} target="_blank" rel="noopener noreferrer" className="hover:underline">{event.imageURL}</a>
+                   </p>
+                 )}
               </CardContent>
             </Card>
           ))}
@@ -394,6 +445,20 @@ export default function AdminEventsPage() {
               <Label htmlFor="description">Description</Label>
               <Textarea id="description" name="description" value={currentEvent?.description || ''} onChange={handleInputChange} required rows={5} disabled={saving || isOffline} />
             </div>
+             {/* Image URL Input */}
+            <div className="space-y-2">
+                <Label htmlFor="imageURL">Image URL (Optional)</Label>
+                <Input
+                    id="imageURL"
+                    name="imageURL"
+                    type="url"
+                    placeholder="https://example.com/image.jpg"
+                    value={currentEvent?.imageURL || ''}
+                    onChange={handleInputChange}
+                    disabled={saving || isOffline}
+                />
+                <p className="text-xs text-muted-foreground">Enter a direct link to an image for the event.</p>
+            </div>
             <DialogFooter>
               <DialogClose asChild>
                  <Button type="button" variant="outline" onClick={handleCloseModal} disabled={saving}>Cancel</Button>
@@ -409,4 +474,3 @@ export default function AdminEventsPage() {
     </div>
   );
 }
-

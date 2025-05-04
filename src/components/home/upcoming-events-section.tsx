@@ -18,7 +18,7 @@ interface Event {
   name: string;
   date: Timestamp;
   description: string;
-  imageURL?: string;
+  imageURL?: string; // Optional: Assuming image URL might be stored
   createdAt?: Timestamp; // Optional, but good for ordering
 }
 
@@ -101,11 +101,11 @@ export function UpcomingEventsSection() {
           const events: Event[] = querySnapshot.docs.map(doc => {
             const data = doc.data();
             // Basic validation for required fields
-             const eventDate = data.date instanceof Timestamp ? data.date : Timestamp.now(); // Fallback date if missing/invalid
-             const eventName = data.name || 'Unnamed Event';
-             const eventDesc = data.description || 'No description available.';
-             // Use fallback URL if imageURL is missing or empty
-             const eventImage = data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`;
+            const eventDate = data.date instanceof Timestamp ? data.date : Timestamp.now(); // Fallback date if missing/invalid
+            const eventName = data.name || 'Unnamed Event';
+            const eventDesc = data.description || 'No description available.';
+            // Use fallback URL if imageURL is missing or empty
+            const eventImage = data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`;
 
             console.log(`[UpcomingEvents] Mapping doc ${doc.id}: Name=${eventName}, Date=${eventDate.toDate().toISOString()}, ImageURL=${eventImage}`);
 
@@ -197,7 +197,7 @@ export function UpcomingEventsSection() {
       )}
 
 
-       {/* Empty State - Show ONLY if not loading, no events array has length 0 AND there was no error */}
+       {/* Empty State - Show ONLY if not loading, no events array has length 0 AND there was no error that prevented fetching */}
        {!loading && !fetchError && upcomingEvents.length === 0 && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
