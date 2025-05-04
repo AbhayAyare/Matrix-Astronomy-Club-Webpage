@@ -107,7 +107,7 @@ export async function getSiteContent(): Promise<GetContentResult> {
        console.warn(`[getSiteContent] ${errorMessage}`);
     } else if (error instanceof FirestoreError) {
         if (error.code === 'permission-denied') {
-            errorMessage = `Permission Denied: Check Firestore rules for reading '${contentDocPath}'. Ensure API is enabled and rules allow access.`;
+            errorMessage = `Permission Denied: Could not read document '${contentDocPath}'. Check Firestore rules. Ensure API is enabled and rules allow public read access.`;
             console.error(`[getSiteContent] ${errorMessage}`);
         } else {
             errorMessage = `Firestore Error (${error.code}) on path '${contentDocPath}': Could not fetch content. Details: ${error.message}`;
@@ -130,4 +130,3 @@ export async function getSiteContent(): Promise<GetContentResult> {
     return { content: defaultSiteContent, error: `Website Content: ${errorMessage}` };
   }
 }
-

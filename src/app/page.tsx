@@ -86,7 +86,7 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
 
   try {
     const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6));
-    console.log(`[getUpcomingEvents] Executing query on collection '${eventsCollectionName}' (date >= today, orderBy date asc, limit 6)`);
+    console.log(`[getUpcomingEvents] Executing getDocs query on collection '${eventsCollectionName}' (date >= today, orderBy date asc, limit 6)...`);
     const querySnapshot = await getDocs(q);
     console.log(`[getUpcomingEvents] getDocs completed. Fetched ${querySnapshot.size} upcoming events from ${eventsCollectionName}.`);
 
@@ -112,11 +112,11 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
         errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch upcoming events from '${eventsCollectionName}' (${(error as FirestoreError)?.code}).`;
         console.warn(`[getUpcomingEvents] ${errorMessage}`);
     } else if (error instanceof FirestoreError) {
-         if (error.code === 'failed-precondition') {
-             errorMessage = `Index Required: Firestore query for events requires a composite index (date >=, date asc). Please create it in the Firebase console. Collection: ${eventsCollectionName}`;
+         if (error.code === 'permission-denied') {
+             errorMessage = `Permission Denied: Could not read collection '${eventsCollectionName}'. Check Firestore rules. Ensure API is enabled and rules allow public read access.`;
              console.error(`[getUpcomingEvents] ${errorMessage}`);
-         } else if (error.code === 'permission-denied') {
-             errorMessage = `Permission Denied: Check Firestore rules for reading '${eventsCollectionName}'. Ensure API is enabled and rules allow access.`;
+         } else if (error.code === 'failed-precondition') {
+             errorMessage = `Index Required: Firestore query for events requires a composite index (date >=, date asc). Please create it in the Firebase console. Collection: ${eventsCollectionName}`;
              console.error(`[getUpcomingEvents] ${errorMessage}`);
          } else {
              errorMessage = `Firestore Error (${error.code}) on collection '${eventsCollectionName}': Could not fetch events. Details: ${error.message}`;
@@ -167,7 +167,7 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImageMetadata>> {
   try {
     // Make sure Firestore rules allow public read on 'gallery' collection
     const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12));
-    console.log(`[getGalleryImages] Executing query on collection '${galleryCollectionName}' (orderBy createdAt desc, limit 12)`);
+    console.log(`[getGalleryImages] Executing getDocs query on collection '${galleryCollectionName}' (orderBy createdAt desc, limit 12)...`);
     const querySnapshot = await getDocs(q);
     console.log(`[getGalleryImages] getDocs completed. Fetched ${querySnapshot.size} gallery images from ${galleryCollectionName}.`);
 
@@ -190,12 +190,12 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImageMetadata>> {
          errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch gallery images from '${galleryCollectionName}' (${(error as FirestoreError)?.code}).`;
          console.warn(`[getGalleryImages] ${errorMessage}`);
       } else if (error instanceof FirestoreError) {
-           if (error.code === 'failed-precondition') {
+           if (error.code === 'permission-denied') {
+                errorMessage = `Permission Denied: Could not read collection '${galleryCollectionName}'. Check Firestore rules. Ensure API is enabled and rules allow public read access.`;
+                 console.error(`[getGalleryImages] ${errorMessage}`);
+           } else if (error.code === 'failed-precondition') {
                 errorMessage = `Index Required: Firestore query for gallery requires an index on 'createdAt' descending. Please create it in the Firebase console. Collection: ${galleryCollectionName}`;
                  console.error(`[getGalleryImages] ${errorMessage}`);
-           } else if (error.code === 'permission-denied') {
-                errorMessage = `Permission Denied: Check Firestore rules for reading '${galleryCollectionName}'. Ensure API is enabled and rules allow access.`;
-                console.error(`[getGalleryImages] ${errorMessage}`);
            } else {
                errorMessage = `Firestore Error (${error.code}) on collection '${galleryCollectionName}': Could not fetch gallery images. Details: ${error.message}`;
                console.error(`[getGalleryImages] Full Firestore error: ${error.message}`);
@@ -272,8 +272,8 @@ export default async function Home() {
                {isOffline && !hasOtherErrors
                  ? "The server may be experiencing temporary network issues connecting to the database. Some content might be outdated or showing defaults."
                  : hasOtherErrors
-                 ? "Could not load all site data due to server-side errors or network issues. Some sections might be showing default content or fallbacks."
-                 : "Could not load all site data due to server-side errors. Some sections might be showing default content or fallbacks." // Fallback case
+                 ? "Could not load all site data due to server-side errors (e.g., permissions) or network issues. Some sections might be showing default content or fallbacks."
+                 : "Could not load all site data due to server-side errors (e.g., permissions). Some sections might be showing default content or fallbacks." // Fallback case for non-offline errors
                }
                {/* List specific errors concisely */}
                <ul className="list-disc list-inside mt-2 text-xs max-h-32 overflow-y-auto">
@@ -281,7 +281,7 @@ export default async function Home() {
                    <li key={index}>{error}</li> // Display prefixed string errors
                  ))}
                </ul>
-               Please try refreshing the page. If the problem persists, contact support.
+               Please check Firestore rules, network connection, and ensure APIs are enabled. Refresh the page or contact support if needed.
              </AlertDescription>
            </Alert>
          </div>
@@ -480,4 +480,3 @@ export default async function Home() {
     </div>
   );
 }
-
