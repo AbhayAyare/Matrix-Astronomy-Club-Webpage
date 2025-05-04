@@ -119,7 +119,7 @@ export async function getSiteContent(): Promise<GetContentResult> {
              errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch content from '${contentDocPath}'. ${error.message}`;
              console.warn(`[getSiteContent] Offline detected via generic error: ${errorMessage}`);
          } else {
-             errorMessage = `Unexpected Error fetching content from '${contentDocPath}': ${error.message}`;
+             errorMessage = `Unexpected Error: An unexpected error occurred fetching site content: ${error.message}`;
              console.error(`[getSiteContent] ${errorMessage}`);
          }
     } else {
