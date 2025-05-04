@@ -127,7 +127,7 @@ export function UpcomingEventsSection() {
 
     fetchEvents();
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db]);
+  }, [db]); // Depend on db instance
 
   // Generate unique IDs for DialogTitle and DialogDescription
   const getModalTitleId = (eventId: string) => `event-modal-title-${eventId}`;
@@ -204,49 +204,50 @@ export function UpcomingEventsSection() {
                     </DialogTrigger>
                   </CardFooter>
                 </Card>
-                 <DialogContent
-                      className="sm:max-w-[600px] p-0"
-                      aria-labelledby={modalTitleId} // Link title for accessibility
-                      aria-describedby={modalDescriptionId} // Link description for accessibility
-                 >
-                     {/* Add DialogHeader with DialogTitle and DialogDescription */}
-                     <DialogHeader className="p-4 sm:p-6 border-b">
-                       <DialogTitle id={modalTitleId} className="text-2xl font-semibold">{event.name}</DialogTitle>
-                       <DialogDescription id={modalDescriptionId} className="text-muted-foreground mt-1">
-                          {eventLongDateString} {/* Using date as description */}
-                       </DialogDescription>
-                     </DialogHeader>
-                     <div className="p-4 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                         {event.imageURL && (
-                             <div className="relative aspect-video mb-4 rounded-md overflow-hidden">
-                                <Image
-                                    src={event.imageURL}
-                                    alt={`Image for ${event.name}`}
-                                    fill
-                                    sizes="(max-width: 640px) 90vw, 600px"
-                                    className="object-cover"
-                                    onError={(e) => {
-                                      console.warn(`Modal Event Image Load Error: ${event.imageURL}`);
-                                      const fallbackSrc = `https://picsum.photos/seed/${event.id}/600/338`; // Fallback URL
-                                       // Check if currentTarget exists before modifying
-                                       if (e.currentTarget && typeof e.currentTarget.src === 'string') {
-                                           e.currentTarget.src = fallbackSrc;
-                                       }
-                                      e.currentTarget.alt = `${event.name} (Fallback Image)`;
-                                      e.currentTarget.onerror = null;
-                                    }}
-                                    unoptimized={!event.imageURL?.startsWith('/')}
-                                />
-                            </div>
-                         )}
-                         {/* Use event.description as the primary description */}
-                         <p className="text-foreground/90 whitespace-pre-wrap">{event.description}</p>
-                     </div>
-                      <DialogClose className="absolute top-3 right-3 p-1 rounded-full bg-secondary/80 text-muted-foreground hover:bg-secondary transition-colors">
-                        <X className="h-4 w-4" />
-                         <span className="sr-only">Close</span>
-                     </DialogClose>
-                 </DialogContent>
+                <DialogContent
+                  className="sm:max-w-[600px] p-0"
+                  aria-labelledby={modalTitleId} // Link title for accessibility
+                  aria-describedby={modalDescriptionId} // Link description for accessibility
+                >
+                  {/* Ensure DialogHeader is the first child (or near the top) for accessibility parsing */}
+                  <DialogHeader className="p-4 sm:p-6 border-b">
+                    <DialogTitle id={modalTitleId} className="text-2xl font-semibold">{event.name}</DialogTitle>
+                    <DialogDescription id={modalDescriptionId} className="text-muted-foreground mt-1">
+                      {eventLongDateString} {/* Using date as description */}
+                    </DialogDescription>
+                  </DialogHeader>
+                  {/* Main content of the dialog */}
+                  <div className="p-4 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                    {event.imageURL && (
+                      <div className="relative aspect-video mb-4 rounded-md overflow-hidden">
+                        <Image
+                          src={event.imageURL}
+                          alt={`Image for ${event.name}`}
+                          fill
+                          sizes="(max-width: 640px) 90vw, 600px"
+                          className="object-cover"
+                          onError={(e) => {
+                            console.warn(`Modal Event Image Load Error: ${event.imageURL}`);
+                            const fallbackSrc = `https://picsum.photos/seed/${event.id}/600/338`; // Fallback URL
+                            // Check if currentTarget exists before modifying
+                            if (e.currentTarget && typeof e.currentTarget.src === 'string') {
+                              e.currentTarget.src = fallbackSrc;
+                            }
+                            e.currentTarget.alt = `${event.name} (Fallback Image)`;
+                            e.currentTarget.onerror = null;
+                          }}
+                          unoptimized={!event.imageURL?.startsWith('/')}
+                        />
+                      </div>
+                    )}
+                    {/* Use event.description as the primary description */}
+                    <p className="text-foreground/90 whitespace-pre-wrap">{event.description}</p>
+                  </div>
+                  <DialogClose className="absolute top-3 right-3 p-1 rounded-full bg-secondary/80 text-muted-foreground hover:bg-secondary transition-colors z-10">
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Close</span>
+                  </DialogClose>
+                </DialogContent>
               </Dialog>
             );
           })}
@@ -255,3 +256,4 @@ export function UpcomingEventsSection() {
     </section>
   );
 }
+
