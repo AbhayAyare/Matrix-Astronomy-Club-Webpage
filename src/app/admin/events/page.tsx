@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // Ensured React is imported
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,11 @@ export default function AdminEventsPage() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false); // Track offline state
+
+  // Generate stable IDs using React.useId
+  const baseId = React.useId();
+  const dialogTitleId = `${baseId}-event-dialog-title`;
+  const dialogDescriptionId = `${baseId}-event-dialog-description`;
 
 
   const eventsCollectionRef = collection(db, EVENTS_COLLECTION);
@@ -246,9 +252,6 @@ export default function AdminEventsPage() {
     }
   };
 
-  // Unique IDs for Dialog Title and Description
-  const dialogTitleId = "event-dialog-title";
-  const dialogDescriptionId = "event-dialog-description";
 
   return (
     <div className="space-y-6">
