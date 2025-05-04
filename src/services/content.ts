@@ -61,9 +61,9 @@ export async function getSiteContent(): Promise<GetContentResult> {
        return { content: mergedContent, error: null }; // No error
     } else {
       console.warn("[getSiteContent] Site content document not found, returning default content.");
-      // Optionally, you could create the default document here if it's guaranteed to not exist yet
-      // await setDoc(contentDocRef, defaultContent);
-      return { content: defaultContent, error: null }; // No error, just using defaults
+      // Document doesn't exist, not strictly an error, but could be logged
+      errorMessage = "Configuration document not found. Using default content.";
+      return { content: defaultContent, error: `Website Content: ${errorMessage}` };
     }
   } catch (error) {
     console.error("[getSiteContent] Error fetching site content:", error); // Log the full error object

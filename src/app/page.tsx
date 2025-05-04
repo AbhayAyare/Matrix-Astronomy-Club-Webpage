@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Phone, MapPin, WifiOff, AlertCircle, ServerCrash } from 'lucide-react'; // Added AlertCircle, ServerCrash
+import { Globe, CalendarDays, Image as ImageIcon, UserPlus, Mail, Phone, MapPin, WifiOff, AlertCircle, ServerCrash } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { getSiteContent, SiteContent } from '@/services/content';
@@ -14,7 +14,7 @@ import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError, 
 import { db } from '@/config/firebase'; // Only need db
 import { JoinForm } from '@/components/home/join-form';
 import { NewsletterForm } from '@/components/home/newsletter-form';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Interface for events fetched from Firestore
 interface Event {
@@ -67,6 +67,11 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
       // Use stored imageURL or fallback
       imageURL: doc.data().imageURL || `https://picsum.photos/seed/${doc.id}/400/250`,
     })) as Event[];
+
+     if (events.length === 0) {
+        console.log("[getUpcomingEvents] No upcoming events found, returning empty array.");
+        return { data: [], error: null };
+      }
 
     return { data: events, error: null };
   } catch (error) {
@@ -160,14 +165,19 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
 
 export default async function Home() {
   // Fetch dynamic data in the Server Component
+  console.log("[Home Page] Starting data fetch...");
   const { content: siteContent, error: contentError } = await getSiteContent();
   const { data: upcomingEvents, error: eventsError } = await getUpcomingEvents();
-  const { data: galleryImages, error: galleryError } = await getGalleryImages(); // Fetches metadata from Firestore
+  const { data: galleryImages, error: galleryError } = await getGalleryImages();
+  console.log("[Home Page] Data fetch completed.");
+  console.log("[Home Page] Errors - Content:", contentError, "Events:", eventsError, "Gallery:", galleryError);
+
 
   // Combine all non-null errors for a general error state check
   const fetchErrors = [contentError, eventsError, galleryError].filter((e): e is string => e !== null);
   // Determine if *any* fetch resulted in an offline-like error
   const isOffline = fetchErrors.some(e => e?.toLowerCase().includes('offline'));
+  const hasOtherErrors = fetchErrors.some(e => !e?.toLowerCase().includes('offline'));
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -178,7 +188,7 @@ export default async function Home() {
          <div className="container mx-auto px-4 pt-4">
            <Alert
              variant={isOffline ? "default" : "destructive"}
-             className={isOffline ? "border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400" : ""}
+             className={`${isOffline ? "border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400" : "" } animate-fade-in`}
            >
              {isOffline ? <WifiOff className="h-4 w-4"/> : <ServerCrash className="h-4 w-4"/>}
              <AlertTitle>{isOffline ? "Network Connectivity Issue" : "Data Loading Issue"}</AlertTitle>
@@ -188,7 +198,7 @@ export default async function Home() {
                  : "Could not load all site data due to server-side errors. Some sections might be showing default content."
                }
                {/* List specific errors concisely */}
-               <ul className="list-disc list-inside mt-2 text-xs">
+               <ul className="list-disc list-inside mt-2 text-xs max-h-32 overflow-y-auto">
                  {fetchErrors.map((error, index) => (
                    <li key={index}>{error}</li> // Display prefixed errors
                  ))}
@@ -242,13 +252,19 @@ export default async function Home() {
               <AlertDescription>Could not load latest events. Showing fallback data. Error: {eventsError}</AlertDescription>
             </Alert>
           )}
-          {upcomingEvents.length === 0 && !eventsError ? ( // Show "No events" only if no error occurred
+          {upcomingEvents.length === 0 && !eventsError && !isOffline ? ( // Show "No events" only if no error occurred and not offline
              <Card>
                  <CardContent className="p-6 text-center text-muted-foreground">
                      No upcoming events scheduled yet. Stay tuned!
                  </CardContent>
              </Card>
-          ) : (
+          ) : upcomingEvents.length === 0 && isOffline ? ( // Specific message if offline and no events (could be due to offline state)
+                <Card>
+                    <CardContent className="p-6 text-center text-muted-foreground">
+                        Events couldn't be loaded due to network issues. Please check back later.
+                    </CardContent>
+                </Card>
+           ) : (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {upcomingEvents.map((event, index) => (
                 <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
@@ -273,12 +289,14 @@ export default async function Home() {
                     <CardDescription>{event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">
-                    <p className="text-foreground/80">{event.description}</p>
+                    <p className="text-foreground/80 line-clamp-3">{event.description}</p> {/* Use line-clamp */}
                   </CardContent>
-                   <CardFooter className="flex justify-between items-center mt-auto pt-4">
+                   <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                      <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
                      {/* Maybe link to event details if available */}
-                     <Button variant="outline" size="sm" disabled className="transform hover:scale-105 transition-transform duration-200">Learn More</Button>
+                     <Button variant="link" size="sm" disabled className="text-primary/80 hover:text-primary">
+                        Learn More <span aria-hidden="true" className="ml-1">→</span>
+                      </Button>
                    </CardFooter>
                 </Card>
               ))}
@@ -299,10 +317,16 @@ export default async function Home() {
                 <AlertDescription>Could not load gallery images. Showing fallback data. Error: {galleryError}</AlertDescription>
               </Alert>
             )}
-            {galleryImages.length === 0 && !galleryError ? ( // Only show "empty" if no error
+            {galleryImages.length === 0 && !galleryError && !isOffline ? ( // Only show "empty" if no error and not offline
                  <Card>
                     <CardContent className="p-6 text-center text-muted-foreground">
                         The gallery is currently empty. Check back soon!
+                    </CardContent>
+                </Card>
+             ) : galleryImages.length === 0 && isOffline ? ( // Specific message if offline and no images
+                 <Card>
+                    <CardContent className="p-6 text-center text-muted-foreground">
+                        Gallery couldn't be loaded due to network issues. Please check back later.
                     </CardContent>
                 </Card>
              ) : (
@@ -311,14 +335,13 @@ export default async function Home() {
                      // Use placeholder if URL is invalid or missing
                      const imageUrlToDisplay = image.url || `https://picsum.photos/seed/${image.id}/300/200`;
                      return (
-                        <div key={image.id} className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group animate-fade-in relative" style={{ animationDelay: `${1 + index * 0.05}s` }}>
+                        <div key={image.id} className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group animate-fade-in relative aspect-[3/2]" style={{ animationDelay: `${1 + index * 0.05}s` }}>
                           <Image
                             src={imageUrlToDisplay} // URL from Firestore metadata
                             alt={image.name || `Gallery image ${image.id}`} // Name from Firestore metadata
-                            width={300}
-                            height={200}
+                            fill // Use fill to cover the container
                             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
-                            className="object-cover w-full h-full aspect-[3/2] transform group-hover:scale-105 transition-transform duration-300 ease-in-out"
+                            className="object-cover transform group-hover:scale-105 transition-transform duration-300 ease-in-out"
                             data-ai-hint="astronomy club gallery space"
                             loading={index < 6 ? "eager" : "lazy"}
                             onError={(e) => {
