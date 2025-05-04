@@ -206,9 +206,10 @@ export function UpcomingEventsSection() {
                       aria-labelledby={modalTitleId}
                       aria-describedby={modalDescriptionId} // Add aria-describedby
                  >
+                     {/* Removed sr-only from header, added to title/desc individually */}
                      <DialogHeader className="p-4 sm:p-6 border-b">
                        <DialogTitle id={modalTitleId} className="text-2xl font-semibold">{event.name}</DialogTitle>
-                       <DialogDescription id={modalDescriptionId} className="text-muted-foreground mt-1"> {/* Add id */}
+                       <DialogDescription id={modalDescriptionId} className="text-muted-foreground mt-1">
                           {eventLongDateString}
                        </DialogDescription>
                      </DialogHeader>

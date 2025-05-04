@@ -190,9 +190,10 @@ export function GallerySection() {
                    aria-describedby={modalDescriptionId} // Add aria-describedby
                >
                    {/* Add DialogHeader with DialogTitle and DialogDescription for accessibility */}
-                   <DialogHeader className="sr-only">
-                     <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
-                     <DialogDescription id={modalDescriptionId}>Enlarged view of the gallery image: {image.name || 'Unnamed Image'}</DialogDescription>
+                   {/* Removed sr-only from header, added to title/desc individually */}
+                   <DialogHeader>
+                     <DialogTitle id={modalTitleId} className="sr-only">{image.name || 'Gallery Image'}</DialogTitle>
+                     <DialogDescription id={modalDescriptionId} className="sr-only">Enlarged view of the gallery image: {image.name || 'Unnamed Image'}</DialogDescription>
                    </DialogHeader>
                    {/* Content */}
                    <div className="relative aspect-video"> {/* Use aspect-video for consistent ratio */}
