@@ -29,8 +29,8 @@ const defaultContent: SiteContent = {
   newsletterTitle: 'Subscribe to Our Newsletter',
   newsletterDescription: 'Get the latest news, event announcements, and astronomical insights delivered to your inbox.',
   contactEmail: 'info@matrixastronomy.org',
-  contactPhone: '7219690903', // Updated phone number
-  contactAddress: 'Kolhapur', // Updated address
+  contactPhone: '7219690903',
+  contactAddress: 'Kolhapur',
 };
 
 // Updated return type to include specific error message
@@ -49,44 +49,48 @@ interface GetContentResult {
 export async function getSiteContent(): Promise<GetContentResult> {
   const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
   let errorMessage: string | null = null;
-  console.log(`Attempting to fetch content from Firestore path: ${CONTENT_COLLECTION}/${CONTENT_DOC_ID}`);
+  console.log(`[getSiteContent] Attempting to fetch content from Firestore path: ${CONTENT_COLLECTION}/${CONTENT_DOC_ID}`);
   try {
     const docSnap = await getDoc(contentDocRef);
     if (docSnap.exists()) {
-      console.log("Site content document found.");
+      console.log("[getSiteContent] Site content document found.");
       const data = docSnap.data() as Partial<SiteContent>;
        // Merge fetched data with defaults to ensure all fields exist and provide fallbacks
        const mergedContent = { ...defaultContent, ...data };
-       console.log("Merged content:", mergedContent); // Log the content being returned
+       console.log("[getSiteContent] Fetched and merged content successfully.");
        return { content: mergedContent, error: null }; // No error
     } else {
-      console.warn("Site content document not found, returning default content.");
+      console.warn("[getSiteContent] Site content document not found, returning default content.");
       // Optionally, you could create the default document here if it's guaranteed to not exist yet
       // await setDoc(contentDocRef, defaultContent);
       return { content: defaultContent, error: null }; // No error, just using defaults
     }
   } catch (error) {
-    console.error("[getSiteContent] Detailed Error fetching site content:", error); // Log the full error object
+    console.error("[getSiteContent] Error fetching site content:", error); // Log the full error object
     // Provide a specific message based on the error type
     if (error instanceof FirestoreError) {
+        // Check for codes that might indicate connectivity issues or API problems
         if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
-           errorMessage = "Offline: The server could not connect to Firestore to fetch site content. Displaying defaults.";
-           console.warn(`[getSiteContent] ${errorMessage}`);
+           errorMessage = "Offline: The server could not connect to Firestore to fetch site content.";
+           console.warn(`[getSiteContent] ${errorMessage} (Code: ${error.code})`);
         } else if (error.code === 'permission-denied') {
-            errorMessage = `Permission Denied: Check Firestore rules for reading '${CONTENT_COLLECTION}/${CONTENT_DOC_ID}'. Server-side reads might need public access.`;
-            console.error(`[getSiteContent] ${errorMessage}`);
+            errorMessage = `Permission Denied: Check Firestore rules for reading '${CONTENT_COLLECTION}/${CONTENT_DOC_ID}'. Ensure Firestore API is enabled.`;
+            console.error(`[getSiteContent] ${errorMessage} (Code: ${error.code})`);
         } else {
-            errorMessage = `Firestore Error (${error.code}): Could not fetch content. Check console for details. Message: ${error.message}`;
+            // Catch-all for other Firestore errors
+            errorMessage = `Firestore Error (${error.code}): Could not fetch content. Message: ${error.message}`;
             console.error(`[getSiteContent] ${errorMessage}`);
         }
     } else if (error instanceof Error) {
-         errorMessage = `An unexpected error occurred fetching site content: ${error.message}`;
+         // Handle non-Firestore errors
+         errorMessage = `Unexpected Error: An unexpected error occurred fetching site content: ${error.message}`;
          console.error(`[getSiteContent] ${errorMessage}`);
     } else {
-        errorMessage = "An unknown error occurred fetching site content.";
+        // Handle unknown error types
+        errorMessage = "Unknown Error: An unknown error occurred fetching site content.";
         console.error(`[getSiteContent] ${errorMessage}`);
     }
-    // Return default content as a fallback on any error, including the error message
-    return { content: defaultContent, error: errorMessage };
+    // Return default content as a fallback on any error, including the specific error message
+    return { content: defaultContent, error: `Website Content: ${errorMessage}` };
   }
 }

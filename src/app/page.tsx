@@ -35,7 +35,7 @@ interface GalleryImage {
 // Flag to indicate if data fetching resulted in errors
 interface FetchResult<T> {
   data: T[];
-  error: string | null; // Generic error message
+  error: string | null; // Generic error message prefixed with context
 }
 
 
@@ -72,28 +72,28 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
   } catch (error) {
     console.error("[getUpcomingEvents] Error fetching upcoming events:", error);
     if (error instanceof FirestoreError) {
-      if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
-          errorMessage = "Offline: The server could not connect to Firestore to fetch upcoming events. Displaying fallback.";
-          console.warn(`[getUpcomingEvents] ${errorMessage}`);
-      } else if (error.code === 'failed-precondition') {
-          errorMessage = "Index Required: Firestore query for events requires a composite index. Please create it in the Firebase console.";
-          console.error(`[getUpcomingEvents] ${errorMessage}`);
-      } else if (error.code === 'permission-denied') {
-            errorMessage = `Permission Denied: Check Firestore rules for reading 'events' collection.`;
-            console.error(`[getUpcomingEvents] ${errorMessage}`);
-      } else {
-          errorMessage = `Firestore Error (${error.code}): Could not fetch events. Check console for details. Message: ${error.message}`;
-           console.error(`[getUpcomingEvents] ${errorMessage}`);
-      }
+       if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
+          errorMessage = "Offline: Could not connect to Firestore to fetch upcoming events.";
+          console.warn(`[getUpcomingEvents] ${errorMessage} (Code: ${error.code})`);
+       } else if (error.code === 'failed-precondition') {
+           errorMessage = "Index Required: Firestore query for events requires a composite index. Please create it in the Firebase console.";
+           console.error(`[getUpcomingEvents] ${errorMessage} (Code: ${error.code})`);
+       } else if (error.code === 'permission-denied') {
+           errorMessage = `Permission Denied: Check Firestore rules for reading 'events' collection.`;
+           console.error(`[getUpcomingEvents] ${errorMessage} (Code: ${error.code})`);
+       } else {
+           errorMessage = `Firestore Error (${error.code}): Could not fetch events.`;
+           console.error(`[getUpcomingEvents] ${errorMessage} Message: ${error.message}`);
+       }
     } else if (error instanceof Error) {
-       errorMessage = `An unexpected error occurred fetching events: ${error.message}`;
+       errorMessage = `Unexpected Error: ${error.message}`;
         console.error(`[getUpcomingEvents] ${errorMessage}`);
     } else {
-       errorMessage = "An unknown error occurred fetching events.";
+       errorMessage = "Unknown Error occurred fetching events.";
        console.error(`[getUpcomingEvents] ${errorMessage}`);
     }
-    // Return fallback data on error, including error message
-    return { data: [fallbackEvent], error: errorMessage };
+    // Return fallback data on error, including context-prefixed error message
+    return { data: [fallbackEvent], error: `Events: ${errorMessage}` };
   }
 }
 
@@ -119,7 +119,7 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
 
     if (querySnapshot.empty) {
       console.log("[getGalleryImages] No gallery images found in Firestore.");
-      return { data: [], error: null };
+      return { data: [], error: null }; // Return empty array if no images, but not an error
     }
 
     const images = querySnapshot.docs.map(doc => ({
@@ -133,27 +133,27 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
       console.error("[getGalleryImages] Error fetching gallery images from Firestore:", error);
       if (error instanceof FirestoreError) {
            if (error.code === 'failed-precondition') {
-                errorMessage = `Index Required: Firestore query for gallery requires an index on 'createdAt' descending. Please create it in the Firebase console.`;
-                 console.error(`[getGalleryImages] ${errorMessage}`);
+                errorMessage = `Index Required: Firestore query for gallery requires an index on 'createdAt' descending.`;
+                 console.error(`[getGalleryImages] ${errorMessage} (Code: ${error.code})`);
            } else if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
-               errorMessage = "Offline: The server could not connect to Firestore to fetch gallery images. Displaying fallbacks.";
-               console.warn(`[getGalleryImages] ${errorMessage}`);
+               errorMessage = "Offline: Could not connect to Firestore to fetch gallery images.";
+               console.warn(`[getGalleryImages] ${errorMessage} (Code: ${error.code})`);
            } else if (error.code === 'permission-denied') {
-                errorMessage = `Permission Denied: Check Firestore rules for reading 'gallery' collection. Public read might be needed.`;
-                console.error(`[getGalleryImages] ${errorMessage}`);
+                errorMessage = `Permission Denied: Check Firestore rules for reading 'gallery' collection.`;
+                console.error(`[getGalleryImages] ${errorMessage} (Code: ${error.code})`);
            } else {
-               errorMessage = `Firestore Error (${error.code}): Could not fetch gallery images. Check console for details. Message: ${error.message}`;
-               console.error(`[getGalleryImages] ${errorMessage}`);
+               errorMessage = `Firestore Error (${error.code}): Could not fetch gallery images.`;
+               console.error(`[getGalleryImages] ${errorMessage} Message: ${error.message}`);
            }
       } else if (error instanceof Error) {
-           errorMessage = `An unexpected error occurred fetching gallery images: ${error.message}`;
+           errorMessage = `Unexpected Error: ${error.message}`;
            console.error(`[getGalleryImages] ${errorMessage}`);
       } else {
-           errorMessage = "An unknown error occurred fetching gallery images.";
+           errorMessage = "Unknown Error occurred fetching gallery images.";
            console.error(`[getGalleryImages] ${errorMessage}`);
       }
-    // Return fallback data on error, including error message
-    return { data: fallbackImages, error: errorMessage };
+    // Return fallback data on error, including context-prefixed error message
+    return { data: fallbackImages, error: `Gallery: ${errorMessage}` };
   }
 }
 
@@ -164,11 +164,10 @@ export default async function Home() {
   const { data: upcomingEvents, error: eventsError } = await getUpcomingEvents();
   const { data: galleryImages, error: galleryError } = await getGalleryImages(); // Fetches metadata from Firestore
 
-  // Determine if any fetch resulted in an offline-like error
-  const isOffline = [contentError, eventsError, galleryError].some(e => e?.toLowerCase().includes('offline'));
   // Combine all non-null errors for a general error state check
   const fetchErrors = [contentError, eventsError, galleryError].filter((e): e is string => e !== null);
-
+  // Determine if *any* fetch resulted in an offline-like error
+  const isOffline = fetchErrors.some(e => e?.toLowerCase().includes('offline'));
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -185,13 +184,13 @@ export default async function Home() {
              <AlertTitle>{isOffline ? "Network Connectivity Issue" : "Data Loading Issue"}</AlertTitle>
              <AlertDescription>
                {isOffline
-                 ? "The server had trouble connecting to the database (possibly offline). Some content may be outdated or showing default values."
+                 ? "The server had trouble connecting to the database. Some content may be outdated or showing default values."
                  : "Could not load all site data due to server-side errors. Some sections might be showing default content."
                }
                {/* List specific errors concisely */}
                <ul className="list-disc list-inside mt-2 text-xs">
                  {fetchErrors.map((error, index) => (
-                   <li key={index}>{error}</li>
+                   <li key={index}>{error}</li> // Display prefixed errors
                  ))}
                </ul>
                Please try refreshing the page. If the problem persists, contact support.
@@ -216,12 +215,12 @@ export default async function Home() {
           <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-6 md:p-8">
               {/* Display content error specifically for this section if it occurred and is NOT an offline error */}
-              {contentError && !isOffline && (
+              {contentError && !contentError.toLowerCase().includes('offline') && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4"/>
                   <AlertTitle>Content Error</AlertTitle>
                   {/* Provide a clearer message indicating default text is shown */}
-                  <AlertDescription>Could not load the 'About' content due to a server error. Displaying default text. Error: {contentError}</AlertDescription>
+                  <AlertDescription>Could not load the 'About' content. Displaying default text. Error: {contentError}</AlertDescription>
                 </Alert>
               )}
               {/* Always display the 'about' content (either fetched or default) */}
@@ -236,11 +235,11 @@ export default async function Home() {
         <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events</h2>
           {/* Display specific warning if events failed, separate from global warning */}
-          {eventsError && !isOffline && ( // Show only if error is not the global offline one
+          {eventsError && !eventsError.toLowerCase().includes('offline') && ( // Show only if error is not the global offline one
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4"/>
               <AlertTitle>Events Unavailable</AlertTitle>
-              <AlertDescription>Could not load latest events due to a server error. Showing fallback data. Error: {eventsError}</AlertDescription>
+              <AlertDescription>Could not load latest events. Showing fallback data. Error: {eventsError}</AlertDescription>
             </Alert>
           )}
           {upcomingEvents.length === 0 && !eventsError ? ( // Show "No events" only if no error occurred
@@ -293,11 +292,11 @@ export default async function Home() {
         <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><ImageIcon className="w-8 h-8 text-accent"/>Event Gallery</h2>
             {/* Display specific warning if gallery failed, separate from global warning */}
-            {galleryError && !isOffline && (
+            {galleryError && !galleryError.toLowerCase().includes('offline') && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4"/>
                 <AlertTitle>Gallery Unavailable</AlertTitle>
-                <AlertDescription>Could not load gallery images due to a server error. Showing fallback data. Error: {galleryError}</AlertDescription>
+                <AlertDescription>Could not load gallery images. Showing fallback data. Error: {galleryError}</AlertDescription>
               </Alert>
             )}
             {galleryImages.length === 0 && !galleryError ? ( // Only show "empty" if no error
@@ -378,12 +377,12 @@ export default async function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
            <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
              <CardContent className="p-6 md:p-8 space-y-4">
-               {/* Display content error specifically for this section if it occurred */}
-              {contentError && !isOffline && (
+               {/* Display content error specifically for this section if it occurred and is NOT offline */}
+              {contentError && !contentError.toLowerCase().includes('offline') && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4"/>
                   <AlertTitle>Contact Details Error</AlertTitle>
-                  <AlertDescription>Could not load contact details due to a server error. Displaying defaults. Error: {contentError}</AlertDescription>
+                  <AlertDescription>Could not load contact details. Displaying defaults. Error: {contentError}</AlertDescription>
                 </Alert>
               )}
                <div className="flex items-center gap-3 group">
