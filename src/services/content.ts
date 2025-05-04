@@ -36,14 +36,14 @@ const defaultContent: SiteContent = {
 // Updated return type to include specific error message
 interface GetContentResult {
     content: SiteContent;
-    error: string | null; // Changed from offlineError to a string or null
+    error: string | null; // Error message as a simple string or null
 }
 
 
 /**
  * Fetches the site content from Firestore.
  * Returns default content if the document doesn't exist or on error.
- * Includes an error message if a fetch error occurred.
+ * Includes an error message string if a fetch error occurred.
  * @returns Promise<GetContentResult>
  */
 export async function getSiteContent(): Promise<GetContentResult> {
@@ -63,13 +63,13 @@ export async function getSiteContent(): Promise<GetContentResult> {
       console.warn("[getSiteContent] Site content document not found, returning default content.");
       // Document doesn't exist, not strictly an error, but could be logged
       errorMessage = "Configuration document not found. Using default content.";
-      return { content: defaultContent, error: `Website Content: ${errorMessage}` };
+      return { content: defaultContent, error: `Website Content: ${errorMessage}` }; // Return string error
     }
   } catch (error) {
     console.error("[getSiteContent] Error fetching site content:", error); // Log the full error object
-    // Provide a specific message based on the error type
+
+    // Determine the error message string
     if (error instanceof FirestoreError) {
-        // Check for codes that might indicate connectivity issues or API problems
         if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
            errorMessage = "Offline: The server could not connect to Firestore to fetch site content.";
            console.warn(`[getSiteContent] ${errorMessage} (Code: ${error.code})`);
@@ -77,20 +77,17 @@ export async function getSiteContent(): Promise<GetContentResult> {
             errorMessage = `Permission Denied: Check Firestore rules for reading '${CONTENT_COLLECTION}/${CONTENT_DOC_ID}'. Ensure Firestore API is enabled.`;
             console.error(`[getSiteContent] ${errorMessage} (Code: ${error.code})`);
         } else {
-            // Catch-all for other Firestore errors
-            errorMessage = `Firestore Error (${error.code}): Could not fetch content. Message: ${error.message}`;
-            console.error(`[getSiteContent] ${errorMessage}`);
+            errorMessage = `Firestore Error (${error.code}): Could not fetch content.`;
+            console.error(`[getSiteContent] Full Firestore error: ${error.message}`);
         }
     } else if (error instanceof Error) {
-         // Handle non-Firestore errors
          errorMessage = `Unexpected Error: An unexpected error occurred fetching site content: ${error.message}`;
          console.error(`[getSiteContent] ${errorMessage}`);
     } else {
-        // Handle unknown error types
         errorMessage = "Unknown Error: An unknown error occurred fetching site content.";
         console.error(`[getSiteContent] ${errorMessage}`);
     }
-    // Return default content as a fallback on any error, including the specific error message
+    // Return default content as a fallback on any error, including the specific string error message
     return { content: defaultContent, error: `Website Content: ${errorMessage}` };
   }
 }

@@ -35,7 +35,7 @@ interface GalleryImage {
 // Flag to indicate if data fetching resulted in errors
 interface FetchResult<T> {
   data: T[];
-  error: string | null; // Generic error message prefixed with context
+  error: string | null; // Error message as a simple string or null
 }
 
 
@@ -88,7 +88,7 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
            console.error(`[getUpcomingEvents] ${errorMessage} (Code: ${error.code})`);
        } else {
            errorMessage = `Firestore Error (${error.code}): Could not fetch events.`;
-           console.error(`[getUpcomingEvents] ${errorMessage} Message: ${error.message}`);
+           console.error(`[getUpcomingEvents] Full Firestore error: ${error.message}`);
        }
     } else if (error instanceof Error) {
        errorMessage = `Unexpected Error: ${error.message}`;
@@ -97,7 +97,7 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
        errorMessage = "Unknown Error occurred fetching events.";
        console.error(`[getUpcomingEvents] ${errorMessage}`);
     }
-    // Return fallback data on error, including context-prefixed error message
+    // Return fallback data on error, including context-prefixed string error message
     return { data: [fallbackEvent], error: `Events: ${errorMessage}` };
   }
 }
@@ -148,7 +148,7 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
                 console.error(`[getGalleryImages] ${errorMessage} (Code: ${error.code})`);
            } else {
                errorMessage = `Firestore Error (${error.code}): Could not fetch gallery images.`;
-               console.error(`[getGalleryImages] ${errorMessage} Message: ${error.message}`);
+               console.error(`[getGalleryImages] Full Firestore error: ${error.message}`);
            }
       } else if (error instanceof Error) {
            errorMessage = `Unexpected Error: ${error.message}`;
@@ -157,7 +157,7 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
            errorMessage = "Unknown Error occurred fetching gallery images.";
            console.error(`[getGalleryImages] ${errorMessage}`);
       }
-    // Return fallback data on error, including context-prefixed error message
+    // Return fallback data on error, including context-prefixed string error message
     return { data: fallbackImages, error: `Gallery: ${errorMessage}` };
   }
 }
@@ -173,10 +173,11 @@ export default async function Home() {
   console.log("[Home Page] Errors - Content:", contentError, "Events:", eventsError, "Gallery:", galleryError);
 
 
-  // Combine all non-null errors for a general error state check
+  // Combine all non-null error strings for a general error state check
   const fetchErrors = [contentError, eventsError, galleryError].filter((e): e is string => e !== null);
   // Determine if *any* fetch resulted in an offline-like error
   const isOffline = fetchErrors.some(e => e?.toLowerCase().includes('offline'));
+  // Check if there are errors other than offline errors
   const hasOtherErrors = fetchErrors.some(e => !e?.toLowerCase().includes('offline'));
 
   return (
@@ -187,20 +188,26 @@ export default async function Home() {
        {fetchErrors.length > 0 && (
          <div className="container mx-auto px-4 pt-4">
            <Alert
-             variant={isOffline ? "default" : "destructive"}
-             className={`${isOffline ? "border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400" : "" } animate-fade-in`}
+             variant={isOffline && !hasOtherErrors ? "default" : "destructive"} // Yellow for pure offline, red otherwise
+             className={`${isOffline && !hasOtherErrors ? "border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400" : "" } animate-fade-in`}
            >
              {isOffline ? <WifiOff className="h-4 w-4"/> : <ServerCrash className="h-4 w-4"/>}
-             <AlertTitle>{isOffline ? "Network Connectivity Issue" : "Data Loading Issue"}</AlertTitle>
+             <AlertTitle>
+                {isOffline && !hasOtherErrors ? "Network Connectivity Issue" :
+                 isOffline && hasOtherErrors ? "Network & Data Loading Issues" :
+                 "Data Loading Issue"}
+             </AlertTitle>
              <AlertDescription>
-               {isOffline
+               {isOffline && !hasOtherErrors
                  ? "The server had trouble connecting to the database. Some content may be outdated or showing default values."
-                 : "Could not load all site data due to server-side errors. Some sections might be showing default content."
+                 : hasOtherErrors
+                 ? "Could not load all site data due to server-side errors or network issues. Some sections might be showing default content."
+                 : "Could not load all site data due to server-side errors. Some sections might be showing default content." // Should not happen if isOffline is false, but for completeness
                }
                {/* List specific errors concisely */}
                <ul className="list-disc list-inside mt-2 text-xs max-h-32 overflow-y-auto">
                  {fetchErrors.map((error, index) => (
-                   <li key={index}>{error}</li> // Display prefixed errors
+                   <li key={index}>{error}</li> // Display prefixed string errors
                  ))}
                </ul>
                Please try refreshing the page. If the problem persists, contact support.
@@ -224,12 +231,12 @@ export default async function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold mb-6 text-primary flex items-center justify-center gap-2"><Globe className="w-8 h-8 text-accent"/>About Matrix</h2>
           <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-6 md:p-8">
-              {/* Display content error specifically for this section if it occurred and is NOT an offline error */}
+              {/* Display content error specifically if it occurred and is NOT the global offline one */}
               {contentError && !contentError.toLowerCase().includes('offline') && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4"/>
                   <AlertTitle>Content Error</AlertTitle>
-                  {/* Provide a clearer message indicating default text is shown */}
+                  {/* Use the string error directly */}
                   <AlertDescription>Could not load the 'About' content. Displaying default text. Error: {contentError}</AlertDescription>
                 </Alert>
               )}
@@ -400,11 +407,12 @@ export default async function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
            <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
              <CardContent className="p-6 md:p-8 space-y-4">
-               {/* Display content error specifically for this section if it occurred and is NOT offline */}
+               {/* Display content error specifically if it occurred and is NOT offline */}
               {contentError && !contentError.toLowerCase().includes('offline') && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4"/>
                   <AlertTitle>Contact Details Error</AlertTitle>
+                  {/* Use the string error directly */}
                   <AlertDescription>Could not load contact details. Displaying defaults. Error: {contentError}</AlertDescription>
                 </Alert>
               )}
