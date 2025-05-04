@@ -73,6 +73,8 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
 
   const eventsCollectionRef = collection(db, eventsCollectionName);
   const today = Timestamp.now();
+  console.log(`[getUpcomingEvents] Current Timestamp for query: ${today.toDate().toISOString()}`);
+
   const fallbackDate = new Date();
   fallbackDate.setDate(fallbackDate.getDate() + 7);
   // Fallback event to show *something* if fetch fails
@@ -88,29 +90,32 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
   try {
     // Query for events where the date is today or later, ordered by date, limit to 6
     const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6));
-    console.log(`[getUpcomingEvents] Executing getDocs query for upcoming events (date >= ${today.toDate().toISOString()})...`);
+    console.log(`[getUpcomingEvents] Executing Firestore query: collection='${eventsCollectionName}', where date >= ${today.toDate().toISOString()}, orderBy date asc, limit 6`);
     const querySnapshot = await getDocs(q);
-    console.log(`[getUpcomingEvents] getDocs completed. Found ${querySnapshot.size} upcoming events.`);
+    console.log(`[getUpcomingEvents] getDocs completed. Found ${querySnapshot.size} documents.`);
 
     if (querySnapshot.empty) {
-       console.log("[getUpcomingEvents] No upcoming events found matching the query criteria.");
-       return { data: [], error: null }; // Return empty array if no events, this is not an error state.
+       console.log("[getUpcomingEvents] No upcoming events found matching the query criteria. Returning empty array.");
+       // This is NOT an error state, just no matching events.
+       return { data: [], error: null };
     }
 
     const events = querySnapshot.docs.map(doc => {
       const data = doc.data();
-      console.log(`[getUpcomingEvents] Processing doc ID: ${doc.id}, Date: ${data.date?.toDate()}, Name: ${data.name}`);
+      const eventDate = data.date instanceof Timestamp ? data.date : null;
+      console.log(`[getUpcomingEvents] Processing doc ID: ${doc.id}, Name: ${data.name}, Date: ${eventDate ? eventDate.toDate().toISOString() : 'Invalid/Missing Date'}`);
       return {
         id: doc.id,
-        ...data,
+        name: data.name || 'Unnamed Event', // Fallback name
+        description: data.description || 'No description provided.', // Fallback description
         // Ensure date is a Timestamp; handle potential missing date field gracefully
-        date: data.date instanceof Timestamp ? data.date : Timestamp.fromDate(new Date()), // Fallback to now if date is invalid/missing
+        date: eventDate || Timestamp.now(), // Fallback to now if date is invalid/missing
         // Use stored imageURL or fallback placeholder
         imageURL: data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`,
       } as Event;
     });
 
-    console.log("[getUpcomingEvents] Successfully fetched and processed events:", events.map(e => ({ id: e.id, name: e.name, date: e.date.toDate() })));
+    console.log("[getUpcomingEvents] Successfully fetched and processed events:", events.map(e => ({ id: e.id, name: e.name, date: e.date.toDate().toISOString() })));
     return { data: events, error: null };
   } catch (error) {
     console.error(`[getUpcomingEvents] Error during Firestore query:`, error); // Log the full error object
@@ -175,7 +180,7 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImageMetadata>> {
   try {
     // Make sure Firestore rules allow public read on 'gallery' collection
     const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12));
-    console.log(`[getGalleryImages] Executing getDocs query...`);
+    console.log(`[getGalleryImages] Executing getDocs query for '${galleryCollectionName}' ordered by createdAt desc, limit 12...`);
     const querySnapshot = await getDocs(q);
     console.log(`[getGalleryImages] getDocs completed. Fetched ${querySnapshot.size} gallery images.`);
 
@@ -238,7 +243,7 @@ export default async function Home() {
      getUpcomingEvents(),
      getGalleryImages()
   ]);
-  console.log("[Home Page] Data fetch completed. Results:", results);
+  console.log("[Home Page] Data fetch completed. Results:", JSON.stringify(results, null, 2)); // Log full results for inspection
 
   // Process results, providing defaults and capturing errors
   const siteContentResult = results[0].status === 'fulfilled'
@@ -268,6 +273,9 @@ export default async function Home() {
    // Check if there are errors other than offline errors (like permissions, index needed etc.)
    const hasOtherErrors = fetchErrors.some(e => !(e?.toLowerCase().includes('offline') || e?.toLowerCase().includes('unavailable') || e?.toLowerCase().includes('network error') || e?.toLowerCase().includes('client is offline')));
    console.log(`[Home Page] Offline state: ${isOffline}, Other errors present: ${hasOtherErrors}`);
+   console.log(`[Home Page] Number of upcoming events to display: ${upcomingEvents.length}`);
+   console.log(`[Home Page] Upcoming events data:`, JSON.stringify(upcomingEvents.map(e => ({id: e.id, name: e.name, date: e.date.toDate().toISOString()})), null, 2));
+
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -341,68 +349,72 @@ export default async function Home() {
 
         {/* Upcoming Events Section */}
         <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-          <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events</h2>
-          {/* Display specific warning if events failed and it's NOT a global offline error */}
-          {eventsResult.error && !isOffline && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4"/>
-              <AlertTitle>Events Unavailable</AlertTitle>
-              <AlertDescription>Could not load latest events. Displaying fallback data. Error: {eventsResult.error}</AlertDescription>
-            </Alert>
-          )}
-          {/* Improved Logic: Show message if EITHER empty AND no error, OR if there IS an error (regardless of emptiness) */}
-          {upcomingEvents.length === 0 && !eventsResult.error ? (
-              // Case 1: Successfully fetched but no upcoming events found
-              <Card>
-                  <CardContent className="p-6 text-center text-muted-foreground">
-                      No upcoming events scheduled yet. Check back soon!
-                  </CardContent>
-              </Card>
-           ) : eventsResult.error ? (
-              // Case 2: Error occurred during fetch (show fallback/error message)
-              <Card>
-                  <CardContent className="p-6 text-center text-muted-foreground">
-                      {isOffline
-                          ? "Events couldn't be loaded due to network issues. Please check back later."
-                          : `Could not load events due to an error. Showing fallback data if available. Error: ${eventsResult.error}`}
-                  </CardContent>
-              </Card>
-          ) : (
-              // Case 3: Successfully fetched events (render the grid)
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                 {upcomingEvents.map((event, index) => (
-                   <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
-                     <div className="relative h-48 w-full overflow-hidden group">
-                       {/* Use the EventImage client component */}
-                       <EventImage
-                         src={event.imageURL}
-                         alt={event.name}
-                         eventId={event.id}
-                         priority={index < 3}
-                       />
-                     </div>
-                     <CardHeader>
-                       <CardTitle className="text-xl">{event.name}</CardTitle>
-                       {/* Safely format date, provide fallback if date is invalid */}
-                       <CardDescription>
-                         {event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available'}
-                       </CardDescription>
-                     </CardHeader>
-                     <CardContent className="flex-grow">
-                       <p className="text-foreground/80 line-clamp-3">{event.description}</p> {/* Use line-clamp */}
-                     </CardContent>
-                     <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
-                       <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
-                       {/* Maybe link to event details if available */}
-                       <Button variant="link" size="sm" disabled className="text-primary/80 hover:text-primary">
-                         Learn More <span aria-hidden="true" className="ml-1">→</span>
-                       </Button>
-                     </CardFooter>
-                   </Card>
-                 ))}
+           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events</h2>
+
+           {/* Display specific warning if events failed and it's NOT a global offline error */}
+           {eventsResult.error && !isOffline && (
+               <Alert variant="destructive" className="mb-4">
+                   <AlertCircle className="h-4 w-4"/>
+                   <AlertTitle>Events Unavailable</AlertTitle>
+                   <AlertDescription>Could not load latest events. Showing fallback data. Error: {eventsResult.error}</AlertDescription>
+               </Alert>
+           )}
+
+           {/* Improved Logic for displaying events or messages */}
+           {upcomingEvents.length === 0 ? (
+               // Case 1: No upcoming events found OR an error occurred (which might have resulted in empty fallback)
+               <Card>
+                   <CardContent className="p-6 text-center text-muted-foreground">
+                       {eventsResult.error
+                           ? (isOffline
+                               ? "Events couldn't be loaded due to network issues. Please check back later."
+                               : `Could not load events due to an error: ${eventsResult.error}. Fallback event data may be shown if available.`)
+                           : "No upcoming events scheduled yet. Check back soon!"
+                       }
+                       {/* Optionally show the fallback event if there was an error and fallback exists */}
+                       {eventsResult.error && upcomingEvents.length > 0 && upcomingEvents[0].id === 'fallback1' && (
+                           <div className="mt-4 border-t pt-4">
+                               <h4 className="font-semibold text-foreground">Placeholder Event:</h4>
+                               <p>{upcomingEvents[0].name}</p>
+                               <p className="text-sm">{upcomingEvents[0].description}</p>
+                               <p className="text-xs text-muted-foreground">Date: {upcomingEvents[0].date.toDate().toLocaleDateString()}</p>
+                           </div>
+                       )}
+                   </CardContent>
+               </Card>
+           ) : (
+               // Case 2: Successfully fetched events (render the grid)
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                   {upcomingEvents.map((event, index) => (
+                       <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
+                           <div className="relative h-48 w-full overflow-hidden group">
+                               <EventImage
+                                   src={event.imageURL}
+                                   alt={event.name}
+                                   eventId={event.id}
+                                   priority={index < 3}
+                               />
+                           </div>
+                           <CardHeader>
+                               <CardTitle className="text-xl">{event.name}</CardTitle>
+                               <CardDescription>
+                                   {event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available'}
+                               </CardDescription>
+                           </CardHeader>
+                           <CardContent className="flex-grow">
+                               <p className="text-foreground/80 line-clamp-3">{event.description}</p>
+                           </CardContent>
+                           <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
+                               <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
+                               <Button variant="link" size="sm" disabled className="text-primary/80 hover:text-primary">
+                                   Learn More <span aria-hidden="true" className="ml-1">→</span>
+                               </Button>
+                           </CardFooter>
+                       </Card>
+                   ))}
                </div>
-          )}
-        </section>
+           )}
+       </section>
 
 
         <Separator />
@@ -445,12 +457,29 @@ export default async function Home() {
                   })}
                 </div>
              ) : (
-                 // Fallback if length is somehow 0 despite error logic
-                 <Card>
-                     <CardContent className="p-6 text-center text-muted-foreground">
-                         Loading gallery or an unexpected issue occurred.
-                     </CardContent>
-                 </Card>
+                 // Fallback if length is somehow 0 despite error logic (e.g., error occurred but fallback is also empty)
+                  <Card>
+                      <CardContent className="p-6 text-center text-muted-foreground">
+                          {galleryResult.error
+                              ? `Could not load gallery images due to an error: ${galleryResult.error}. Fallback data may be shown.`
+                              : "Loading gallery or an unexpected issue occurred."
+                          }
+                           {/* Optional: Display fallback images if error and fallback exists */}
+                           {galleryResult.error && galleryImages.length > 0 && galleryImages[0].id.startsWith('g') && ( // Check if it's likely fallback data
+                               <div className="mt-4 border-t pt-4 grid grid-cols-gallery gap-4">
+                                   <h4 className="col-span-full font-semibold text-foreground">Placeholder Gallery Images:</h4>
+                                   {galleryImages.map((img, idx) => (
+                                       <div key={idx} className="relative aspect-[3/2]">
+                                            <GalleryImage src={img.url} alt={img.name} imageId={img.id} loading="lazy"/>
+                                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1 text-white text-xs truncate pointer-events-none">
+                                                 {img.name} (Placeholder)
+                                             </div>
+                                       </div>
+                                   ))}
+                               </div>
+                           )}
+                      </CardContent>
+                  </Card>
              )}
         </section>
 
@@ -524,3 +553,4 @@ export default async function Home() {
   );
 }
 
+    
