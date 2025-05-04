@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -58,80 +57,106 @@ export function UpcomingEventsSection() {
 
   useEffect(() => {
     const fetchEvents = async () => {
+      console.log("[UpcomingEvents] Fetch effect started.");
       setLoading(true);
       setFetchError(null);
       setIsOffline(false); // Assume online initially
 
       if (!db) {
+        console.error("[UpcomingEvents] Database instance is not available.");
         setFetchError("Database not initialized.");
         setLoading(false);
+        setUpcomingEvents(fallbackEvents); // Use fallback if DB missing
         return;
       }
+      console.log("[UpcomingEvents] Database instance found.");
 
       const eventsCollectionRef = collection(db, eventsCollectionName);
       let errorMessage: string | null = null;
 
       try {
         const now = new Date();
+        // Start of today, considering local timezone for comparison if dates are entered locally
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const todayTimestamp = Timestamp.fromDate(startOfToday);
+        console.log(`[UpcomingEvents] Fetching events on or after: ${startOfToday.toISOString()} (Timestamp: ${todayTimestamp.seconds})`);
 
-        const q = query(eventsCollectionRef, where("date", ">=", todayTimestamp), orderBy("date", "asc"), limit(6));
+        // The query definition
+        const q = query(
+          eventsCollectionRef,
+          where("date", ">=", todayTimestamp),
+          orderBy("date", "asc"),
+          limit(6)
+        );
+
         console.log(`[UpcomingEvents] Executing getDocs query for '${eventsCollectionName}'...`);
         const querySnapshot = await getDocs(q);
-        console.log(`[UpcomingEvents] Fetched ${querySnapshot.size} events.`);
+        console.log(`[UpcomingEvents] Query completed. Fetched ${querySnapshot.size} documents.`);
 
         if (querySnapshot.empty) {
-          console.log("[UpcomingEvents] No upcoming events found.");
-          setUpcomingEvents([]); // Ensure state is empty
+          console.log("[UpcomingEvents] No upcoming events found matching the query.");
+          setUpcomingEvents([]); // Ensure state is empty if no events found
         } else {
           const events: Event[] = querySnapshot.docs.map(doc => {
             const data = doc.data();
+            // Basic validation for required fields
+             const eventDate = data.date instanceof Timestamp ? data.date : Timestamp.now(); // Fallback date if missing/invalid
+             const eventName = data.name || 'Unnamed Event';
+             const eventDesc = data.description || 'No description available.';
+             const eventImage = data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`;
+
+            console.log(`[UpcomingEvents] Mapping doc ${doc.id}: Name=${eventName}, Date=${eventDate.toDate().toISOString()}`);
+
             return {
               id: doc.id,
-              name: data.name || 'Unnamed Event',
-              description: data.description || 'No description provided.',
-              date: data.date as Timestamp, // Assume date exists and is correct type
-              // Use placeholder if imageURL is missing or empty
-              imageURL: data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`,
-              createdAt: data.createdAt as Timestamp, // Keep timestamp if available
+              name: eventName,
+              description: eventDesc,
+              date: eventDate,
+              imageURL: eventImage,
+              createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined,
             };
           });
+          console.log("[UpcomingEvents] Successfully mapped documents to events array:", events);
           setUpcomingEvents(events);
         }
       } catch (error) {
-         console.error(`[UpcomingEvents] Error fetching events:`, error);
-          if (isOfflineError(error)) {
-             errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch events (${(error as FirestoreError)?.code}). Using fallback data.`;
-             console.warn(`[UpcomingEvents] ${errorMessage}`);
-             setIsOffline(true); // Set offline state
+         console.error(`[UpcomingEvents] Error fetching events:`, error); // Log the raw error
+         const isOfflineErr = isOfflineError(error);
+         setIsOffline(isOfflineErr); // Set offline state based on helper
+
+         if (isOfflineErr) {
+              errorMessage = `Network Issue: Could not connect to fetch events (${(error as FirestoreError)?.code}).`;
+              console.warn(`[UpcomingEvents] ${errorMessage}`);
           } else if (error instanceof FirestoreError) {
              if (error.code === 'permission-denied') {
                  errorMessage = `Permission Denied: Could not read collection '${eventsCollectionName}'. Check Firestore rules.`;
                  console.error(`[UpcomingEvents] CRITICAL: ${errorMessage}`);
              } else if (error.code === 'failed-precondition') {
-                  errorMessage = `Index Required: Firestore query needs an index (date >=, date asc). Create it in Firebase. Using fallback data.`;
+                  // This error usually means an index is missing
+                  errorMessage = `Index Required: Firestore query needs a composite index on 'date >=, date asc'. Create it in the Firebase console. Link in console error details.`;
                  console.error(`[UpcomingEvents] ACTION NEEDED: ${errorMessage}`);
              } else {
-                 errorMessage = `Firestore Error (${error.code}): ${error.message}. Using fallback data.`;
-             }
-          } else if (error instanceof Error) {
-                errorMessage = `Unexpected Error: ${error.message}. Using fallback data.`;
-                console.error(`[UpcomingEvents] Unexpected Error: ${errorMessage}`);
-          } else {
-                errorMessage = `Unknown Error: An unknown error occurred fetching events. Using fallback data.`;
+                 // Catch other specific Firestore errors
+                 errorMessage = `Firestore Error (${error.code}): ${error.message}.`;
                  console.error(`[UpcomingEvents] ${errorMessage}`);
+             }
+          } else {
+             // Catch generic errors
+             errorMessage = `Unexpected Error: ${error instanceof Error ? error.message : String(error)}.`;
+             console.error(`[UpcomingEvents] ${errorMessage}`);
           }
         setFetchError(errorMessage);
-        setUpcomingEvents(fallbackEvents); // Use fallback on error
+        console.warn("[UpcomingEvents] Setting fallback event data due to error.");
+        setUpcomingEvents(fallbackEvents); // Use fallback on any error
       } finally {
+        console.log("[UpcomingEvents] Fetch process finished. Setting loading to false.");
         setLoading(false);
       }
     };
 
     fetchEvents();
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db]); // Depend on db instance
+  }, [db]); // Rerun only if db instance changes
 
    // Generate unique IDs for DialogTitle and DialogDescription
   const getModalTitleId = (eventId: string) => `event-modal-title-${eventId}`;
@@ -156,29 +181,29 @@ export function UpcomingEventsSection() {
                <AlertTitle>{isOffline ? "Network Issue" : "Events Unavailable"}</AlertTitle>
                <AlertDescription>
                   {fetchError} {!isOffline && "Showing fallback events."}
-                  {isOffline && "Showing fallback events. Functionality may be limited."}
+                  {isOffline && "Showing fallback events or list may be empty."}
              </AlertDescription>
           </Alert>
       )}
 
 
-       {/* Empty State (Only show if not loading and no error resulted in fallback) */}
-       {!loading && upcomingEvents.length === 0 && !(fetchError && fallbackEvents.length > 0) && (
+       {/* Empty State (Show if not loading AND no events were fetched/set, including after an error that didn't result in fallback) */}
+       {!loading && upcomingEvents.length === 0 && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
-            No upcoming events scheduled yet. Check back soon!
+             {fetchError ? "Could not load events." : "No upcoming events scheduled yet. Check back soon!"}
           </CardContent>
         </Card>
       )}
 
-      {/* Events Grid */}
+      {/* Events Grid (Show if not loading AND there are events - either fetched or fallback) */}
       {!loading && upcomingEvents.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {upcomingEvents.map((event, index) => {
             const modalTitleId = getModalTitleId(event.id); // Generate ID for title
             const modalDescriptionId = getModalDescriptionId(event.id); // Generate ID for description
-            const eventDateString = event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available';
-            const eventLongDateString = event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available';
+            const eventDateString = event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date unknown';
+            const eventLongDateString = event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Date unknown';
             return (
               <Dialog key={event.id}>
                 <DialogTrigger asChild>
@@ -260,4 +285,3 @@ export function UpcomingEventsSection() {
     </section>
   );
 }
-
