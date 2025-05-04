@@ -92,6 +92,7 @@ export function UpcomingEventsSection() {
               name: data.name || 'Unnamed Event',
               description: data.description || 'No description provided.',
               date: data.date as Timestamp, // Assume date exists and is correct type
+              // Use placeholder if imageURL is missing or empty
               imageURL: data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`,
               createdAt: data.createdAt as Timestamp, // Keep timestamp if available
             };
@@ -128,8 +129,10 @@ export function UpcomingEventsSection() {
      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db]);
 
+  // Generate unique IDs for DialogTitle and DialogDescription
   const getModalTitleId = (eventId: string) => `event-modal-title-${eventId}`;
   const getModalDescriptionId = (eventId: string) => `event-modal-description-${eventId}`;
+
 
   return (
     <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
@@ -168,8 +171,8 @@ export function UpcomingEventsSection() {
       {!loading && upcomingEvents.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {upcomingEvents.map((event, index) => {
-            const modalTitleId = getModalTitleId(event.id);
-            const modalDescriptionId = getModalDescriptionId(event.id);
+            const modalTitleId = getModalTitleId(event.id); // Generate ID for title
+            const modalDescriptionId = getModalDescriptionId(event.id); // Generate ID for description
             const eventDateString = event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available';
             const eventLongDateString = event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available';
             return (
@@ -203,14 +206,14 @@ export function UpcomingEventsSection() {
                 </Card>
                  <DialogContent
                       className="sm:max-w-[600px] p-0"
-                      aria-labelledby={modalTitleId}
-                      aria-describedby={modalDescriptionId} // Add aria-describedby
+                      aria-labelledby={modalTitleId} // Link title for accessibility
+                      aria-describedby={modalDescriptionId} // Link description for accessibility
                  >
-                     {/* Removed sr-only from header, added to title/desc individually */}
+                     {/* Add DialogHeader with DialogTitle and DialogDescription */}
                      <DialogHeader className="p-4 sm:p-6 border-b">
                        <DialogTitle id={modalTitleId} className="text-2xl font-semibold">{event.name}</DialogTitle>
                        <DialogDescription id={modalDescriptionId} className="text-muted-foreground mt-1">
-                          {eventLongDateString}
+                          {eventLongDateString} {/* Using date as description */}
                        </DialogDescription>
                      </DialogHeader>
                      <div className="p-4 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto">
@@ -224,9 +227,13 @@ export function UpcomingEventsSection() {
                                     className="object-cover"
                                     onError={(e) => {
                                       console.warn(`Modal Event Image Load Error: ${event.imageURL}`);
-                                      e.currentTarget.src = `https://picsum.photos/seed/${event.id}/600/338`; // Fallback
+                                      const fallbackSrc = `https://picsum.photos/seed/${event.id}/600/338`; // Fallback URL
+                                       // Check if currentTarget exists before modifying
+                                       if (e.currentTarget && typeof e.currentTarget.src === 'string') {
+                                           e.currentTarget.src = fallbackSrc;
+                                       }
                                       e.currentTarget.alt = `${event.name} (Fallback Image)`;
-                                       e.currentTarget.onerror = null;
+                                      e.currentTarget.onerror = null;
                                     }}
                                     unoptimized={!event.imageURL?.startsWith('/')}
                                 />
