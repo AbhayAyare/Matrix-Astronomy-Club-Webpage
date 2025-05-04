@@ -42,13 +42,18 @@ interface GetContentResult {
 
 // Helper function to check for offline errors (more robust check)
 function isFirestoreOfflineError(error: any): boolean {
+  const message = String(error?.message ?? '').toLowerCase();
   if (error instanceof FirestoreError) {
     return error.code === 'unavailable' ||
-           error.message?.toLowerCase().includes('offline') || // Check message content
-           error.message?.toLowerCase().includes('failed to get document because the client is offline');
+           message.includes('offline') || // Check message content
+           message.includes('failed to get document because the client is offline');
   }
   // Also check for generic network errors if possible, though FirestoreError is primary
-  return error instanceof Error && error.message?.toLowerCase().includes('network error');
+  return error instanceof Error && (
+      message.includes('network error') ||
+      message.includes('client is offline') ||
+      message.includes('could not reach cloud firestore backend')
+  );
 }
 
 
@@ -108,8 +113,14 @@ export async function getSiteContent(): Promise<GetContentResult> {
             console.error(`[getSiteContent] Full Firestore error: ${error.message}`);
         }
     } else if (error instanceof Error) {
-         errorMessage = `Unexpected Error: An unexpected error occurred fetching site content: ${error.message}`;
-         console.error(`[getSiteContent] ${errorMessage}`);
+         // Check again for offline messages within the generic Error type
+         if (isFirestoreOfflineError(error)) {
+             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch events. ${error.message}`;
+             console.warn(`[getSiteContent] Offline detected via generic error: ${errorMessage}`);
+         } else {
+             errorMessage = `Unexpected Error: An unexpected error occurred fetching site content: ${error.message}`;
+             console.error(`[getSiteContent] ${errorMessage}`);
+         }
     } else {
         errorMessage = "Unknown Error: An unknown error occurred fetching site content.";
         console.error(`[getSiteContent] ${errorMessage}`);

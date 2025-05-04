@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Globe, CalendarDays, ImageIcon as ImageIconIcon, UserPlus, Mail, Phone, MapPin, WifiOff, AlertCircle, ServerCrash } from 'lucide-react'; // Renamed Image import
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { getSiteContent, SiteContent, defaultContent as defaultSiteContent } from '@/services/content'; // Import defaultContent
+import { getSiteContent, SiteContent, defaultContent } from '@/services/content'; // Import defaultContent
 // Firestore imports for events and gallery metadata
 import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError, limit } from 'firebase/firestore';
 import { db } from '@/config/firebase'; // Only need db
@@ -42,15 +42,20 @@ interface FetchResult<T> {
 }
 
 // Helper function to check for offline errors (more robust check)
-function isFirestoreOfflineError(error: any): boolean {
+function isOfflineError(error: any): boolean {
+  const message = String(error?.message ?? '').toLowerCase();
   if (error instanceof FirestoreError) {
     return error.code === 'unavailable' ||
-           error.message?.toLowerCase().includes('offline') || // Check message content
-           error.message?.toLowerCase().includes('failed to get document because the client is offline') ||
-           error.message?.toLowerCase().includes('could not reach cloud firestore backend');
+           message.includes('offline') || // Check message content
+           message.includes('failed to get document because the client is offline') ||
+           message.includes('could not reach cloud firestore backend');
   }
   // Also check for generic network errors if possible, though FirestoreError is primary
-  return error instanceof Error && error.message?.toLowerCase().includes('network error');
+  return error instanceof Error && (
+      message.includes('network error') ||
+      message.includes('client is offline') ||
+      message.includes('could not reach cloud firestore backend')
+  );
 }
 
 
@@ -104,8 +109,8 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
   } catch (error) {
     console.error("[getUpcomingEvents] Error during Firestore query:", error); // Log the full error object
 
-    if (isFirestoreOfflineError(error)) {
-        errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch upcoming events (${(error as FirestoreError).code}).`;
+    if (isOfflineError(error)) {
+        errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch upcoming events (${(error as FirestoreError)?.code}).`;
         console.warn(`[getUpcomingEvents] ${errorMessage}`);
     } else if (error instanceof FirestoreError) {
          if (error.code === 'failed-precondition') {
@@ -119,8 +124,14 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
              console.error(`[getUpcomingEvents] Full Firestore error: ${error.message}`);
          }
     } else if (error instanceof Error) {
-       errorMessage = `Unexpected Error: ${error.message}`;
-        console.error(`[getUpcomingEvents] ${errorMessage}`);
+       // Check again for offline messages within the generic Error type
+         if (isOfflineError(error)) {
+             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch events. ${error.message}`;
+             console.warn(`[getUpcomingEvents] Offline detected via generic error: ${errorMessage}`);
+         } else {
+             errorMessage = `Unexpected Error: ${error.message}`;
+             console.error(`[getUpcomingEvents] ${errorMessage}`);
+         }
     } else {
        errorMessage = "Unknown Error occurred fetching events.";
        console.error(`[getUpcomingEvents] ${errorMessage}`);
@@ -177,8 +188,8 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImageMetadata>> {
   } catch (error) {
       console.error("[getGalleryImages] Error during Firestore query:", error); // Log full error object
 
-       if (isFirestoreOfflineError(error)) {
-         errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch gallery images (${(error as FirestoreError).code}).`;
+       if (isOfflineError(error)) {
+         errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch gallery images (${(error as FirestoreError)?.code}).`;
          console.warn(`[getGalleryImages] ${errorMessage}`);
       } else if (error instanceof FirestoreError) {
            if (error.code === 'failed-precondition') {
@@ -192,8 +203,14 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImageMetadata>> {
                console.error(`[getGalleryImages] Full Firestore error: ${error.message}`);
            }
       } else if (error instanceof Error) {
-           errorMessage = `Unexpected Error: ${error.message}`;
-           console.error(`[getGalleryImages] ${errorMessage}`);
+          // Check again for offline messages within the generic Error type
+         if (isOfflineError(error)) {
+             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch gallery. ${error.message}`;
+             console.warn(`[getGalleryImages] Offline detected via generic error: ${errorMessage}`);
+         } else {
+              errorMessage = `Unexpected Error: ${error.message}`;
+              console.error(`[getGalleryImages] ${errorMessage}`);
+         }
       } else {
            errorMessage = "Unknown Error occurred fetching gallery images.";
            console.error(`[getGalleryImages] ${errorMessage}`);
@@ -216,9 +233,9 @@ export default async function Home() {
   ]);
   console.log("[Home Page] Data fetch completed. Results:", results);
 
-  const siteContentResult = results[0].status === 'fulfilled' ? results[0].value : { content: defaultSiteContent, error: `Website Content: Failed - ${results[0].reason}` };
-  const eventsResult = results[1].status === 'fulfilled' ? results[1].value : { data: [], error: `Events: Failed - ${results[1].reason}` };
-  const galleryResult = results[2].status === 'fulfilled' ? results[2].value : { data: [], error: `Gallery: Failed - ${results[2].reason}` };
+  const siteContentResult = results[0].status === 'fulfilled' ? results[0].value : { content: defaultContent, error: `Website Content: Failed - ${String(results[0].reason)}` };
+  const eventsResult = results[1].status === 'fulfilled' ? results[1].value : { data: [], error: `Events: Failed - ${String(results[1].reason)}` };
+  const galleryResult = results[2].status === 'fulfilled' ? results[2].value : { data: [], error: `Gallery: Failed - ${String(results[2].reason)}` };
 
    // Extract data and errors
    const siteContent = siteContentResult.content;
@@ -229,10 +246,10 @@ export default async function Home() {
    const fetchErrors = [siteContentResult.error, eventsResult.error, galleryResult.error].filter((e): e is string => e !== null);
    console.log("[Home Page] Combined Fetch Errors:", fetchErrors);
 
-   // Determine if *any* fetch resulted in an offline-like error
-   const isOffline = fetchErrors.some(e => e?.toLowerCase().includes('offline') || e?.toLowerCase().includes('unavailable'));
+   // Determine if *any* fetch resulted in an offline-like error by checking error messages
+   const isOffline = fetchErrors.some(e => e?.toLowerCase().includes('offline') || e?.toLowerCase().includes('unavailable') || e?.toLowerCase().includes('network error'));
    // Check if there are errors other than offline errors
-   const hasOtherErrors = fetchErrors.some(e => !(e?.toLowerCase().includes('offline') || e?.toLowerCase().includes('unavailable')));
+   const hasOtherErrors = fetchErrors.some(e => !(e?.toLowerCase().includes('offline') || e?.toLowerCase().includes('unavailable') || e?.toLowerCase().includes('network error')));
    console.log(`[Home Page] Offline state: ${isOffline}, Other errors present: ${hasOtherErrors}`);
 
   return (
@@ -256,8 +273,8 @@ export default async function Home() {
                {isOffline && !hasOtherErrors
                  ? "The server may be experiencing temporary network issues connecting to the database. Some content might be outdated or showing defaults."
                  : hasOtherErrors
-                 ? "Could not load all site data due to server-side errors or network issues. Some sections might be showing default content."
-                 : "Could not load all site data due to server-side errors. Some sections might be showing default content." // Fallback case
+                 ? "Could not load all site data due to server-side errors or network issues. Some sections might be showing default content or fallbacks."
+                 : "Could not load all site data due to server-side errors. Some sections might be showing default content or fallbacks." // Fallback case
                }
                {/* List specific errors concisely */}
                <ul className="list-disc list-inside mt-2 text-xs max-h-32 overflow-y-auto">
