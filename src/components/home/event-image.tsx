@@ -25,7 +25,10 @@ export function EventImage({ src, alt, eventId, priority }: EventImageProps) {
       priority={priority}
       onError={(e) => {
         console.warn(`[Event Image] Failed to load: ${src}. Falling back to placeholder.`);
-        e.currentTarget.src = fallbackSrc; // Fallback placeholder
+         // Check if currentTarget exists and has a src property before modifying
+        if (e.currentTarget && typeof e.currentTarget.src === 'string') {
+            e.currentTarget.src = fallbackSrc; // Fallback placeholder
+        }
         e.currentTarget.onerror = null; // Prevent infinite loop if fallback also fails
       }}
       unoptimized={!imageUrl.startsWith('/')} // Disable optimization for external URLs or placeholders
