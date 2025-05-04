@@ -75,6 +75,7 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
   const today = Timestamp.now();
   const fallbackDate = new Date();
   fallbackDate.setDate(fallbackDate.getDate() + 7);
+  // Fallback event to show *something* if fetch fails
   const fallbackEvent: Event = {
     id: 'fallback1',
     name: 'Deep Sky Observation Night (Fallback)',
@@ -85,66 +86,66 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
   let errorMessage: string | null = null;
 
   try {
-    // Ensure the query includes ordering by date to get upcoming events first
+    // Query for events where the date is today or later, ordered by date, limit to 6
     const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6));
-    console.log("[getUpcomingEvents] Firestore Query:", q); // Log the query object
-    console.log(`[getUpcomingEvents] Executing getDocs query...`);
+    console.log(`[getUpcomingEvents] Executing getDocs query for upcoming events (date >= ${today.toDate().toISOString()})...`);
     const querySnapshot = await getDocs(q);
-    console.log(`[getUpcomingEvents] getDocs completed. Fetched ${querySnapshot.size} upcoming events.`);
+    console.log(`[getUpcomingEvents] getDocs completed. Found ${querySnapshot.size} upcoming events.`);
 
     if (querySnapshot.empty) {
-       console.log("[getUpcomingEvents] No upcoming events found matching the query.");
-       return { data: [], error: null }; // Return empty array if no events, but not an error
+       console.log("[getUpcomingEvents] No upcoming events found matching the query criteria.");
+       return { data: [], error: null }; // Return empty array if no events, this is not an error state.
     }
 
-
     const events = querySnapshot.docs.map(doc => {
-      console.log(`[getUpcomingEvents] Processing doc ID: ${doc.id}, Data:`, doc.data()); // Log each doc
+      const data = doc.data();
+      console.log(`[getUpcomingEvents] Processing doc ID: ${doc.id}, Date: ${data.date?.toDate()}, Name: ${data.name}`);
       return {
         id: doc.id,
-        ...doc.data(),
-        // Ensure date is a Timestamp
-        date: doc.data().date as Timestamp,
-        // Use stored imageURL or fallback
-        imageURL: doc.data().imageURL || `https://picsum.photos/seed/${doc.id}/400/250`,
+        ...data,
+        // Ensure date is a Timestamp; handle potential missing date field gracefully
+        date: data.date instanceof Timestamp ? data.date : Timestamp.fromDate(new Date()), // Fallback to now if date is invalid/missing
+        // Use stored imageURL or fallback placeholder
+        imageURL: data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`,
       } as Event;
     });
 
-    console.log("[getUpcomingEvents] Successfully fetched and processed events:", events);
+    console.log("[getUpcomingEvents] Successfully fetched and processed events:", events.map(e => ({ id: e.id, name: e.name, date: e.date.toDate() })));
     return { data: events, error: null };
   } catch (error) {
     console.error(`[getUpcomingEvents] Error during Firestore query:`, error); // Log the full error object
 
     if (isOfflineError(error)) {
-        errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch upcoming events (${(error as FirestoreError)?.code}).`;
+        errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch upcoming events (${(error as FirestoreError)?.code}). Using fallback data.`;
         console.warn(`[getUpcomingEvents] ${errorMessage}`);
     } else if (error instanceof FirestoreError) {
          if (error.code === 'permission-denied') {
-             errorMessage = `Permission Denied: Could not read collection '${eventsCollectionName}'. Check Firestore rules (ensure public read or authenticated read as needed). Ensure API is enabled.`;
-             console.error(`[getUpcomingEvents] ${errorMessage}`);
+             // THIS IS A CRITICAL ERROR - Check Firestore Rules in Firebase Console
+             errorMessage = `Permission Denied: Could not read collection '${eventsCollectionName}'. Check Firestore rules allow public read (e.g., 'allow read: if true;'). Ensure the Cloud Firestore API is enabled for your project: https://console.cloud.google.com/apis/library/firestore.googleapis.com`;
+             console.error(`[getUpcomingEvents] CRITICAL: ${errorMessage}`);
          } else if (error.code === 'failed-precondition') {
-             errorMessage = `Index Required: Firestore query for events requires a composite index (date >=, date asc). Please create it in the Firebase console.`;
-             console.error(`[getUpcomingEvents] ${errorMessage}`);
+             // THIS IS A COMMON ERROR - Requires creating an index in Firebase Console
+             errorMessage = `Index Required: Firestore query for events needs a composite index (usually on 'date >=', 'date asc'). Please create it in the Firebase console: Go to Firestore -> Indexes -> Composite -> Add Index (Collection: ${eventsCollectionName}, Fields: date [Ascending]). Using fallback data.`;
+             console.error(`[getUpcomingEvents] ACTION NEEDED: ${errorMessage}`);
          } else {
-             errorMessage = `Firestore Error (${error.code}): Could not fetch events. Details: ${error.message}`;
+             errorMessage = `Firestore Error (${error.code}): Could not fetch events. Details: ${error.message}. Using fallback data.`;
              console.error(`[getUpcomingEvents] Full Firestore error: ${error.message}`);
          }
     } else if (error instanceof Error) {
-       // Check again for offline messages within the generic Error type
          if (isOfflineError(error)) {
-             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch events. ${error.message}`;
+             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore. ${error.message}. Using fallback data.`;
              console.warn(`[getUpcomingEvents] Offline detected via generic error: ${errorMessage}`);
          } else {
-             errorMessage = `Unexpected Error: ${error.message}`;
+             errorMessage = `Unexpected Error: ${error.message}. Using fallback data.`;
              console.error(`[getUpcomingEvents] ${errorMessage}`);
          }
     } else {
-       errorMessage = `Unknown Error occurred fetching events.`;
+       errorMessage = `Unknown Error occurred fetching events. Using fallback data.`;
        console.error(`[getUpcomingEvents] ${errorMessage}`);
     }
-    // Return fallback data on error, including context-prefixed string error message
-    console.log("[getUpcomingEvents] Returning fallback event data due to error.");
-    return { data: [fallbackEvent], error: `Events: ${errorMessage}` };
+    // Return fallback data ON ANY ERROR, along with the specific error message
+    console.warn("[getUpcomingEvents] Returning fallback event data due to error.");
+    return { data: [fallbackEvent], error: `Events: ${errorMessage}` }; // Prefix error message
   }
 }
 
@@ -194,35 +195,36 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImageMetadata>> {
       console.error(`[getGalleryImages] Error during Firestore query:`, error); // Log full error object
 
        if (isOfflineError(error)) {
-         errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch gallery images (${(error as FirestoreError)?.code}).`;
+         errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch gallery images (${(error as FirestoreError)?.code}). Using fallback data.`;
          console.warn(`[getGalleryImages] ${errorMessage}`);
       } else if (error instanceof FirestoreError) {
            if (error.code === 'permission-denied') {
-                errorMessage = `Permission Denied: Could not read collection '${galleryCollectionName}'. Check Firestore rules. Ensure API is enabled and rules allow public read access.`;
-                 console.error(`[getGalleryImages] ${errorMessage}`);
+                // THIS IS A CRITICAL ERROR - Check Firestore Rules in Firebase Console
+                errorMessage = `Permission Denied: Could not read collection '${galleryCollectionName}'. Check Firestore rules allow public read. Ensure the Cloud Firestore API is enabled for your project: https://console.cloud.google.com/apis/library/firestore.googleapis.com`;
+                 console.error(`[getGalleryImages] CRITICAL: ${errorMessage}`);
            } else if (error.code === 'failed-precondition') {
-                errorMessage = `Index Required: Firestore query for gallery requires an index on 'createdAt' descending. Please create it in the Firebase console.`;
-                 console.error(`[getGalleryImages] ${errorMessage}`);
+                // THIS IS A COMMON ERROR - Requires creating an index in Firebase Console
+                errorMessage = `Index Required: Firestore query for gallery needs an index on 'createdAt' descending. Please create it in the Firebase console. Using fallback data.`;
+                 console.error(`[getGalleryImages] ACTION NEEDED: ${errorMessage}`);
            } else {
-               errorMessage = `Firestore Error (${error.code}): Could not fetch gallery images. Details: ${error.message}`;
+               errorMessage = `Firestore Error (${error.code}): Could not fetch gallery images. Details: ${error.message}. Using fallback data.`;
                console.error(`[getGalleryImages] Full Firestore error: ${error.message}`);
            }
       } else if (error instanceof Error) {
-          // Check again for offline messages within the generic Error type
          if (isOfflineError(error)) {
-             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch gallery. ${error.message}`;
+             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch gallery. ${error.message}. Using fallback data.`;
              console.warn(`[getGalleryImages] Offline detected via generic error: ${errorMessage}`);
          } else {
-              errorMessage = `Unexpected Error: ${error.message}`;
+              errorMessage = `Unexpected Error: ${error.message}. Using fallback data.`;
               console.error(`[getGalleryImages] ${errorMessage}`);
          }
       } else {
-           errorMessage = `Unknown Error occurred fetching gallery images.`;
+           errorMessage = `Unknown Error occurred fetching gallery images. Using fallback data.`;
            console.error(`[getGalleryImages] ${errorMessage}`);
       }
     // Return fallback data on error, including context-prefixed string error message
-    console.log("[getGalleryImages] Returning fallback image data due to error.");
-    return { data: fallbackImages, error: `Gallery: ${errorMessage}` };
+    console.warn("[getGalleryImages] Returning fallback image data due to error.");
+    return { data: fallbackImages, error: `Gallery: ${errorMessage}` }; // Prefix error message
   }
 }
 
@@ -238,9 +240,18 @@ export default async function Home() {
   ]);
   console.log("[Home Page] Data fetch completed. Results:", results);
 
-  const siteContentResult = results[0].status === 'fulfilled' ? results[0].value : { content: defaultSiteContent, error: `Website Content: Failed - ${String((results[0] as PromiseRejectedResult).reason)}` };
-  const eventsResult = results[1].status === 'fulfilled' ? results[1].value : { data: [], error: `Events: Failed - ${String((results[1] as PromiseRejectedResult).reason)}` };
-  const galleryResult = results[2].status === 'fulfilled' ? results[2].value : { data: [], error: `Gallery: Failed - ${String((results[2] as PromiseRejectedResult).reason)}` };
+  // Process results, providing defaults and capturing errors
+  const siteContentResult = results[0].status === 'fulfilled'
+    ? results[0].value
+    : { content: defaultSiteContent, error: `Website Content: Failed - ${String((results[0] as PromiseRejectedResult).reason)}` };
+
+  const eventsResult = results[1].status === 'fulfilled'
+    ? results[1].value
+    : { data: [], error: `Events: Failed - ${String((results[1] as PromiseRejectedResult).reason)}` };
+
+  const galleryResult = results[2].status === 'fulfilled'
+    ? results[2].value
+    : { data: [], error: `Gallery: Failed - ${String((results[2] as PromiseRejectedResult).reason)}` };
 
 
    // Extract data and errors
@@ -254,7 +265,7 @@ export default async function Home() {
 
    // Determine if *any* fetch resulted in an offline-like error by checking error messages
    const isOffline = fetchErrors.some(e => e?.toLowerCase().includes('offline') || e?.toLowerCase().includes('unavailable') || e?.toLowerCase().includes('network error') || e?.toLowerCase().includes('client is offline'));
-   // Check if there are errors other than offline errors
+   // Check if there are errors other than offline errors (like permissions, index needed etc.)
    const hasOtherErrors = fetchErrors.some(e => !(e?.toLowerCase().includes('offline') || e?.toLowerCase().includes('unavailable') || e?.toLowerCase().includes('network error') || e?.toLowerCase().includes('client is offline')));
    console.log(`[Home Page] Offline state: ${isOffline}, Other errors present: ${hasOtherErrors}`);
 
@@ -262,11 +273,11 @@ export default async function Home() {
     <div className="flex flex-col min-h-screen">
       <Header />
 
-       {/* Global Offline/Error Warning */}
+       {/* Global Error/Offline Alert */}
        {fetchErrors.length > 0 && (
          <div className="container mx-auto px-4 pt-4">
            <Alert
-             variant={isOffline && !hasOtherErrors ? "default" : "destructive"} // Yellow for pure offline, red otherwise
+             variant={isOffline && !hasOtherErrors ? "default" : "destructive"} // Yellow-ish border for pure offline, red otherwise
              className={`${isOffline && !hasOtherErrors ? "border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400" : "" } animate-fade-in`}
            >
              {isOffline ? <WifiOff className="h-4 w-4"/> : <ServerCrash className="h-4 w-4"/>}
@@ -279,9 +290,9 @@ export default async function Home() {
                {isOffline && !hasOtherErrors
                  ? "The server may be experiencing temporary network issues connecting to the database. Some content might be outdated or showing defaults."
                  : hasOtherErrors && isOffline
-                 ? "Could not load all site data due to server-side errors (e.g., permissions) and network issues. Some sections might be showing default content or fallbacks."
+                 ? "Could not load all site data due to server-side errors (e.g., permissions, missing indexes) and network issues. Some sections might be showing default content or fallbacks."
                  : hasOtherErrors
-                 ? "Could not load all site data due to server-side errors (e.g., permissions). Some sections might be showing default content or fallbacks."
+                 ? "Could not load all site data due to server-side errors (e.g., permissions, missing indexes). Some sections might be showing default content or fallbacks."
                  : "Could not load all site data due to server-side errors. Some sections might be showing default content." // Fallback case for non-offline errors
                }
                {/* List specific errors concisely */}
@@ -290,7 +301,7 @@ export default async function Home() {
                    <li key={index}>{error}</li> // Display prefixed string errors
                  ))}
                </ul>
-               Please check Firestore rules, network connection, and ensure APIs are enabled. Refresh the page or contact support if needed.
+               Please check Firestore rules, network connection, and ensure APIs/Indexes are enabled. Refresh the page or contact support if needed.
              </AlertDescription>
            </Alert>
          </div>
@@ -331,22 +342,22 @@ export default async function Home() {
         {/* Upcoming Events Section */}
         <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2"><CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events</h2>
-          {/* Display specific warning if events failed, separate from global warning */}
-          {eventsResult.error && !isOffline && ( // Show only if error exists and it's NOT purely an offline error
+          {/* Display specific warning if events failed and it's NOT a global offline error */}
+          {eventsResult.error && !isOffline && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4"/>
               <AlertTitle>Events Unavailable</AlertTitle>
               <AlertDescription>Could not load latest events. Showing fallback data. Error: {eventsResult.error}</AlertDescription>
             </Alert>
           )}
-          {/* Check if upcomingEvents is genuinely empty AND there wasn't a fetch error (excluding offline) */}
+          {/* Check if events array is empty AND there wasn't a significant fetch error (permissions/index) */}
           {upcomingEvents.length === 0 && !eventsResult.error ? (
              <Card>
                  <CardContent className="p-6 text-center text-muted-foreground">
                      {isOffline ? "Events couldn't be loaded due to network issues. Please check back later." : "No upcoming events scheduled yet. Stay tuned!"}
                  </CardContent>
              </Card>
-           // Only render the grid if there are events (could be fetched or fallback)
+           // Render the grid ONLY if upcomingEvents has items (could be fetched or the fallback)
            ) : upcomingEvents.length > 0 ? (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {upcomingEvents.map((event, index) => (
@@ -362,7 +373,10 @@ export default async function Home() {
                    </div>
                   <CardHeader>
                     <CardTitle className="text-xl">{event.name}</CardTitle>
-                    <CardDescription>{event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
+                     {/* Safely format date, provide fallback if date is invalid */}
+                     <CardDescription>
+                       {event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available'}
+                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">
                     <p className="text-foreground/80 line-clamp-3">{event.description}</p> {/* Use line-clamp */}
@@ -387,6 +401,7 @@ export default async function Home() {
            )}
         </section>
 
+
         <Separator />
 
         {/* Event Gallery Section - Uses Firestore metadata */}
@@ -406,7 +421,7 @@ export default async function Home() {
                         {isOffline ? "Gallery couldn't be loaded due to network issues. Please check back later." : "The gallery is currently empty. Check back soon!"}
                     </CardContent>
                 </Card>
-             ) : (
+             ) : galleryImages.length > 0 ? ( // Render only if images exist (fetched or fallback)
                 <div className="grid grid-cols-gallery gap-4">
                  {galleryImages.map((image, index) => {
                      return (
@@ -426,6 +441,13 @@ export default async function Home() {
                       );
                   })}
                 </div>
+             ) : (
+                 // Fallback if length is somehow 0 despite error logic
+                 <Card>
+                     <CardContent className="p-6 text-center text-muted-foreground">
+                         Loading gallery or an unexpected issue occurred.
+                     </CardContent>
+                 </Card>
              )}
         </section>
 
