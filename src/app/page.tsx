@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Globe, CalendarDays, ImageIcon as ImageIconIcon, UserPlus, Mail, Phone, MapPin, WifiOff, AlertCircle, ServerCrash, ArrowRight } from 'lucide-react'; // Renamed Image import, Added ArrowRight
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { getSiteContent, SiteContent, defaultSiteContent } from '@/services/content'; // Use alias for default content
+import { getSiteContent, SiteContent, defaultSiteContent } from '@/services/content'; // Import defaultSiteContent
 // Firestore imports for events and gallery metadata
 import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError, limit } from 'firebase/firestore';
 import { db } from '@/config/firebase'; // Only need db
@@ -137,7 +137,7 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
     } else if (error instanceof FirestoreError) {
          if (error.code === 'permission-denied') {
              // CRITICAL: Check Firestore Rules in Firebase Console for 'events' collection
-             errorMessage = `Permission Denied: Could not read collection '${eventsCollectionName}'. Check Firestore rules allow public read. Ensure the Cloud Firestore API is enabled for your project: https://console.cloud.google.com/apis/api/firestore.googleapis.com/overview?project=${db.app.options.projectId || 'YOUR_PROJECT_ID'}. Using fallback data.`;
+             errorMessage = `Permission Denied: Could not read collection '${eventsCollectionName}'. Check Firestore rules allow public read. Ensure the Cloud Firestore API is enabled for your project: https://console.cloud.google.com/apis/api/firestore.googleapis.com/overview?project=${db?.app?.options?.projectId || 'YOUR_PROJECT_ID'}. Using fallback data.`;
              console.error(`[getUpcomingEvents] CRITICAL: ${errorMessage}`);
          } else if (error.code === 'failed-precondition') {
              // COMMON: Index needed in Firebase Console
@@ -284,7 +284,7 @@ export default async function Home() {
    // Check if there are errors other than offline errors (like permissions, index needed etc.)
    const hasOtherErrors = fetchErrors.some(e => !(e?.toLowerCase().includes('offline') || e?.toLowerCase().includes('unavailable') || e?.toLowerCase().includes('network error') || e?.toLowerCase().includes('client is offline')));
    console.log(`[Home Page] Offline state: ${isOffline}, Other errors present: ${hasOtherErrors}`);
-   // Removed potentially problematic console.log
+
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -369,7 +369,6 @@ export default async function Home() {
                </Alert>
            )}
 
-            {/* Debug: Log the final upcomingEvents array just before rendering - REMOVED as it might cause issues */}
 
            {/* Improved Logic for displaying events or messages */}
            {upcomingEvents.length === 0 ? (
@@ -410,7 +409,8 @@ export default async function Home() {
                            </CardContent>
                            <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                                <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
-                               <Button variant="link" size="sm" className="text-primary/80 hover:text-primary">
+                               {/* Event detail page link (optional) - Disabled for now */}
+                               <Button variant="link" size="sm" disabled className="text-primary/80 hover:text-primary cursor-not-allowed">
                                    Learn More <ArrowRight className="ml-1 h-4 w-4"/>
                                </Button>
                            </CardFooter>
