@@ -66,8 +66,7 @@ function isFirestoreOfflineError(error: any): boolean {
  */
 export async function getSiteContent(): Promise<GetContentResult> {
   const contentDocPath = `${CONTENT_COLLECTION}/${CONTENT_DOC_ID}`;
-  const fullPath = `/databases/${db?.databaseId}/documents/${contentDocPath}`; // Construct full path for logging
-  console.log(`[getSiteContent] Attempting to fetch content from Firestore path: ${fullPath}`);
+  console.log(`[getSiteContent] Attempting to fetch content from Firestore path: ${contentDocPath}`);
 
   if (!db) {
       const errorMsg = "[getSiteContent] Firestore database instance (db) is not initialized.";
@@ -81,9 +80,9 @@ export async function getSiteContent(): Promise<GetContentResult> {
   let errorMessage: string | null = null;
 
   try {
-    console.log(`[getSiteContent] Executing getDoc for ${fullPath}...`);
+    console.log(`[getSiteContent] Executing getDoc for ${contentDocPath}...`);
     const docSnap = await getDoc(contentDocRef);
-    console.log(`[getSiteContent] getDoc completed for ${fullPath}. Document exists: ${docSnap.exists()}`);
+    console.log(`[getSiteContent] getDoc completed for ${contentDocPath}. Document exists: ${docSnap.exists()}`);
 
     if (docSnap.exists()) {
       const data = docSnap.data() as Partial<SiteContent>;
@@ -92,42 +91,43 @@ export async function getSiteContent(): Promise<GetContentResult> {
        console.log("[getSiteContent] Fetched and merged content successfully.");
        return { content: mergedContent, error: null }; // No error
     } else {
-      console.warn(`[getSiteContent] Site content document not found at ${fullPath}, returning default content.`);
+      console.warn(`[getSiteContent] Site content document not found at ${contentDocPath}, returning default content.`);
       // Document doesn't exist, not strictly an error, but could be logged
-      errorMessage = `Configuration document not found at '${fullPath}'. Using default content.`;
+      errorMessage = `Configuration document not found at '${contentDocPath}'. Using default content.`;
       return { content: defaultSiteContent, error: `Website Content: ${errorMessage}` }; // Return string error
     }
   } catch (error) {
     // Log the raw error first for detailed diagnosis
-    console.error(`[getSiteContent] Error during getDoc for ${fullPath}:`, error);
+    console.error(`[getSiteContent] Error during getDoc for ${contentDocPath}:`, error);
 
     // Determine the error message string
     if (isFirestoreOfflineError(error)) {
        // More specific log for "offline" on server
-       errorMessage = `Offline/Unavailable: The server could not connect to Firestore to fetch site content from '${fullPath}' (${(error as FirestoreError)?.code}).`;
+       errorMessage = `Offline/Unavailable: The server could not connect to Firestore to fetch site content from '${contentDocPath}' (${(error as FirestoreError)?.code}).`;
        console.warn(`[getSiteContent] ${errorMessage}`);
     } else if (error instanceof FirestoreError) {
         if (error.code === 'permission-denied') {
-            errorMessage = `Permission Denied: Check Firestore rules for reading '${fullPath}'. Ensure API is enabled and rules allow access.`;
+            errorMessage = `Permission Denied: Check Firestore rules for reading '${contentDocPath}'. Ensure API is enabled and rules allow access.`;
             console.error(`[getSiteContent] ${errorMessage}`);
         } else {
-            errorMessage = `Firestore Error (${error.code}) on path '${fullPath}': Could not fetch content. Details: ${error.message}`;
+            errorMessage = `Firestore Error (${error.code}) on path '${contentDocPath}': Could not fetch content. Details: ${error.message}`;
             console.error(`[getSiteContent] Full Firestore error: ${error.message}`);
         }
     } else if (error instanceof Error) {
          // Check again for offline messages within the generic Error type
          if (isFirestoreOfflineError(error)) {
-             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch content from '${fullPath}'. ${error.message}`;
+             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch content from '${contentDocPath}'. ${error.message}`;
              console.warn(`[getSiteContent] Offline detected via generic error: ${errorMessage}`);
          } else {
-             errorMessage = `Unexpected Error fetching content from '${fullPath}': ${error.message}`;
+             errorMessage = `Unexpected Error fetching content from '${contentDocPath}': ${error.message}`;
              console.error(`[getSiteContent] ${errorMessage}`);
          }
     } else {
-        errorMessage = `Unknown Error: An unknown error occurred fetching site content from '${fullPath}'.`;
+        errorMessage = `Unknown Error: An unknown error occurred fetching site content from '${contentDocPath}'.`;
         console.error(`[getSiteContent] ${errorMessage}`);
     }
     // Return default content as a fallback on any error, including the specific string error message
     return { content: defaultSiteContent, error: `Website Content: ${errorMessage}` };
   }
 }
+
