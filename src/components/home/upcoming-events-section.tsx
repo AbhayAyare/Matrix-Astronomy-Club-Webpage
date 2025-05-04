@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -45,14 +46,8 @@ export function UpcomingEventsSection() {
   const [isOffline, setIsOffline] = useState(false);
 
   const eventsCollectionName = 'events';
-  // Define fallbackEvents as an empty array if you don't want fallbacks on error
+  // Explicitly use an empty array for fallbacks during debugging
   const fallbackEvents: Event[] = [];
-  // Example with fallback data:
-  // const fallbackEvents: Event[] = [
-  //     { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), description: 'Join us for a night under the stars observing distant galaxies and nebulae. Details will be available soon.', imageURL: `https://picsum.photos/seed/event1/400/250` },
-  //     { id: 'fallback2', name: 'Planetary Alignment Talk (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)), description: 'Learn about the upcoming planetary alignment and how to view it. More information coming soon.', imageURL: `https://picsum.photos/seed/event2/400/250` },
-  // ];
-
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -75,11 +70,13 @@ export function UpcomingEventsSection() {
       let errorMessage: string | null = null;
 
       try {
+        // --- DEBUG: Log the date/time used for comparison ---
         const now = new Date();
-        // Start of today, considering local timezone for comparison if dates are entered locally
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        // Start of today, using local time zone (browser's time)
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
         const todayTimestamp = Timestamp.fromDate(startOfToday);
-        console.log(`[UpcomingEvents] Fetching events from collection '${eventsCollectionName}' on or after: ${startOfToday.toISOString()} (Timestamp: ${todayTimestamp.toMillis()})`);
+        console.log(`[UpcomingEvents] Fetching events from collection '${eventsCollectionName}' on or after: ${startOfToday.toISOString()} (Local Time). Timestamp (seconds): ${todayTimestamp.seconds}`);
+        // --- End DEBUG Log ---
 
         // The query definition
         const q = query(
@@ -98,23 +95,27 @@ export function UpcomingEventsSection() {
           console.log("[UpcomingEvents] No upcoming events found matching the query.");
           setUpcomingEvents([]); // Ensure state is empty if no events found
         } else {
-          const events: Event[] = querySnapshot.docs.map(doc => {
+          const events: Event[] = querySnapshot.docs.map((doc, index) => {
             const data = doc.data();
+             // --- DEBUG: Log raw data for each document ---
+             console.log(`[UpcomingEvents] Raw doc data [${index}] for ${doc.id}:`, {
+                name: data.name,
+                date: data.date?.toDate ? data.date.toDate().toISOString() : data.date, // Log date as ISO string if possible
+                description: data.description,
+                imageURL: data.imageURL,
+                createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+            });
+            // --- End DEBUG Log ---
+
             // Basic validation for required fields
-            const eventDate = data.date instanceof Timestamp ? data.date : Timestamp.now(); // Fallback date if missing/invalid
+             const eventDate = data.date instanceof Timestamp ? data.date : Timestamp.fromDate(new Date(0)); // Use Epoch if date invalid/missing
+             if (!(data.date instanceof Timestamp)) {
+               console.warn(`[UpcomingEvents] Document ${doc.id} has invalid or missing 'date' field. Using fallback date.`);
+             }
             const eventName = data.name || 'Unnamed Event';
             const eventDesc = data.description || 'No description available.';
-            // Use fallback URL if imageURL is missing or empty
             const eventImage = data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`;
 
-            // Log raw data for each document fetched
-             console.log(`[UpcomingEvents] Raw doc data for ${doc.id}:`, {
-                 name: data.name,
-                 date: data.date?.toDate ? data.date.toDate().toISOString() : data.date, // Log date as ISO string if possible
-                 description: data.description,
-                 imageURL: data.imageURL,
-                 createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
-             });
 
             return {
               id: doc.id,
@@ -204,22 +205,14 @@ export function UpcomingEventsSection() {
       )}
 
 
-       {/* Empty State - Show ONLY if not loading, events array has length 0 AND there was no error that prevented fetching */}
-       {!loading && !fetchError && upcomingEvents.length === 0 && (
+       {/* Empty State - Show ONLY if not loading AND events array is empty */}
+       {!loading && upcomingEvents.length === 0 && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
              No upcoming events scheduled yet. Check back soon!
           </CardContent>
         </Card>
       )}
-        {/* Empty State - Show ONLY if not loading, events array is empty AND there WAS an error BUT no fallback was used */}
-       {!loading && fetchError && upcomingEvents.length === 0 && fallbackEvents.length === 0 && (
-         <Card>
-           <CardContent className="p-6 text-center text-muted-foreground">
-              Could not load events due to an error. Check back soon!
-           </CardContent>
-         </Card>
-       )}
 
 
       {/* Events Grid (Show if not loading AND there are events - either fetched or fallback) */}
