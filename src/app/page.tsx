@@ -71,10 +71,10 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
   }
   console.log("[getUpcomingEvents] Firestore db instance appears valid.");
 
-  const eventsCollectionRef = collection(db, eventsCollectionName);
   const today = Timestamp.now();
   console.log(`[getUpcomingEvents] Current Timestamp for query: ${today.toDate().toISOString()}`);
 
+  const eventsCollectionRef = collection(db, eventsCollectionName);
   const fallbackDate = new Date();
   fallbackDate.setDate(fallbackDate.getDate() + 7);
   // Fallback event to show *something* if fetch fails
@@ -103,7 +103,9 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
     const events = querySnapshot.docs.map(doc => {
       const data = doc.data();
       const eventDate = data.date instanceof Timestamp ? data.date : null;
-      console.log(`[getUpcomingEvents] Processing doc ID: ${doc.id}, Name: ${data.name}, Date: ${eventDate ? eventDate.toDate().toISOString() : 'Invalid/Missing Date'}`);
+      // Log the raw data received for each document
+      console.log(`[getUpcomingEvents] Processing doc ID: ${doc.id}, Raw Data:`, JSON.stringify(data));
+      console.log(`  -> Parsed Name: ${data.name}, Parsed Date: ${eventDate ? eventDate.toDate().toISOString() : 'Invalid/Missing Date'}`);
       return {
         id: doc.id,
         name: data.name || 'Unnamed Event', // Fallback name
@@ -115,7 +117,7 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
       } as Event;
     });
 
-    console.log("[getUpcomingEvents] Successfully fetched and processed events:", events.map(e => ({ id: e.id, name: e.name, date: e.date.toDate().toISOString() })));
+    console.log("[getUpcomingEvents] Successfully fetched and processed events:", JSON.stringify(events.map(e => ({ id: e.id, name: e.name, date: e.date.toDate().toISOString() })), null, 2));
     return { data: events, error: null };
   } catch (error) {
     console.error(`[getUpcomingEvents] Error during Firestore query:`, error); // Log the full error object
@@ -274,7 +276,7 @@ export default async function Home() {
    const hasOtherErrors = fetchErrors.some(e => !(e?.toLowerCase().includes('offline') || e?.toLowerCase().includes('unavailable') || e?.toLowerCase().includes('network error') || e?.toLowerCase().includes('client is offline')));
    console.log(`[Home Page] Offline state: ${isOffline}, Other errors present: ${hasOtherErrors}`);
    console.log(`[Home Page] Number of upcoming events to display: ${upcomingEvents.length}`);
-   console.log(`[Home Page] Upcoming events data:`, JSON.stringify(upcomingEvents.map(e => ({id: e.id, name: e.name, date: e.date.toDate().toISOString()})), null, 2));
+   console.log(`[Home Page] Upcoming events data (after processing):`, JSON.stringify(upcomingEvents.map(e => ({id: e.id, name: e.name, date: e.date.toDate().toISOString()})), null, 2));
 
 
   return (
@@ -359,6 +361,9 @@ export default async function Home() {
                    <AlertDescription>Could not load latest events. Showing fallback data. Error: {eventsResult.error}</AlertDescription>
                </Alert>
            )}
+
+            {/* Debug: Log the final upcomingEvents array just before rendering */}
+            {console.log("[Home Page Render] Rendering Upcoming Events Section. Events count:", upcomingEvents.length, "Events data:", JSON.stringify(upcomingEvents.map(e=>({id: e.id, name: e.name, date: e.date.toDate().toISOString()})), null, 2))}
 
            {/* Improved Logic for displaying events or messages */}
            {upcomingEvents.length === 0 ? (
@@ -553,4 +558,3 @@ export default async function Home() {
   );
 }
 
-    
