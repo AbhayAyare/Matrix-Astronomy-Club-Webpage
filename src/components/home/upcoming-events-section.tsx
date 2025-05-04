@@ -81,9 +81,9 @@ export function UpcomingEventsSection() {
         // The query definition
         const q = query(
           eventsCollectionRef,
-          where("date", ">=", todayTimestamp),
-          orderBy("date", "asc"),
-          limit(6)
+          where("date", ">=", todayTimestamp), // Query for dates >= start of today
+          orderBy("date", "asc"),             // Order by event date
+          limit(6)                            // Limit results
         );
 
         console.log(`[UpcomingEvents] Executing getDocs query for '${eventsCollectionName}'...`);
@@ -100,9 +100,10 @@ export function UpcomingEventsSection() {
              const eventDate = data.date instanceof Timestamp ? data.date : Timestamp.now(); // Fallback date if missing/invalid
              const eventName = data.name || 'Unnamed Event';
              const eventDesc = data.description || 'No description available.';
-             const eventImage = data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`; // Use doc.id for unique fallback
+             // Use fallback URL if imageURL is missing or empty
+             const eventImage = data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`;
 
-            console.log(`[UpcomingEvents] Mapping doc ${doc.id}: Name=${eventName}, Date=${eventDate.toDate().toISOString()}`);
+            console.log(`[UpcomingEvents] Mapping doc ${doc.id}: Name=${eventName}, Date=${eventDate.toDate().toISOString()}, ImageURL=${eventImage}`);
 
             return {
               id: doc.id,
@@ -186,7 +187,7 @@ export function UpcomingEventsSection() {
 
 
        {/* Empty State (Show if not loading AND no events were fetched/set, AND no error caused fallback data to be used) */}
-       {!loading && upcomingEvents.length === 0 && !fetchError && (
+       {!loading && upcomingEvents.length === 0 && !(fetchError && fallbackEvents.length > 0) && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
              No upcoming events scheduled yet. Check back soon!
