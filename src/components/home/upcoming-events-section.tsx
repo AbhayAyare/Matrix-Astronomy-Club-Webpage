@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -80,7 +79,7 @@ export function UpcomingEventsSection() {
         // Start of today, considering local timezone for comparison if dates are entered locally
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const todayTimestamp = Timestamp.fromDate(startOfToday);
-        console.log(`[UpcomingEvents] Fetching events on or after: ${startOfToday.toISOString()} (Timestamp: ${todayTimestamp.seconds})`);
+        console.log(`[UpcomingEvents] Fetching events from collection '${eventsCollectionName}' on or after: ${startOfToday.toISOString()} (Timestamp: ${todayTimestamp.toMillis()})`);
 
         // The query definition
         const q = query(
@@ -89,6 +88,7 @@ export function UpcomingEventsSection() {
           orderBy("date", "asc"),             // Order by event date
           limit(6)                            // Limit results
         );
+        console.log(`[UpcomingEvents] Firestore Query: collection='${eventsCollectionName}', where date >= ${todayTimestamp.toMillis()}, orderBy date asc, limit 6`);
 
         console.log(`[UpcomingEvents] Executing getDocs query for '${eventsCollectionName}'...`);
         const querySnapshot = await getDocs(q);
@@ -107,7 +107,14 @@ export function UpcomingEventsSection() {
             // Use fallback URL if imageURL is missing or empty
             const eventImage = data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`;
 
-            console.log(`[UpcomingEvents] Mapping doc ${doc.id}: Name=${eventName}, Date=${eventDate.toDate().toISOString()}, ImageURL=${eventImage}`);
+            // Log raw data for each document fetched
+             console.log(`[UpcomingEvents] Raw doc data for ${doc.id}:`, {
+                 name: data.name,
+                 date: data.date?.toDate ? data.date.toDate().toISOString() : data.date, // Log date as ISO string if possible
+                 description: data.description,
+                 imageURL: data.imageURL,
+                 createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+             });
 
             return {
               id: doc.id,
@@ -197,7 +204,7 @@ export function UpcomingEventsSection() {
       )}
 
 
-       {/* Empty State - Show ONLY if not loading, no events array has length 0 AND there was no error that prevented fetching */}
+       {/* Empty State - Show ONLY if not loading, events array has length 0 AND there was no error that prevented fetching */}
        {!loading && !fetchError && upcomingEvents.length === 0 && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
