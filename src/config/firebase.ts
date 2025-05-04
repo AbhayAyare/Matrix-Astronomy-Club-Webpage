@@ -4,7 +4,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 
 // Import the Firebase services you want to use for your Matrixclub project
 import { getAuth } from "firebase/auth"; // Needed for Authentication
-import { getFirestore } from "firebase/firestore"; // Needed for Firestore
+import { initializeFirestore, CACHE_SIZE_UNLIMITED } from "firebase/firestore"; // Use initializeFirestore for config
 import { getStorage } from "firebase/storage"; // Needed for Storage
 import { getAnalytics, isSupported } from "firebase/analytics"; // Needed for Analytics
 
@@ -33,9 +33,15 @@ const auth = getAuth(app); // Initialize Firebase Authentication
 const storage = getStorage(app); // Initialize Cloud Storage for Firebase
 // console.log("Firebase Storage service initialized.");
 
-// Initialize Firestore
-const db = getFirestore(app);
-// console.log("Cloud Firestore service initialized.");
+// Initialize Firestore WITHOUT persistence
+// Use initializeFirestore instead of getFirestore to pass settings
+const db = initializeFirestore(app, {
+  // persistence: undefined, // Explicitly disable persistence (or use memoryPersistence() if needed temporarily) - Updated: persistence is deprecated, use cacheSizeBytes
+  // experimentalForceLongPolling: true, // Sometimes helps in certain environments, uncomment to test if needed
+  // ignoreUndefinedProperties: true, // Recommended practice
+  cacheSizeBytes: CACHE_SIZE_UNLIMITED, // Use unlimited memory cache or a specific size if preferred, effectively disabling disk persistence for server
+});
+console.log("Cloud Firestore service initialized (Persistence Disabled).");
 
 
 // Initialize Analytics ONLY if supported (runs only on client-side).

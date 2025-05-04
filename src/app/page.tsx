@@ -38,6 +38,16 @@ interface FetchResult<T> {
   error: string | null; // Error message as a simple string or null
 }
 
+// Helper function to check for offline errors
+function isFirestoreOfflineError(error: any): boolean {
+  if (error instanceof FirestoreError) {
+    return error.code === 'unavailable' ||
+           error.message.toLowerCase().includes('offline') ||
+           error.message.toLowerCase().includes('failed to get document because the client is offline');
+  }
+  return false;
+}
+
 
 // Fetch upcoming events from Firestore
 async function getUpcomingEvents(): Promise<FetchResult<Event>> {
@@ -75,21 +85,22 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
 
     return { data: events, error: null };
   } catch (error) {
-    console.error("[getUpcomingEvents] Error fetching upcoming events:", error);
-    if (error instanceof FirestoreError) {
-       if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
-          errorMessage = "Offline: Could not connect to Firestore to fetch upcoming events.";
-          console.warn(`[getUpcomingEvents] ${errorMessage} (Code: ${error.code})`);
-       } else if (error.code === 'failed-precondition') {
-           errorMessage = "Index Required: Firestore query for events requires a composite index. Please create it in the Firebase console.";
-           console.error(`[getUpcomingEvents] ${errorMessage} (Code: ${error.code})`);
-       } else if (error.code === 'permission-denied') {
-           errorMessage = `Permission Denied: Check Firestore rules for reading 'events' collection.`;
-           console.error(`[getUpcomingEvents] ${errorMessage} (Code: ${error.code})`);
-       } else {
-           errorMessage = `Firestore Error (${error.code}): Could not fetch events.`;
-           console.error(`[getUpcomingEvents] Full Firestore error: ${error.message}`);
-       }
+    console.error("[getUpcomingEvents] Error fetching upcoming events:", error); // Log the full error object
+
+    if (isFirestoreOfflineError(error)) {
+        errorMessage = "Offline: Could not connect to Firestore to fetch upcoming events.";
+        console.warn(`[getUpcomingEvents] ${errorMessage} (Code: ${(error as FirestoreError).code})`);
+    } else if (error instanceof FirestoreError) {
+         if (error.code === 'failed-precondition') {
+             errorMessage = "Index Required: Firestore query for events requires a composite index. Please create it in the Firebase console.";
+             console.error(`[getUpcomingEvents] ${errorMessage} (Code: ${error.code})`);
+         } else if (error.code === 'permission-denied') {
+             errorMessage = `Permission Denied: Check Firestore rules for reading 'events' collection.`;
+             console.error(`[getUpcomingEvents] ${errorMessage} (Code: ${error.code})`);
+         } else {
+             errorMessage = `Firestore Error (${error.code}): Could not fetch events.`;
+             console.error(`[getUpcomingEvents] Full Firestore error: ${error.message}`);
+         }
     } else if (error instanceof Error) {
        errorMessage = `Unexpected Error: ${error.message}`;
         console.error(`[getUpcomingEvents] ${errorMessage}`);
@@ -135,14 +146,15 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImage>> {
 
     return { data: images, error: null };
   } catch (error) {
-      console.error("[getGalleryImages] Error fetching gallery images from Firestore:", error);
-      if (error instanceof FirestoreError) {
+      console.error("[getGalleryImages] Error fetching gallery images from Firestore:", error); // Log full error object
+
+       if (isFirestoreOfflineError(error)) {
+         errorMessage = "Offline: Could not connect to Firestore to fetch gallery images.";
+         console.warn(`[getGalleryImages] ${errorMessage} (Code: ${(error as FirestoreError).code})`);
+      } else if (error instanceof FirestoreError) {
            if (error.code === 'failed-precondition') {
                 errorMessage = `Index Required: Firestore query for gallery requires an index on 'createdAt' descending.`;
                  console.error(`[getGalleryImages] ${errorMessage} (Code: ${error.code})`);
-           } else if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
-               errorMessage = "Offline: Could not connect to Firestore to fetch gallery images.";
-               console.warn(`[getGalleryImages] ${errorMessage} (Code: ${error.code})`);
            } else if (error.code === 'permission-denied') {
                 errorMessage = `Permission Denied: Check Firestore rules for reading 'gallery' collection.`;
                 console.error(`[getGalleryImages] ${errorMessage} (Code: ${error.code})`);

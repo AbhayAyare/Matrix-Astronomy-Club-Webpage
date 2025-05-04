@@ -39,6 +39,16 @@ interface GetContentResult {
     error: string | null; // Error message as a simple string or null
 }
 
+// Helper function to check for offline errors
+function isFirestoreOfflineError(error: any): boolean {
+  if (error instanceof FirestoreError) {
+    return error.code === 'unavailable' ||
+           error.message.toLowerCase().includes('offline') ||
+           error.message.toLowerCase().includes('failed to get document because the client is offline');
+  }
+  return false;
+}
+
 
 /**
  * Fetches the site content from Firestore.
@@ -69,11 +79,11 @@ export async function getSiteContent(): Promise<GetContentResult> {
     console.error("[getSiteContent] Error fetching site content:", error); // Log the full error object
 
     // Determine the error message string
-    if (error instanceof FirestoreError) {
-        if (error.code === 'unavailable' || error.message.toLowerCase().includes('offline') || error.message.toLowerCase().includes('failed to get document because the client is offline')) {
-           errorMessage = "Offline: The server could not connect to Firestore to fetch site content.";
-           console.warn(`[getSiteContent] ${errorMessage} (Code: ${error.code})`);
-        } else if (error.code === 'permission-denied') {
+    if (isFirestoreOfflineError(error)) {
+       errorMessage = "Offline: The server could not connect to Firestore to fetch site content.";
+       console.warn(`[getSiteContent] ${errorMessage} (Code: ${(error as FirestoreError).code})`);
+    } else if (error instanceof FirestoreError) {
+        if (error.code === 'permission-denied') {
             errorMessage = `Permission Denied: Check Firestore rules for reading '${CONTENT_COLLECTION}/${CONTENT_DOC_ID}'. Ensure Firestore API is enabled.`;
             console.error(`[getSiteContent] ${errorMessage} (Code: ${error.code})`);
         } else {
