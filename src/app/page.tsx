@@ -85,25 +85,32 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
   let errorMessage: string | null = null;
 
   try {
+    // Ensure the query includes ordering by date to get upcoming events first
     const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6));
+    console.log("[getUpcomingEvents] Firestore Query:", q); // Log the query object
     console.log(`[getUpcomingEvents] Executing getDocs query...`);
     const querySnapshot = await getDocs(q);
     console.log(`[getUpcomingEvents] getDocs completed. Fetched ${querySnapshot.size} upcoming events.`);
 
-    const events = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      // Ensure date and createdAt are Timestamps
-      date: doc.data().date as Timestamp,
-      // Use stored imageURL or fallback
-      imageURL: doc.data().imageURL || `https://picsum.photos/seed/${doc.id}/400/250`,
-    })) as Event[];
+    if (querySnapshot.empty) {
+       console.log("[getUpcomingEvents] No upcoming events found matching the query.");
+       return { data: [], error: null }; // Return empty array if no events, but not an error
+    }
 
-     if (events.length === 0) {
-        console.log("[getUpcomingEvents] No upcoming events found, returning empty array.");
-        return { data: [], error: null };
-      }
 
+    const events = querySnapshot.docs.map(doc => {
+      console.log(`[getUpcomingEvents] Processing doc ID: ${doc.id}, Data:`, doc.data()); // Log each doc
+      return {
+        id: doc.id,
+        ...doc.data(),
+        // Ensure date is a Timestamp
+        date: doc.data().date as Timestamp,
+        // Use stored imageURL or fallback
+        imageURL: doc.data().imageURL || `https://picsum.photos/seed/${doc.id}/400/250`,
+      } as Event;
+    });
+
+    console.log("[getUpcomingEvents] Successfully fetched and processed events:", events);
     return { data: events, error: null };
   } catch (error) {
     console.error(`[getUpcomingEvents] Error during Firestore query:`, error); // Log the full error object
@@ -113,7 +120,7 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
         console.warn(`[getUpcomingEvents] ${errorMessage}`);
     } else if (error instanceof FirestoreError) {
          if (error.code === 'permission-denied') {
-             errorMessage = `Permission Denied: Could not read collection '${eventsCollectionName}'. Check Firestore rules. Ensure API is enabled and rules allow public read access.`;
+             errorMessage = `Permission Denied: Could not read collection '${eventsCollectionName}'. Check Firestore rules (ensure public read or authenticated read as needed). Ensure API is enabled.`;
              console.error(`[getUpcomingEvents] ${errorMessage}`);
          } else if (error.code === 'failed-precondition') {
              errorMessage = `Index Required: Firestore query for events requires a composite index (date >=, date asc). Please create it in the Firebase console.`;
@@ -271,9 +278,11 @@ export default async function Home() {
              <AlertDescription>
                {isOffline && !hasOtherErrors
                  ? "The server may be experiencing temporary network issues connecting to the database. Some content might be outdated or showing defaults."
+                 : hasOtherErrors && isOffline
+                 ? "Could not load all site data due to server-side errors (e.g., permissions) and network issues. Some sections might be showing default content or fallbacks."
                  : hasOtherErrors
-                 ? "Could not load all site data due to server-side errors (e.g., permissions) or network issues. Some sections might be showing default content or fallbacks."
-                 : "Could not load all site data due to server-side errors (e.g., permissions). Some sections might be showing default content or fallbacks." // Fallback case for non-offline errors
+                 ? "Could not load all site data due to server-side errors (e.g., permissions). Some sections might be showing default content or fallbacks."
+                 : "Could not load all site data due to server-side errors. Some sections might be showing default content." // Fallback case for non-offline errors
                }
                {/* List specific errors concisely */}
                <ul className="list-disc list-inside mt-2 text-xs max-h-32 overflow-y-auto">
@@ -330,13 +339,15 @@ export default async function Home() {
               <AlertDescription>Could not load latest events. Showing fallback data. Error: {eventsResult.error}</AlertDescription>
             </Alert>
           )}
-          {upcomingEvents.length === 0 && !eventsResult.error ? ( // Show "No events" only if NO error occurred
+          {/* Check if upcomingEvents is genuinely empty AND there wasn't a fetch error (excluding offline) */}
+          {upcomingEvents.length === 0 && !eventsResult.error ? (
              <Card>
                  <CardContent className="p-6 text-center text-muted-foreground">
                      {isOffline ? "Events couldn't be loaded due to network issues. Please check back later." : "No upcoming events scheduled yet. Stay tuned!"}
                  </CardContent>
              </Card>
-           ) : (
+           // Only render the grid if there are events (could be fetched or fallback)
+           ) : upcomingEvents.length > 0 ? (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {upcomingEvents.map((event, index) => (
                 <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
@@ -366,7 +377,14 @@ export default async function Home() {
                 </Card>
               ))}
              </div>
-          )}
+           ) : (
+                // This case should ideally not be hit if logic above is correct, but acts as a final fallback
+                 <Card>
+                    <CardContent className="p-6 text-center text-muted-foreground">
+                       Loading events or an unexpected issue occurred.
+                    </CardContent>
+                </Card>
+           )}
         </section>
 
         <Separator />
