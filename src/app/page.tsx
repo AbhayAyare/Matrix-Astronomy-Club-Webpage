@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Globe, CalendarDays, ImageIcon as ImageIconIcon, UserPlus, Mail, Phone, MapPin, WifiOff, AlertCircle, ServerCrash } from 'lucide-react'; // Renamed Image import
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { getSiteContent, SiteContent, defaultContent } from '@/services/content'; // Import defaultContent
+import { getSiteContent, SiteContent, defaultSiteContent } from '@/services/content'; // Use alias for default content
 // Firestore imports for events and gallery metadata
 import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError, limit } from 'firebase/firestore';
 import { db } from '@/config/firebase'; // Only need db
@@ -62,7 +62,8 @@ function isOfflineError(error: any): boolean {
 // Fetch upcoming events from Firestore
 async function getUpcomingEvents(): Promise<FetchResult<Event>> {
   const eventsCollectionName = 'events';
-  console.log(`[getUpcomingEvents] Attempting to fetch upcoming events from Firestore collection: ${eventsCollectionName}...`);
+  const collectionPath = `/${eventsCollectionName}`; // Log the actual path
+  console.log(`[getUpcomingEvents] Attempting to fetch upcoming events from Firestore path: ${collectionPath}...`);
 
    if (!db) {
       const errorMsg = "[getUpcomingEvents] Firestore database instance (db) is not initialized.";
@@ -87,9 +88,9 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
 
   try {
     const q = query(eventsCollectionRef, where("date", ">=", today), orderBy("date", "asc"), limit(6));
-    console.log("[getUpcomingEvents] Executing getDocs query...");
+    console.log(`[getUpcomingEvents] Executing getDocs query on path: ${collectionPath}...`);
     const querySnapshot = await getDocs(q);
-    console.log(`[getUpcomingEvents] getDocs completed. Fetched ${querySnapshot.size} upcoming events.`);
+    console.log(`[getUpcomingEvents] getDocs completed. Fetched ${querySnapshot.size} upcoming events from ${collectionPath}.`);
 
     const events = querySnapshot.docs.map(doc => ({
       id: doc.id,
@@ -107,33 +108,33 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
 
     return { data: events, error: null };
   } catch (error) {
-    console.error("[getUpcomingEvents] Error during Firestore query:", error); // Log the full error object
+    console.error(`[getUpcomingEvents] Error during Firestore query on path: ${collectionPath}:`, error); // Log the full error object and path
 
     if (isOfflineError(error)) {
-        errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch upcoming events (${(error as FirestoreError)?.code}).`;
+        errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch upcoming events from '${collectionPath}' (${(error as FirestoreError)?.code}).`;
         console.warn(`[getUpcomingEvents] ${errorMessage}`);
     } else if (error instanceof FirestoreError) {
          if (error.code === 'failed-precondition') {
-             errorMessage = "Index Required: Firestore query for events requires a composite index (date >=, date asc). Please create it in the Firebase console.";
+             errorMessage = `Index Required: Firestore query for events requires a composite index (date >=, date asc). Please create it in the Firebase console. Path: ${collectionPath}`;
              console.error(`[getUpcomingEvents] ${errorMessage}`);
          } else if (error.code === 'permission-denied') {
-             errorMessage = `Permission Denied: Check Firestore rules for reading '${eventsCollectionName}' collection.`;
+             errorMessage = `Permission Denied: Check Firestore rules for reading '${collectionPath}'. Ensure API is enabled and rules allow access.`;
              console.error(`[getUpcomingEvents] ${errorMessage}`);
          } else {
-             errorMessage = `Firestore Error (${error.code}): Could not fetch events. Details: ${error.message}`;
+             errorMessage = `Firestore Error (${error.code}) on path '${collectionPath}': Could not fetch events. Details: ${error.message}`;
              console.error(`[getUpcomingEvents] Full Firestore error: ${error.message}`);
          }
     } else if (error instanceof Error) {
        // Check again for offline messages within the generic Error type
          if (isOfflineError(error)) {
-             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch events. ${error.message}`;
+             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch events from '${collectionPath}'. ${error.message}`;
              console.warn(`[getUpcomingEvents] Offline detected via generic error: ${errorMessage}`);
          } else {
-             errorMessage = `Unexpected Error: ${error.message}`;
+             errorMessage = `Unexpected Error fetching events from '${collectionPath}': ${error.message}`;
              console.error(`[getUpcomingEvents] ${errorMessage}`);
          }
     } else {
-       errorMessage = "Unknown Error occurred fetching events.";
+       errorMessage = `Unknown Error occurred fetching events from '${collectionPath}'.`;
        console.error(`[getUpcomingEvents] ${errorMessage}`);
     }
     // Return fallback data on error, including context-prefixed string error message
@@ -145,7 +146,8 @@ async function getUpcomingEvents(): Promise<FetchResult<Event>> {
 // Fetch gallery image metadata from Cloud Firestore
 async function getGalleryImages(): Promise<FetchResult<GalleryImageMetadata>> {
   const galleryCollectionName = 'gallery';
-  console.log(`[getGalleryImages] Attempting to fetch gallery images from Firestore collection: ${galleryCollectionName}...`);
+  const collectionPath = `/${galleryCollectionName}`; // Log the actual path
+  console.log(`[getGalleryImages] Attempting to fetch gallery images from Firestore path: ${collectionPath}...`);
 
    if (!db) {
       const errorMsg = "[getGalleryImages] Firestore database instance (db) is not initialized.";
@@ -169,9 +171,9 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImageMetadata>> {
   try {
     // Make sure Firestore rules allow public read on 'gallery' collection
     const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12));
-    console.log("[getGalleryImages] Executing getDocs query...");
+    console.log(`[getGalleryImages] Executing getDocs query on path: ${collectionPath}...`);
     const querySnapshot = await getDocs(q);
-    console.log(`[getGalleryImages] getDocs completed. Fetched ${querySnapshot.size} gallery images.`);
+    console.log(`[getGalleryImages] getDocs completed. Fetched ${querySnapshot.size} gallery images from ${collectionPath}.`);
 
     if (querySnapshot.empty) {
       console.log("[getGalleryImages] No gallery images found in Firestore.");
@@ -186,33 +188,33 @@ async function getGalleryImages(): Promise<FetchResult<GalleryImageMetadata>> {
 
     return { data: images, error: null };
   } catch (error) {
-      console.error("[getGalleryImages] Error during Firestore query:", error); // Log full error object
+      console.error(`[getGalleryImages] Error during Firestore query on path: ${collectionPath}:`, error); // Log full error object and path
 
        if (isOfflineError(error)) {
-         errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch gallery images (${(error as FirestoreError)?.code}).`;
+         errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch gallery images from '${collectionPath}' (${(error as FirestoreError)?.code}).`;
          console.warn(`[getGalleryImages] ${errorMessage}`);
       } else if (error instanceof FirestoreError) {
            if (error.code === 'failed-precondition') {
-                errorMessage = `Index Required: Firestore query for gallery requires an index on 'createdAt' descending. Please create it in the Firebase console.`;
+                errorMessage = `Index Required: Firestore query for gallery requires an index on 'createdAt' descending. Please create it in the Firebase console. Path: ${collectionPath}`;
                  console.error(`[getGalleryImages] ${errorMessage}`);
            } else if (error.code === 'permission-denied') {
-                errorMessage = `Permission Denied: Check Firestore rules for reading '${galleryCollectionName}' collection.`;
+                errorMessage = `Permission Denied: Check Firestore rules for reading '${collectionPath}'. Ensure API is enabled and rules allow access.`;
                 console.error(`[getGalleryImages] ${errorMessage}`);
            } else {
-               errorMessage = `Firestore Error (${error.code}): Could not fetch gallery images. Details: ${error.message}`;
+               errorMessage = `Firestore Error (${error.code}) on path '${collectionPath}': Could not fetch gallery images. Details: ${error.message}`;
                console.error(`[getGalleryImages] Full Firestore error: ${error.message}`);
            }
       } else if (error instanceof Error) {
           // Check again for offline messages within the generic Error type
          if (isOfflineError(error)) {
-             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch gallery. ${error.message}`;
+             errorMessage = `Offline/Unavailable: The client is offline or cannot reach Firestore to fetch gallery from '${collectionPath}'. ${error.message}`;
              console.warn(`[getGalleryImages] Offline detected via generic error: ${errorMessage}`);
          } else {
-              errorMessage = `Unexpected Error: ${error.message}`;
+              errorMessage = `Unexpected Error fetching gallery from '${collectionPath}': ${error.message}`;
               console.error(`[getGalleryImages] ${errorMessage}`);
          }
       } else {
-           errorMessage = "Unknown Error occurred fetching gallery images.";
+           errorMessage = `Unknown Error occurred fetching gallery images from '${collectionPath}'.`;
            console.error(`[getGalleryImages] ${errorMessage}`);
       }
     // Return fallback data on error, including context-prefixed string error message
@@ -233,9 +235,10 @@ export default async function Home() {
   ]);
   console.log("[Home Page] Data fetch completed. Results:", results);
 
-  const siteContentResult = results[0].status === 'fulfilled' ? results[0].value : { content: defaultContent, error: `Website Content: Failed - ${String(results[0].reason)}` };
-  const eventsResult = results[1].status === 'fulfilled' ? results[1].value : { data: [], error: `Events: Failed - ${String(results[1].reason)}` };
-  const galleryResult = results[2].status === 'fulfilled' ? results[2].value : { data: [], error: `Gallery: Failed - ${String(results[2].reason)}` };
+  const siteContentResult = results[0].status === 'fulfilled' ? results[0].value : { content: defaultSiteContent, error: `Website Content: Failed - ${String((results[0] as PromiseRejectedResult).reason)}` };
+  const eventsResult = results[1].status === 'fulfilled' ? results[1].value : { data: [], error: `Events: Failed - ${String((results[1] as PromiseRejectedResult).reason)}` };
+  const galleryResult = results[2].status === 'fulfilled' ? results[2].value : { data: [], error: `Gallery: Failed - ${String((results[2] as PromiseRejectedResult).reason)}` };
+
 
    // Extract data and errors
    const siteContent = siteContentResult.content;
