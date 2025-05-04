@@ -181,77 +181,77 @@ export function UpcomingEventsSection() {
             const eventLongDateString = event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available';
             return (
               <Dialog key={event.id}>
-                <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
-                  <div className="relative h-48 w-full overflow-hidden group">
-                    <EventImage
-                      src={event.imageURL}
-                      alt={event.name}
-                      eventId={event.id}
-                      priority={index < 3}
-                    />
-                  </div>
-                  <CardHeader>
-                    <CardTitle className="text-xl">{event.name}</CardTitle>
-                    <CardDescription>
-                      {eventDateString}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-grow">
-                    <p className="text-foreground/80 line-clamp-3">{event.description}</p>
-                  </CardContent>
-                  <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
-                    <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
-                    <DialogTrigger asChild>
-                      <Button variant="link" size="sm" className="text-primary/80 hover:text-primary">
-                        Learn More <ArrowRight className="ml-1 h-4 w-4"/>
-                      </Button>
-                    </DialogTrigger>
-                  </CardFooter>
-                </Card>
-                <DialogContent
-                  className="sm:max-w-[600px] p-0"
-                  aria-labelledby={modalTitleId} // Link title for accessibility
-                  aria-describedby={modalDescriptionId} // Link description for accessibility
-                >
-                  {/* Ensure DialogHeader is the first child (or near the top) for accessibility parsing */}
-                  <DialogHeader className="p-4 sm:p-6 border-b">
-                    <DialogTitle id={modalTitleId} className="text-2xl font-semibold">{event.name}</DialogTitle>
-                    <DialogDescription id={modalDescriptionId} className="text-muted-foreground mt-1">
-                      {eventLongDateString} {/* Using date as description */}
-                    </DialogDescription>
-                  </DialogHeader>
-                  {/* Main content of the dialog */}
-                  <div className="p-4 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                    {event.imageURL && (
-                      <div className="relative aspect-video mb-4 rounded-md overflow-hidden">
-                        <Image
+                <DialogTrigger asChild>
+                    <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in cursor-pointer" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
+                      <div className="relative h-48 w-full overflow-hidden group">
+                        <EventImage
                           src={event.imageURL}
-                          alt={`Image for ${event.name}`}
-                          fill
-                          sizes="(max-width: 640px) 90vw, 600px"
-                          className="object-cover"
-                          onError={(e) => {
-                            console.warn(`Modal Event Image Load Error: ${event.imageURL}`);
-                            const fallbackSrc = `https://picsum.photos/seed/${event.id}/600/338`; // Fallback URL
-                            // Check if currentTarget exists before modifying
-                            if (e.currentTarget && typeof e.currentTarget.src === 'string') {
-                              e.currentTarget.src = fallbackSrc;
-                            }
-                            e.currentTarget.alt = `${event.name} (Fallback Image)`;
-                            e.currentTarget.onerror = null;
-                          }}
-                          unoptimized={!event.imageURL?.startsWith('/')}
+                          alt={event.name}
+                          eventId={event.id}
+                          priority={index < 3}
                         />
                       </div>
-                    )}
-                    {/* Use event.description as the primary description */}
-                    <p className="text-foreground/90 whitespace-pre-wrap">{event.description}</p>
-                  </div>
-                  <DialogClose className="absolute top-3 right-3 p-1 rounded-full bg-secondary/80 text-muted-foreground hover:bg-secondary transition-colors z-10">
-                    <X className="h-4 w-4" />
-                    <span className="sr-only">Close</span>
-                  </DialogClose>
-                </DialogContent>
+                      <CardHeader>
+                        <CardTitle className="text-xl">{event.name}</CardTitle>
+                        <CardDescription>
+                          {eventDateString}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex-grow">
+                        <p className="text-foreground/80 line-clamp-3">{event.description}</p>
+                      </CardContent>
+                      <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
+                        <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
+                         {/* This button now just triggers the dialog */}
+                         <span role="button" className="inline-flex items-center justify-center text-sm font-medium text-primary/80 hover:text-primary cursor-pointer">
+                             Learn More <ArrowRight className="ml-1 h-4 w-4"/>
+                         </span>
+                      </CardFooter>
+                    </Card>
+                </DialogTrigger>
+                 <DialogContent
+                    className="sm:max-w-[600px] p-0"
+                    aria-labelledby={modalTitleId}
+                    aria-describedby={modalDescriptionId}
+                  >
+                    <DialogHeader className="p-4 sm:p-6 border-b">
+                      {/* Ensure DialogTitle and DialogDescription are present */}
+                      <DialogTitle id={modalTitleId}>{event.name}</DialogTitle>
+                      <DialogDescription id={modalDescriptionId}>
+                        Event details for {event.name} scheduled on {eventLongDateString}.
+                      </DialogDescription>
+                    </DialogHeader>
+                    {/* Main content */}
+                    <div className="p-4 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                      {event.imageURL && (
+                        <div className="relative aspect-video mb-4 rounded-md overflow-hidden">
+                          <Image
+                            src={event.imageURL}
+                            alt={`Image for ${event.name}`}
+                            fill
+                            sizes="(max-width: 640px) 90vw, 600px"
+                            className="object-cover"
+                            onError={(e) => {
+                              console.warn(`Modal Event Image Load Error: ${event.imageURL}`);
+                              const fallbackSrc = `https://picsum.photos/seed/${event.id}/600/338`; // Fallback URL
+                              if (e.currentTarget && typeof e.currentTarget.src === 'string') {
+                                e.currentTarget.src = fallbackSrc;
+                              }
+                              e.currentTarget.alt = `${event.name} (Fallback Image)`;
+                              e.currentTarget.onerror = null;
+                            }}
+                            unoptimized={!event.imageURL?.startsWith('/')}
+                          />
+                        </div>
+                      )}
+                      <p className="text-sm text-muted-foreground">{eventLongDateString}</p>
+                      <p className="text-foreground/90 whitespace-pre-wrap">{event.description}</p>
+                    </div>
+                    <DialogClose className="absolute top-3 right-3 p-1 rounded-full bg-secondary/80 text-muted-foreground hover:bg-secondary transition-colors z-10">
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Close</span>
+                    </DialogClose>
+                  </DialogContent>
               </Dialog>
             );
           })}
@@ -260,3 +260,4 @@ export function UpcomingEventsSection() {
     </section>
   );
 }
+

@@ -189,11 +189,12 @@ export function GallerySection() {
                    aria-labelledby={modalTitleId}
                    aria-describedby={modalDescriptionId} // Add aria-describedby
                >
-                   {/* Add DialogHeader with DialogTitle and DialogDescription for accessibility */}
-                   {/* Removed sr-only from header, title is now visible */}
+                    {/* Ensure DialogHeader with Title and Description is present */}
                    <DialogHeader>
                      <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
-                     <DialogDescription id={modalDescriptionId} className="sr-only">Enlarged view of the gallery image: {image.name || 'Unnamed Image'}</DialogDescription>
+                     <DialogDescription id={modalDescriptionId} className="sr-only">
+                       Enlarged view of the gallery image: {image.name || 'Unnamed Image'}
+                     </DialogDescription>
                    </DialogHeader>
                    {/* Content */}
                    <div className="relative aspect-video"> {/* Use aspect-video for consistent ratio */}
@@ -216,8 +217,6 @@ export function GallerySection() {
                          <X className="h-4 w-4"/>
                          <span className="sr-only">Close</span>
                      </DialogClose>
-                     {/* Optional: Add title/description inside modal below image */}
-                     {/* Removed the duplicate visible title from here */}
                </DialogContent>
              </Dialog>
              );
