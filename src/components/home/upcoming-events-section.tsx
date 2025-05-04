@@ -115,8 +115,12 @@ export function UpcomingEventsSection() {
              } else {
                  errorMessage = `Firestore Error (${error.code}): ${error.message}. Using fallback data.`;
              }
+          } else if (error instanceof Error) {
+                errorMessage = `Unexpected Error: ${error.message}. Using fallback data.`;
+                console.error(`[UpcomingEvents] Unexpected Error: ${errorMessage}`);
           } else {
-             errorMessage = `Unexpected Error: ${error instanceof Error ? error.message : String(error)}. Using fallback data.`;
+                errorMessage = `Unknown Error: An unknown error occurred fetching events. Using fallback data.`;
+                 console.error(`[UpcomingEvents] ${errorMessage}`);
           }
         setFetchError(errorMessage);
         setUpcomingEvents(fallbackEvents); // Use fallback on error
@@ -129,7 +133,7 @@ export function UpcomingEventsSection() {
      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db]); // Depend on db instance
 
-  // Generate unique IDs for DialogTitle and DialogDescription
+   // Generate unique IDs for DialogTitle and DialogDescription
   const getModalTitleId = (eventId: string) => `event-modal-title-${eventId}`;
   const getModalDescriptionId = (eventId: string) => `event-modal-description-${eventId}`;
 
