@@ -170,6 +170,8 @@ export function UpcomingEventsSection() {
           {upcomingEvents.map((event, index) => {
             const modalTitleId = getModalTitleId(event.id);
             const modalDescriptionId = getModalDescriptionId(event.id);
+            const eventDateString = event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available';
+            const eventLongDateString = event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available';
             return (
               <Dialog key={event.id}>
                 <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
@@ -184,7 +186,7 @@ export function UpcomingEventsSection() {
                   <CardHeader>
                     <CardTitle className="text-xl">{event.name}</CardTitle>
                     <CardDescription>
-                      {event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available'}
+                      {eventDateString}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">
@@ -202,12 +204,12 @@ export function UpcomingEventsSection() {
                  <DialogContent
                       className="sm:max-w-[600px] p-0"
                       aria-labelledby={modalTitleId}
-                      aria-describedby={modalDescriptionId}
+                      aria-describedby={modalDescriptionId} // Add aria-describedby
                  >
                      <DialogHeader className="p-4 sm:p-6 border-b">
                        <DialogTitle id={modalTitleId} className="text-2xl font-semibold">{event.name}</DialogTitle>
-                       <DialogDescription id={modalDescriptionId} className="text-muted-foreground mt-1">
-                          {event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available'}
+                       <DialogDescription id={modalDescriptionId} className="text-muted-foreground mt-1"> {/* Add id */}
+                          {eventLongDateString}
                        </DialogDescription>
                      </DialogHeader>
                      <div className="p-4 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto">
@@ -229,6 +231,7 @@ export function UpcomingEventsSection() {
                                 />
                             </div>
                          )}
+                         {/* Use event.description as the primary description */}
                          <p className="text-foreground/90 whitespace-pre-wrap">{event.description}</p>
                      </div>
                       <DialogClose className="absolute top-3 right-3 p-1 rounded-full bg-secondary/80 text-muted-foreground hover:bg-secondary transition-colors">

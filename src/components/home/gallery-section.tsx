@@ -5,10 +5,10 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { GalleryImage } from './gallery-image'; // Ensure this component exists and is client-compatible
-import { Image as ImageIconIcon, AlertCircle, Loader2, WifiOff, Maximize } from 'lucide-react';
+import { Image as ImageIconIcon, AlertCircle, Loader2, WifiOff, Maximize, X } from 'lucide-react';
 import { collection, getDocs, query, orderBy, limit, Timestamp, FirestoreError } from 'firebase/firestore';
 import { useFirebase } from '@/context/firebase-provider';
-import { Dialog, DialogContent, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog"; // Import DialogHeader, DialogTitle, DialogDescription
 import Image from 'next/image'; // Use next/image for modal content
 
 interface GalleryImageMetadata {
@@ -121,6 +121,10 @@ export function GallerySection() {
      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db]); // Depend on db instance
 
+  const getModalTitleId = (imageId: string) => `gallery-modal-title-${imageId}`;
+  const getModalDescriptionId = (imageId: string) => `gallery-modal-description-${imageId}`;
+
+
   return (
     <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
       <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2">
@@ -157,7 +161,10 @@ export function GallerySection() {
       {/* Gallery Grid */}
       {!loading && galleryImages.length > 0 && (
         <div className="grid grid-cols-gallery gap-4">
-          {galleryImages.map((image, index) => (
+          {galleryImages.map((image, index) => {
+             const modalTitleId = getModalTitleId(image.id);
+             const modalDescriptionId = getModalDescriptionId(image.id);
+             return (
              <Dialog key={image.id}>
                <DialogTrigger asChild>
                  <div className="overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 group animate-fade-in relative aspect-[3/2] cursor-pointer" style={{ animationDelay: `${1 + index * 0.05}s` }}>
@@ -177,30 +184,42 @@ export function GallerySection() {
                    </div>
                  </div>
                </DialogTrigger>
-               <DialogContent className="max-w-3xl p-2 sm:p-4">
-                   <Image
-                     src={image.url}
-                     alt={image.name || 'Enlarged gallery image'}
-                     width={1200} // Adjust width as needed
-                     height={800} // Adjust height as needed
-                      style={{ width: '100%', height: 'auto' }} // Make it responsive
-                     className="rounded-md object-contain"
-                     onError={(e) => {
-                          console.warn(`Modal Image Load Error: ${image.url}`);
-                          e.currentTarget.src = `https://picsum.photos/seed/${image.id}/1200/800`; // Larger fallback
-                          e.currentTarget.alt = `${image.name} (Fallback)`;
-                          e.currentTarget.onerror = null;
-                      }}
-                      unoptimized={!image.url?.startsWith('/')}
-                   />
-                    <DialogClose className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors">
+               <DialogContent
+                   className="max-w-3xl p-2 sm:p-4"
+                   aria-labelledby={modalTitleId}
+                   aria-describedby={modalDescriptionId} // Add aria-describedby
+               >
+                   <DialogHeader className="sr-only"> {/* Hide header visually but keep for accessibility */}
+                     <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
+                     <DialogDescription id={modalDescriptionId}>Enlarged view of the gallery image: {image.name || 'Unnamed Image'}</DialogDescription>
+                   </DialogHeader>
+                   {/* Content */}
+                   <div className="relative aspect-video"> {/* Use aspect-video for consistent ratio */}
+                       <Image
+                         src={image.url}
+                         alt={image.name || 'Enlarged gallery image'}
+                         fill // Use fill to cover the aspect-ratio container
+                         sizes="(max-width: 768px) 90vw, (max-width: 1280px) 70vw, 1200px" // Responsive sizes
+                         className="rounded-md object-contain" // Use object-contain to show full image
+                         onError={(e) => {
+                              console.warn(`Modal Image Load Error: ${image.url}`);
+                              e.currentTarget.src = `https://picsum.photos/seed/${image.id}/1200/800`; // Larger fallback
+                              e.currentTarget.alt = `${image.name} (Fallback)`;
+                              e.currentTarget.onerror = null;
+                          }}
+                          unoptimized={!image.url?.startsWith('/')}
+                       />
+                   </div>
+                    <DialogClose className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-10">
+                         <X className="h-4 w-4"/>
                          <span className="sr-only">Close</span>
                      </DialogClose>
-                     {/* Optional: Add title/description inside modal */}
+                     {/* Optional: Add title/description inside modal below image */}
                      <p className="text-center text-sm text-muted-foreground mt-2">{image.name}</p>
                </DialogContent>
              </Dialog>
-          ))}
+             );
+          })}
         </div>
       )}
     </section>
