@@ -361,9 +361,10 @@ export default function AdminGalleryPage() {
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent
-                          aria-labelledby={titleId}
-                          aria-describedby={descriptionId}
+                          aria-labelledby={titleId} // Use dynamic ID
+                          aria-describedby={descriptionId} // Use dynamic ID
                         >
+                          {/* Added AlertDialogHeader, AlertDialogTitle, AlertDialogDescription */}
                           <AlertDialogHeader>
                             <AlertDialogTitle id={titleId}>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription id={descriptionId}>
@@ -395,3 +396,4 @@ export default function AdminGalleryPage() {
     </div>
   );
 }
+

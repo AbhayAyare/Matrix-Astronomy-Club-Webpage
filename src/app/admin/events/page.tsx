@@ -349,6 +349,7 @@ export default function AdminEventsPage() {
            aria-labelledby={dialogTitleId}
            aria-describedby={dialogDescriptionId}
         >
+          {/* Added DialogHeader, DialogTitle, and DialogDescription */}
           <DialogHeader>
             <DialogTitle id={dialogTitleId}>{editEventId ? 'Edit Event' : 'Add New Event'}</DialogTitle>
             <DialogDescription id={dialogDescriptionId}>
@@ -408,3 +409,4 @@ export default function AdminEventsPage() {
     </div>
   );
 }
+

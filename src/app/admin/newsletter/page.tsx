@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -198,6 +199,7 @@ export default function AdminNewsletterPage() {
                               aria-labelledby={titleId} // Use dynamic ID
                               aria-describedby={descriptionId} // Use dynamic ID
                             >
+                              {/* Added AlertDialogHeader */}
                               <AlertDialogHeader>
                                 <AlertDialogTitle id={titleId}>Are you sure?</AlertDialogTitle> {/* Add ID */}
                                 <AlertDialogDescription id={descriptionId}> {/* Add ID */}
@@ -227,3 +229,4 @@ export default function AdminNewsletterPage() {
     </div>
   );
 }
+

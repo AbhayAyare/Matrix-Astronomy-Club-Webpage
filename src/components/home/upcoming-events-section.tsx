@@ -214,8 +214,8 @@ export function UpcomingEventsSection() {
                     aria-labelledby={modalTitleId}
                     aria-describedby={modalDescriptionId}
                   >
+                    {/* Ensure DialogHeader with Title and Description is present */}
                     <DialogHeader className="p-4 sm:p-6 border-b">
-                      {/* Ensure DialogTitle and DialogDescription are present */}
                       <DialogTitle id={modalTitleId}>{event.name}</DialogTitle>
                       <DialogDescription id={modalDescriptionId}>
                         Event details for {event.name} scheduled on {eventLongDateString}.
