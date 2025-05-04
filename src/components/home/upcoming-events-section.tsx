@@ -46,10 +46,14 @@ export function UpcomingEventsSection() {
   const [isOffline, setIsOffline] = useState(false);
 
   const eventsCollectionName = 'events';
-  const fallbackEvents: Event[] = [
-      { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), description: 'Join us for a night under the stars observing distant galaxies and nebulae. Details will be available soon.', imageURL: `https://picsum.photos/seed/event1/400/250` },
-      { id: 'fallback2', name: 'Planetary Alignment Talk (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)), description: 'Learn about the upcoming planetary alignment and how to view it. More information coming soon.', imageURL: `https://picsum.photos/seed/event2/400/250` },
-  ];
+  // Define fallbackEvents as an empty array if you don't want fallbacks on error
+  const fallbackEvents: Event[] = [];
+  // Example with fallback data:
+  // const fallbackEvents: Event[] = [
+  //     { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), description: 'Join us for a night under the stars observing distant galaxies and nebulae. Details will be available soon.', imageURL: `https://picsum.photos/seed/event1/400/250` },
+  //     { id: 'fallback2', name: 'Planetary Alignment Talk (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)), description: 'Learn about the upcoming planetary alignment and how to view it. More information coming soon.', imageURL: `https://picsum.photos/seed/event2/400/250` },
+  // ];
+
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -144,8 +148,14 @@ export function UpcomingEventsSection() {
              console.error(`[UpcomingEvents] ${errorMessage}`);
           }
         setFetchError(errorMessage);
-        console.warn("[UpcomingEvents] Setting fallback event data due to error.");
-        setUpcomingEvents(fallbackEvents); // Use fallback on any error
+        // Only set fallback if fallbackEvents has items
+        if (fallbackEvents.length > 0) {
+            console.warn("[UpcomingEvents] Setting fallback event data due to error.");
+            setUpcomingEvents(fallbackEvents);
+        } else {
+             console.warn("[UpcomingEvents] Error occurred, but no fallback data defined. Events list will be empty.");
+             setUpcomingEvents([]); // Explicitly set to empty on error if no fallback
+        }
       } finally {
         console.log("[UpcomingEvents] Fetch process finished. Setting loading to false.");
         setLoading(false);
@@ -178,27 +188,28 @@ export function UpcomingEventsSection() {
                {isOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
                <AlertTitle>{isOffline ? "Network Issue" : "Events Unavailable"}</AlertTitle>
                <AlertDescription>
-                  {fetchError} {!isOffline && fallbackEvents.length > 0 && " Showing fallback events."}
-                  {isOffline && fallbackEvents.length > 0 && " Showing fallback events."}
-                  {isOffline && fallbackEvents.length === 0 && " Cannot load events while offline."}
+                  {fetchError} {fallbackEvents.length > 0 && upcomingEvents === fallbackEvents && " Showing fallback events."}
+                  {isOffline && fallbackEvents.length > 0 && upcomingEvents === fallbackEvents && " Showing fallback events."}
+                  {/* Message if offline and no fallback or if other error and no fallback */}
+                  {((isOffline && fallbackEvents.length === 0) || (!isOffline && !fetchError?.includes("fallback") && fallbackEvents.length === 0)) && " Cannot load events."}
              </AlertDescription>
           </Alert>
       )}
 
 
-       {/* Empty State (Show if not loading AND no events were fetched/set, AND no error caused fallback data to be used) */}
-       {!loading && upcomingEvents.length === 0 && !(fetchError && fallbackEvents.length > 0) && (
+       {/* Empty State - Show ONLY if not loading, no events array has length 0 AND there was no error */}
+       {!loading && !fetchError && upcomingEvents.length === 0 && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
              No upcoming events scheduled yet. Check back soon!
           </CardContent>
         </Card>
       )}
-       {/* Alternate Empty State (Show if not loading AND no events AND there WAS an error, but no fallback data was set) */}
-       {!loading && upcomingEvents.length === 0 && fetchError && fallbackEvents.length === 0 && (
+        {/* Empty State - Show ONLY if not loading, events array is empty AND there WAS an error BUT no fallback was used */}
+       {!loading && fetchError && upcomingEvents.length === 0 && fallbackEvents.length === 0 && (
          <Card>
            <CardContent className="p-6 text-center text-muted-foreground">
-              Could not load events due to an error.
+              Could not load events due to an error. Check back soon!
            </CardContent>
          </Card>
        )}
@@ -293,4 +304,3 @@ export function UpcomingEventsSection() {
     </section>
   );
 }
-
