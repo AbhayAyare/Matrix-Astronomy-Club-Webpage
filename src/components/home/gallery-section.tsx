@@ -8,7 +8,7 @@ import { GalleryImage } from './gallery-image'; // Ensure this component exists 
 import { Image as ImageIconIcon, AlertCircle, Loader2, WifiOff, Maximize, X } from 'lucide-react';
 import { collection, getDocs, query, orderBy, limit, Timestamp, FirestoreError } from 'firebase/firestore';
 import { useFirebase } from '@/context/firebase-provider';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from "@/components/ui/dialog"; // Import DialogHeader, DialogTitle, DialogDescription
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"; // Import DialogHeader, DialogTitle, DialogDescription
 import Image from 'next/image'; // Use next/image for modal content
 
 interface GalleryImageMetadata {
@@ -189,7 +189,8 @@ export function GallerySection() {
                    aria-labelledby={modalTitleId}
                    aria-describedby={modalDescriptionId} // Add aria-describedby
                >
-                   <DialogHeader className="sr-only"> {/* Hide header visually but keep for accessibility */}
+                   {/* Add DialogHeader with DialogTitle and DialogDescription for accessibility */}
+                   <DialogHeader className="sr-only">
                      <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
                      <DialogDescription id={modalDescriptionId}>Enlarged view of the gallery image: {image.name || 'Unnamed Image'}</DialogDescription>
                    </DialogHeader>
