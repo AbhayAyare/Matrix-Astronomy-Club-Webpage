@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EventImage } from './event-image'; // Ensure this component exists and is client-compatible
 import { CalendarDays, AlertCircle, Loader2, WifiOff, ArrowRight, X } from 'lucide-react';
@@ -85,11 +84,11 @@ export function UpcomingEventsSection() {
           orderBy("date", "asc"),             // Order by event date
           limit(6)                            // Limit results
         );
-        console.log(`[UpcomingEvents] Firestore Query: collection='${eventsCollectionName}', where date >= ${todayTimestamp.toMillis()}, orderBy date asc, limit 6`);
+        console.log(`[UpcomingEvents] Firestore Query constructed: collection='${eventsCollectionName}', where date >= ${todayTimestamp.toMillis()}, orderBy date asc, limit 6`);
 
         console.log(`[UpcomingEvents] Executing getDocs query for '${eventsCollectionName}'...`);
         const querySnapshot = await getDocs(q);
-        console.log(`[UpcomingEvents] Query completed. Fetched ${querySnapshot.size} documents.`);
+        console.log(`[UpcomingEvents] Query completed. Fetched ${querySnapshot.size} documents.`); // LOG SIZE
 
         if (querySnapshot.empty) {
           console.log("[UpcomingEvents] No upcoming events found matching the query.");
@@ -98,13 +97,14 @@ export function UpcomingEventsSection() {
           const events: Event[] = querySnapshot.docs.map((doc, index) => {
             const data = doc.data();
              // --- DEBUG: Log raw data for each document ---
-             console.log(`[UpcomingEvents] Raw doc data [${index}] for ${doc.id}:`, {
+             console.log(`[UpcomingEvents] Raw doc data [${index}] for ${doc.id}:`, JSON.stringify({
                 name: data.name,
-                date: data.date?.toDate ? data.date.toDate().toISOString() : data.date, // Log date as ISO string if possible
-                description: data.description,
-                imageURL: data.imageURL,
-                createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
-            });
+                date_seconds: data.date?.seconds, // Log timestamp seconds
+                date_nanos: data.date?.nanoseconds,
+                description_length: data.description?.length,
+                imageURL_present: !!data.imageURL,
+                createdAt_seconds: data.createdAt?.seconds,
+            }, null, 2));
             // --- End DEBUG Log ---
 
             // Basic validation for required fields
@@ -114,7 +114,7 @@ export function UpcomingEventsSection() {
              }
             const eventName = data.name || 'Unnamed Event';
             const eventDesc = data.description || 'No description available.';
-            const eventImage = data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`;
+            const eventImage = data.imageURL; // Use undefined if missing
 
 
             return {
@@ -126,7 +126,9 @@ export function UpcomingEventsSection() {
               createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined,
             };
           });
-          console.log("[UpcomingEvents] Successfully mapped documents to events array:", events);
+           console.log("[UpcomingEvents] Successfully mapped documents to events array (first 3 shown):", JSON.stringify(events.slice(0, 3), (key, value) =>
+             value instanceof Timestamp ? value.toDate().toISOString() : value, 2)
+           ); // LOG MAPPED DATA (first 3)
           setUpcomingEvents(events);
         }
       } catch (error) {
@@ -206,7 +208,7 @@ export function UpcomingEventsSection() {
 
 
        {/* Empty State - Show ONLY if not loading AND events array is empty */}
-       {!loading && upcomingEvents.length === 0 && (
+       {!loading && upcomingEvents.length === 0 && !fetchError && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
              No upcoming events scheduled yet. Check back soon!
@@ -236,7 +238,7 @@ export function UpcomingEventsSection() {
                         />
                       </div>
                       <CardHeader>
-                        <CardTitle className="text-xl">{event.name}</CardTitle>
+                        <CardTitle className="text-xl" id={modalTitleId}>{event.name}</CardTitle> {/* Add ID here */}
                         <CardDescription>
                           {eventDateString}
                         </CardDescription>
@@ -256,11 +258,13 @@ export function UpcomingEventsSection() {
                  <DialogContent
                     className="sm:max-w-[600px] p-0"
                     aria-labelledby={modalTitleId}
-                    aria-describedby={modalDescriptionId}
+                    aria-describedby={modalDescriptionId} // Add aria-describedby
                   >
                     {/* Ensure DialogHeader with Title and Description is present */}
                     <DialogHeader className="p-4 sm:p-6 border-b">
+                       {/* Re-use the title from the card, ensuring it has the correct ID */}
                       <DialogTitle id={modalTitleId}>{event.name}</DialogTitle>
+                      {/* Add a meaningful description */}
                       <DialogDescription id={modalDescriptionId}>
                         Event details for {event.name} scheduled on {eventLongDateString}.
                       </DialogDescription>
