@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,11 +20,6 @@ interface Event {
   description: string;
   imageURL?: string;
   createdAt?: Timestamp; // Optional, but good for ordering
-}
-
-interface FetchResult<T> {
-  data: T[];
-  error: string | null;
 }
 
 // Helper function to check for offline errors
@@ -61,6 +57,7 @@ export function UpcomingEventsSection() {
       setLoading(true);
       setFetchError(null);
       setIsOffline(false); // Assume online initially
+      setUpcomingEvents([]); // Reset events state on fetch start
 
       if (!db) {
         console.error("[UpcomingEvents] Database instance is not available.");
@@ -103,7 +100,7 @@ export function UpcomingEventsSection() {
              const eventDate = data.date instanceof Timestamp ? data.date : Timestamp.now(); // Fallback date if missing/invalid
              const eventName = data.name || 'Unnamed Event';
              const eventDesc = data.description || 'No description available.';
-             const eventImage = data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`;
+             const eventImage = data.imageURL || `https://picsum.photos/seed/${doc.id}/400/250`; // Use doc.id for unique fallback
 
             console.log(`[UpcomingEvents] Mapping doc ${doc.id}: Name=${eventName}, Date=${eventDate.toDate().toISOString()}`);
 
@@ -180,21 +177,31 @@ export function UpcomingEventsSection() {
                {isOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
                <AlertTitle>{isOffline ? "Network Issue" : "Events Unavailable"}</AlertTitle>
                <AlertDescription>
-                  {fetchError} {!isOffline && "Showing fallback events."}
-                  {isOffline && "Showing fallback events or list may be empty."}
+                  {fetchError} {!isOffline && fallbackEvents.length > 0 && " Showing fallback events."}
+                  {isOffline && fallbackEvents.length > 0 && " Showing fallback events."}
+                  {isOffline && fallbackEvents.length === 0 && " Cannot load events while offline."}
              </AlertDescription>
           </Alert>
       )}
 
 
-       {/* Empty State (Show if not loading AND no events were fetched/set, including after an error that didn't result in fallback) */}
-       {!loading && upcomingEvents.length === 0 && (
+       {/* Empty State (Show if not loading AND no events were fetched/set, AND no error caused fallback data to be used) */}
+       {!loading && upcomingEvents.length === 0 && !fetchError && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
-             {fetchError ? "Could not load events." : "No upcoming events scheduled yet. Check back soon!"}
+             No upcoming events scheduled yet. Check back soon!
           </CardContent>
         </Card>
       )}
+       {/* Alternate Empty State (Show if not loading AND no events AND there WAS an error, but no fallback data was set) */}
+       {!loading && upcomingEvents.length === 0 && fetchError && fallbackEvents.length === 0 && (
+         <Card>
+           <CardContent className="p-6 text-center text-muted-foreground">
+              Could not load events due to an error.
+           </CardContent>
+         </Card>
+       )}
+
 
       {/* Events Grid (Show if not loading AND there are events - either fetched or fallback) */}
       {!loading && upcomingEvents.length > 0 && (
@@ -227,7 +234,7 @@ export function UpcomingEventsSection() {
                       </CardContent>
                       <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
-                         {/* This button now just triggers the dialog */}
+                         {/* This span now acts like a button for the trigger */}
                          <span role="button" className="inline-flex items-center justify-center text-sm font-medium text-primary/80 hover:text-primary cursor-pointer">
                              Learn More <ArrowRight className="ml-1 h-4 w-4"/>
                          </span>
@@ -285,3 +292,4 @@ export function UpcomingEventsSection() {
     </section>
   );
 }
+
