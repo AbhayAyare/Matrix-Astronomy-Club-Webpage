@@ -347,58 +347,61 @@ export default async function Home() {
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4"/>
               <AlertTitle>Events Unavailable</AlertTitle>
-              <AlertDescription>Could not load latest events. Showing fallback data. Error: {eventsResult.error}</AlertDescription>
+              <AlertDescription>Could not load latest events. Displaying fallback data. Error: {eventsResult.error}</AlertDescription>
             </Alert>
           )}
-          {/* Check if events array is empty AND there wasn't a significant fetch error (permissions/index) */}
+          {/* Improved Logic: Show message if EITHER empty AND no error, OR if there IS an error (regardless of emptiness) */}
           {upcomingEvents.length === 0 && !eventsResult.error ? (
-             <Card>
-                 <CardContent className="p-6 text-center text-muted-foreground">
-                     {isOffline ? "Events couldn't be loaded due to network issues. Please check back later." : "No upcoming events scheduled yet. Stay tuned!"}
-                 </CardContent>
-             </Card>
-           // Render the grid ONLY if upcomingEvents has items (could be fetched or the fallback)
-           ) : upcomingEvents.length > 0 ? (
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                {upcomingEvents.map((event, index) => (
-                <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
-                   <div className="relative h-48 w-full overflow-hidden group">
-                     {/* Use the EventImage client component */}
-                     <EventImage
-                       src={event.imageURL}
-                       alt={event.name}
-                       eventId={event.id}
-                       priority={index < 3}
-                     />
-                   </div>
-                  <CardHeader>
-                    <CardTitle className="text-xl">{event.name}</CardTitle>
-                     {/* Safely format date, provide fallback if date is invalid */}
-                     <CardDescription>
-                       {event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available'}
-                     </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-grow">
-                    <p className="text-foreground/80 line-clamp-3">{event.description}</p> {/* Use line-clamp */}
+              // Case 1: Successfully fetched but no upcoming events found
+              <Card>
+                  <CardContent className="p-6 text-center text-muted-foreground">
+                      No upcoming events scheduled yet. Check back soon!
                   </CardContent>
-                   <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
-                     <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
-                     {/* Maybe link to event details if available */}
-                     <Button variant="link" size="sm" disabled className="text-primary/80 hover:text-primary">
-                        Learn More <span aria-hidden="true" className="ml-1">→</span>
-                      </Button>
-                   </CardFooter>
-                </Card>
-              ))}
-             </div>
-           ) : (
-                // This case should ideally not be hit if logic above is correct, but acts as a final fallback
-                 <Card>
-                    <CardContent className="p-6 text-center text-muted-foreground">
-                       Loading events or an unexpected issue occurred.
-                    </CardContent>
-                </Card>
-           )}
+              </Card>
+           ) : eventsResult.error ? (
+              // Case 2: Error occurred during fetch (show fallback/error message)
+              <Card>
+                  <CardContent className="p-6 text-center text-muted-foreground">
+                      {isOffline
+                          ? "Events couldn't be loaded due to network issues. Please check back later."
+                          : `Could not load events due to an error. Showing fallback data if available. Error: ${eventsResult.error}`}
+                  </CardContent>
+              </Card>
+          ) : (
+              // Case 3: Successfully fetched events (render the grid)
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                 {upcomingEvents.map((event, index) => (
+                   <Card key={event.id} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
+                     <div className="relative h-48 w-full overflow-hidden group">
+                       {/* Use the EventImage client component */}
+                       <EventImage
+                         src={event.imageURL}
+                         alt={event.name}
+                         eventId={event.id}
+                         priority={index < 3}
+                       />
+                     </div>
+                     <CardHeader>
+                       <CardTitle className="text-xl">{event.name}</CardTitle>
+                       {/* Safely format date, provide fallback if date is invalid */}
+                       <CardDescription>
+                         {event.date?.toDate ? event.date.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Date not available'}
+                       </CardDescription>
+                     </CardHeader>
+                     <CardContent className="flex-grow">
+                       <p className="text-foreground/80 line-clamp-3">{event.description}</p> {/* Use line-clamp */}
+                     </CardContent>
+                     <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
+                       <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
+                       {/* Maybe link to event details if available */}
+                       <Button variant="link" size="sm" disabled className="text-primary/80 hover:text-primary">
+                         Learn More <span aria-hidden="true" className="ml-1">→</span>
+                       </Button>
+                     </CardFooter>
+                   </Card>
+                 ))}
+               </div>
+          )}
         </section>
 
 
@@ -520,3 +523,4 @@ export default async function Home() {
     </div>
   );
 }
+
