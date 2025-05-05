@@ -102,13 +102,13 @@ export function UpcomingEventsSection() {
                 description_length: data.description?.length,
                 imageURL_present: !!data.imageURL,
                 createdAt_seconds: data.createdAt?.seconds,
-            }, null, 2));
+            }, (key, value) => typeof value === 'bigint' ? value.toString() : value, 2)); // Handle potential bigints if any
             // --- End DEBUG Log ---
 
             // Basic validation for required fields
              const eventDate = data.date instanceof Timestamp ? data.date : Timestamp.fromDate(new Date(0)); // Use Epoch if date invalid/missing
              if (!(data.date instanceof Timestamp)) {
-               console.warn(`[UpcomingEvents] Document ${doc.id} has invalid or missing 'date' field. Using fallback date.`);
+               console.warn(`[UpcomingEvents] Document ${doc.id} has invalid or missing 'date' field (type: ${typeof data.date}). Using fallback date.`);
              }
             const eventName = data.name || 'Unnamed Event';
             const eventDesc = data.description || 'No description available.';
@@ -205,7 +205,7 @@ export function UpcomingEventsSection() {
       )}
 
 
-       {/* Empty State - Show ONLY if not loading AND events array is empty AND there was no error */}
+       {/* Empty State - Show ONLY if not loading AND events array is empty AND there was no error that resulted in a fallback being shown */}
        {!loading && upcomingEvents.length === 0 && !fetchError && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
@@ -236,7 +236,8 @@ export function UpcomingEventsSection() {
                         />
                       </div>
                       <CardHeader>
-                        <CardTitle className="text-xl" id={modalTitleId}>{event.name}</CardTitle> {/* Add ID here */}
+                        {/* Ensure DialogTitle uses the correct ID */}
+                        <CardTitle className="text-xl">{event.name}</CardTitle>
                         <CardDescription>
                           {eventDateString}
                         </CardDescription>

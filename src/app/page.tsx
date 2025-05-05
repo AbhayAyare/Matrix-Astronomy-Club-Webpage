@@ -7,7 +7,6 @@ import { Globe, UserPlus, Mail, Phone, MapPin, WifiOff, AlertCircle, ServerCrash
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { getSiteContent, SiteContent, defaultSiteContent } from '@/services/content'; // Import defaultSiteContent
-// Removed Firestore imports for events and gallery metadata, they will be handled by client components
 import { JoinForm } from '@/components/home/join-form';
 import { NewsletterForm } from '@/components/home/newsletter-form';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
