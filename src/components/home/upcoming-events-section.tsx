@@ -46,7 +46,11 @@ export function UpcomingEventsSection() {
 
   const eventsCollectionName = 'events';
   // Provide fallback data for display during errors or offline states if desired
-  const fallbackEvents: Event[] = []; // Currently empty, could add placeholder events
+   const fallbackEvents: Event[] = [
+       { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), description: 'Join us for a night under the stars observing distant galaxies and nebulae.', imageURL: 'https://picsum.photos/seed/event1/400/250'},
+       { id: 'fallback2', name: 'Workshop: Introduction to Astrophotography (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)), description: 'Learn the basics of capturing stunning images of the night sky.', imageURL: 'https://picsum.photos/seed/event2/400/250'},
+    ];
+
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -95,14 +99,14 @@ export function UpcomingEventsSection() {
           const events: Event[] = querySnapshot.docs.map((doc, index) => {
             const data = doc.data();
              // --- DEBUG: Log raw data for each document ---
-             console.log(`[UpcomingEvents] Raw doc data [${index}] for ${doc.id}:`, JSON.stringify({
-                name: data.name,
-                date_seconds: data.date?.seconds, // Log timestamp seconds
-                date_nanos: data.date?.nanoseconds,
-                description_length: data.description?.length,
-                imageURL_present: !!data.imageURL,
-                createdAt_seconds: data.createdAt?.seconds,
-            }, (key, value) => typeof value === 'bigint' ? value.toString() : value, 2)); // Handle potential bigints if any
+            //  console.log(`[UpcomingEvents] Raw doc data [${index}] for ${doc.id}:`, JSON.stringify({
+            //     name: data.name,
+            //     date_seconds: data.date?.seconds, // Log timestamp seconds
+            //     date_nanos: data.date?.nanoseconds,
+            //     description_length: data.description?.length,
+            //     imageURL_present: !!data.imageURL,
+            //     createdAt_seconds: data.createdAt?.seconds,
+            // }, (key, value) => typeof value === 'bigint' ? value.toString() : value, 2)); // Handle potential bigints if any
             // --- End DEBUG Log ---
 
             // Basic validation for required fields
@@ -124,9 +128,9 @@ export function UpcomingEventsSection() {
               createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined,
             };
           });
-           console.log("[UpcomingEvents] Successfully mapped documents to events array (first 3 shown):", JSON.stringify(events.slice(0, 3), (key, value) =>
-             value instanceof Timestamp ? value.toDate().toISOString() : value, 2)
-           ); // LOG MAPPED DATA (first 3)
+          //  console.log("[UpcomingEvents] Successfully mapped documents to events array (first 3 shown):", JSON.stringify(events.slice(0, 3), (key, value) =>
+          //    value instanceof Timestamp ? value.toDate().toISOString() : value, 2)
+          //  ); // LOG MAPPED DATA (first 3)
           setUpcomingEvents(events);
         }
       } catch (error) {
@@ -181,7 +185,11 @@ export function UpcomingEventsSection() {
 
   return (
     <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-      {/* Removed h2 heading - it's in the parent component (app/page.tsx) */}
+       {/* Added Upcoming Events Heading */}
+       <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-foreground flex items-center justify-center gap-2">
+         <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
+       </h2>
+
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Events...</span></div>
@@ -233,9 +241,8 @@ export function UpcomingEventsSection() {
                         />
                       </div>
                       <CardHeader>
-                        {/* Ensure DialogTitle uses the correct ID */}
-                        <CardTitle className="text-xl">{event.name}</CardTitle>
-                        <CardDescription>
+                         <CardTitle className="text-xl">{event.name}</CardTitle>
+                         <CardDescription>
                           {eventDateString}
                         </CardDescription>
                       </CardHeader>
@@ -304,4 +311,3 @@ export function UpcomingEventsSection() {
     </section>
   );
 }
-
