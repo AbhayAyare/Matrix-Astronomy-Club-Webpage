@@ -3,16 +3,16 @@ import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Globe, UserPlus, Mail, Phone, MapPin, WifiOff, AlertCircle, ServerCrash } from 'lucide-react';
+import { Globe, UserPlus, Mail, Phone, MapPin, WifiOff, ServerCrash } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { getSiteContent, SiteContent, defaultSiteContent } from '@/services/content'; // Import defaultSiteContent
 import { JoinForm } from '@/components/home/join-form';
 import { NewsletterForm } from '@/components/home/newsletter-form';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-// Import the new client components for interactive sections
 import { UpcomingEventsSection } from '@/components/home/upcoming-events-section';
 import { GallerySection } from '@/components/home/gallery-section';
+import { CircleAlert } from 'lucide-react'; // Corrected import for AlertCircle
 import { FirestoreError } from 'firebase/firestore';
 
 
@@ -33,11 +33,12 @@ function isOfflineError(error: any): boolean {
   );
 }
 
-
 export default async function Home() {
   // Fetch only site content in the Server Component
-  console.log("[Home Page] Starting site content fetch...");
+  console.log("[Home Page] Starting data fetch...");
   const siteContentResult = await getSiteContent();
+  // Separate fetch for events - moved inside useEffect in UpcomingEventsSection
+  // Separate fetch for gallery - moved inside useEffect in GallerySection
   console.log("[Home Page] Site content fetch completed.");
 
   const siteContent = siteContentResult.content;
@@ -79,20 +80,28 @@ export default async function Home() {
        )}
 
       <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24 overflow-x-hidden">
-        {/* Hero Section */}
-        <section id="hero" className="text-center py-16 md:py-24 bg-gradient-to-b from-primary/10 to-transparent rounded-lg shadow-inner animate-fade-in">
-           <h1 className="text-4xl md:text-6xl font-bold mb-4 text-primary animate-fade-in" style={{ animationDelay: '0.1s' }}>{siteContent.heroTitle}</h1>
-           <p className="text-lg md:text-xl text-foreground/80 max-w-3xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>{siteContent.heroSubtitle}</p>
-           {/* Enhanced Button Styling */}
-           <Button
-             size="lg"
-             asChild
-             className="transform hover:scale-105 transition-all duration-300 ease-in-out animate-fade-in border-2 border-primary/50 hover:border-primary shadow-lg hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-accent"
-             style={{ animationDelay: '0.3s' }}
-           >
-             <Link href="#join">Join the Club</Link>
-           </Button>
+        {/* Hero Section - Added frame styling */}
+        <section
+           id="hero"
+           className="text-center py-16 md:py-24 border border-primary/20 bg-secondary/10 rounded-2xl shadow-xl animate-fade-in p-8 relative overflow-hidden"
+           style={{ animationDelay: '0s' }} // Start animation immediately
+         >
+            {/* Optional: Inner shadow for depth */}
+            <div className="absolute inset-0 rounded-2xl shadow-inner pointer-events-none"></div>
+
+            <h1 className="text-4xl md:text-6xl font-bold mb-4 text-primary animate-fade-in" style={{ animationDelay: '0.1s' }}>{siteContent.heroTitle}</h1>
+            <p className="text-lg md:text-xl text-foreground/80 max-w-3xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>{siteContent.heroSubtitle}</p>
+            {/* Enhanced Button Styling */}
+            <Button
+              size="lg"
+              asChild
+              className="transform hover:scale-105 transition-all duration-300 ease-in-out animate-fade-in border-2 border-primary/50 hover:border-primary shadow-lg hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-accent"
+              style={{ animationDelay: '0.3s' }}
+            >
+              <Link href="#join">Join the Club</Link>
+            </Button>
         </section>
+
 
         {/* About Matrix Section */}
         <section id="about" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.4s' }}>
@@ -102,7 +111,7 @@ export default async function Home() {
               {/* Display content error specifically if it occurred */}
               {siteContentError && !isOffline && (
                 <Alert variant="destructive" className="mb-4">
-                  <AlertCircle className="h-4 w-4"/>
+                  <CircleAlert className="h-4 w-4"/> {/* Correct icon */}
                   <AlertTitle>Content Error</AlertTitle>
                   <AlertDescription>Could not load the 'About' content. Displaying default text. Error: {siteContentError}</AlertDescription>
                 </Alert>
@@ -165,7 +174,7 @@ export default async function Home() {
                {/* Display content error specifically if it occurred */}
               {siteContentError && !isOffline && (
                 <Alert variant="destructive" className="mb-4">
-                  <AlertCircle className="h-4 w-4"/>
+                  <CircleAlert className="h-4 w-4"/> {/* Correct icon */}
                   <AlertTitle>Contact Details Error</AlertTitle>
                   <AlertDescription>Could not load contact details. Displaying defaults. Error: {siteContentError}</AlertDescription>
                 </Alert>
