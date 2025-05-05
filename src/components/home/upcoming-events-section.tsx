@@ -247,7 +247,8 @@ export function UpcomingEventsSection() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-grow">
-                        <p className="text-foreground/80 line-clamp-3">{event.description}</p>
+                        {/* Change description text color */}
+                        <p className="text-card-foreground line-clamp-3">{event.description}</p>
                       </CardContent>
                       <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
@@ -295,6 +296,7 @@ export function UpcomingEventsSection() {
                           />
                         </div>
                       )}
+                       {/* Ensure modal text is readable */}
                       <p className="text-sm text-muted-foreground">{eventLongDateString}</p>
                       <p className="text-foreground/90 whitespace-pre-wrap">{event.description}</p>
                     </div>
