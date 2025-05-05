@@ -117,8 +117,8 @@ export default async function Home() {
                   <AlertDescription>Could not load the 'About' content. Displaying default text. Error: {siteContentError}</AlertDescription>
                 </Alert>
               )}
-              {/* Always display the 'about' content (either fetched or default) */}
-              <p className="text-lg leading-relaxed text-foreground/90">{siteContent.about}</p>
+              {/* Always display the 'about' content (either fetched or default) - changed text color */}
+              <p className="text-lg leading-relaxed text-card-foreground">{siteContent.about}</p>
             </CardContent>
           </Card>
         </section>
@@ -167,7 +167,8 @@ export default async function Home() {
              <CardHeader>
                 {/* Changed title text color to white */}
                <CardTitle className="text-foreground">{siteContent.newsletterTitle}</CardTitle>
-               <CardDescription>{siteContent.newsletterDescription}</CardDescription>
+                {/* Updated text color for description */}
+               <CardDescription className="text-sm text-card-foreground">{siteContent.newsletterDescription}</CardDescription>
              </CardHeader>
              <CardContent>
               <NewsletterForm /> {/* Client Component for form handling */}
@@ -215,4 +216,5 @@ export default async function Home() {
     </div>
   );
 }
+
 
