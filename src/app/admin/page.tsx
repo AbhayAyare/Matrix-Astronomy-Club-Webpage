@@ -38,6 +38,12 @@ export default function AdminDashboardPage() {
        setLoadingStats(true);
        setStatsError(null); // Reset error on fetch
        try {
+ if (!db || !storage) {
+ // If firebase is not initialized, set an error and stop
+        setStatsError("Firebase services not available. Please check configuration.");
+ setLoadingStats(false);
+ return; // Exit early
+ }
          const membersCollectionRef = collection(db, MEMBERS_COLLECTION);
          const eventsCollectionRef = collection(db, EVENTS_COLLECTION);
          const newsletterCollectionRef = collection(db, NEWSLETTER_COLLECTION);

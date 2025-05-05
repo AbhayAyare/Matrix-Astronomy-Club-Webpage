@@ -20,10 +20,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
-       // console.log("AuthProvider: Auth state changed, user:", currentUser?.email, "loading:", false);
+      // console.log("AuthProvider: Auth state changed, user:", currentUser?.email, "loading:", false);
     }, (error) => {
        // Added error handling for the listener itself
        console.error("AuthProvider: Error in onAuthStateChanged listener:", error);
@@ -36,6 +40,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<void> => {
     setLoading(true);
+    if (!auth) {
+      setLoading(false);
+      throw new Error("Firebase Auth is not initialized.");
+    }
     try {
       await signInWithEmailAndPassword(auth, email, password);
       // Auth state change will be handled by onAuthStateChanged.
@@ -58,6 +66,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async (): Promise<void> => {
     setLoading(true);
+    if (!auth) {
+      setLoading(false);
+      throw new Error("Firebase Auth is not initialized.");
+    }
     try {
       await signOut(auth);
       // Auth state change will set user to null via listener.

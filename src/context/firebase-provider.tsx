@@ -9,10 +9,10 @@ import { Analytics } from 'firebase/analytics';
 import { app, auth, db, storage, analytics } from '@/config/firebase'; // Assuming analytics might be undefined initially
 
 interface FirebaseContextProps {
-  app: FirebaseApp;
-  auth: Auth;
-  db: Firestore;
-  storage: FirebaseStorage;
+  app?: FirebaseApp | null;
+  auth?: Auth | null;
+  db?: Firestore | null;
+  storage?: FirebaseStorage | null;
   analytics?: Analytics; // Optional analytics
 }
 

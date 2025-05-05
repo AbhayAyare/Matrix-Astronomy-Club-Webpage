@@ -29,7 +29,14 @@ export default function AdminMembersPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false); // Track offline state
 
-  const membersCollectionRef = collection(db, MEMBERS_COLLECTION);
+  // Add a check for db being null before creating the collection reference
+  let membersCollectionRef;
+  if (db) {
+    membersCollectionRef = collection(db, MEMBERS_COLLECTION);
+  } else {
+    // Handle the case where db is null (e.g., Firebase not initialized)
+    console.error("Firestore database not available.");
+  }
 
   // Fetch members on load
   useEffect(() => {

@@ -32,7 +32,10 @@ export default function AdminNewsletterPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false); // Track offline state
 
-  const subscribersCollectionRef = collection(db, NEWSLETTER_COLLECTION);
+  // Return early if db is null or undefined
+  if (!db) {
+    return <div>Error: Firestore not initialized.</div>;
+  }
 
   // Fetch subscribers on load
   useEffect(() => {
@@ -40,6 +43,7 @@ export default function AdminNewsletterPage() {
       setLoading(true);
       setFetchError(null); // Reset error on fetch
       setIsOffline(false); // Reset offline state
+
       try {
         // Assuming subscribers have a 'subscribedAt' field for ordering
         const q = query(subscribersCollectionRef, orderBy("subscribedAt", "desc"));
@@ -99,6 +103,10 @@ export default function AdminNewsletterPage() {
   const handleDeleteSubscriber = async (id: string) => {
     setDeletingId(id);
     try {
+      // Check if db is available
+      if (!db) {
+        throw new Error("Firestore not initialized.");
+      }
       const subscriberDocRef = doc(db, NEWSLETTER_COLLECTION, id);
       await deleteDoc(subscriberDocRef);
       setSubscribers(subscribers.filter(sub => sub.id !== id));

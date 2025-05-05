@@ -67,6 +67,7 @@ export function GallerySection() {
       if (!db) {
         setFetchError("Database not initialized.");
         setLoading(false);
+        setGalleryImages(fallbackImages); // Show fallback if DB missing
         return;
       }
 
@@ -133,7 +134,7 @@ export function GallerySection() {
 
       {/* Loading State */}
       {loading && (
-        <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Gallery...</span></div>
+        <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2 text-muted-foreground">Loading Gallery...</span></div>
       )}
 
       {/* Error State */}
@@ -143,7 +144,7 @@ export function GallerySection() {
               <AlertTitle>{isOffline ? "Network Issue" : "Gallery Unavailable"}</AlertTitle>
               <AlertDescription>
                   {fetchError} {!isOffline && "Showing fallback images."}
-                  {isOffline && "Showing fallback images. Functionality may be limited."}
+                  {isOffline && "Showing fallback images."}
              </AlertDescription>
           </Alert>
       )}
@@ -226,6 +227,3 @@ export function GallerySection() {
     </section>
   );
 }
-
-
-

@@ -22,6 +22,15 @@ export function JoinForm() {
         e.preventDefault();
         setSubmitting(true);
 
+ if (!db) {
+ toast({
+ title: "Error",
+ description: "Database not available. Please try again later.",
+ variant: "destructive",
+ });
+ setSubmitting(false);
+ return;
+ }
         try {
             await addDoc(collection(db, 'members'), {
                 name,

@@ -56,7 +56,14 @@ export default function AdminEventsPage() {
   const dialogDescriptionId = `${baseId}-event-dialog-description`;
 
 
-  const eventsCollectionRef = collection(db, EVENTS_COLLECTION);
+  // Add a check if db is null before creating eventsCollectionRef
+ if (!db) {
+    console.error("[AdminEvents] Firestore DB is not initialized.");
+ return (
+ <div className="flex items-center justify-center h-screen text-red-500">Firestore DB not available.</div>
+ );
+  }
+ const eventsCollectionRef = collection(db, EVENTS_COLLECTION);
 
   // Fetch events on load
   useEffect(() => {
@@ -224,7 +231,7 @@ export default function AdminEventsPage() {
       if (editEventId) {
         // Update existing event
         console.log(`[AdminEvents] Updating event with ID: ${editEventId}`);
-        const eventDocRef = doc(db, EVENTS_COLLECTION, editEventId);
+        const eventDocRef = doc(db!, EVENTS_COLLECTION, editEventId); // Use non-null assertion as db is checked above
         await updateDoc(eventDocRef, eventData);
         // Update local state correctly, ensuring date is the new timestamp
         setEvents(prevEvents =>
@@ -274,7 +281,7 @@ export default function AdminEventsPage() {
     setDeletingId(id);
     console.log(`[AdminEvents] Attempting to delete event with ID: ${id}`);
     try {
-      const eventDocRef = doc(db, EVENTS_COLLECTION, id);
+      const eventDocRef = doc(db!, EVENTS_COLLECTION, id); // Use non-null assertion
       await deleteDoc(eventDocRef);
       setEvents(events.filter(ev => ev.id !== id));
       toast({ title: "Success", description: "Event deleted successfully." });

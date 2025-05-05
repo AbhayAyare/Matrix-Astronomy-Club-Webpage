@@ -29,6 +29,15 @@ export function NewsletterForm() {
             setSubscribing(false);
             return;
         }
+        if (!db) {
+            toast({
+                title: "Invalid Email",
+                description: "Please enter a valid email address.",
+                variant: "destructive",
+            });
+            setSubscribing(false);
+            return;
+        }
 
 
         try {

@@ -29,8 +29,8 @@ console.log("[Firebase Config] Using config:", {
 
 
 // Initialize Firebase app instance
-let app: FirebaseApp;
-if (getApps().length === 0) {
+let app: FirebaseApp | null = null;
+if (getApps().length < 1) {
   try {
     app = initializeApp(firebaseConfig);
     console.log("[Firebase Init] New Firebase app initialized successfully.");
@@ -49,7 +49,7 @@ if (getApps().length === 0) {
 
 // Initialize Firebase services, checking if 'app' was successfully initialized
 let auth: Auth | null = null;
-let storage: FirebaseStorage | null = null;
+let storage: FirebaseStorage | null = null; // Can be null
 let db: Firestore | null = null;
 let analytics: Analytics | undefined = undefined; // Optional
 

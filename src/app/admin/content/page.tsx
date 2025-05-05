@@ -54,7 +54,11 @@ export default function AdminContentPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false); // Track offline state
   const [isDirty, setIsDirty] = useState(false); // Track changes
-
+ 
+  // If db is not initialized, return early or handle appropriately
+  if (!db) {
+ return <div className=\"flex items-center justify-center h-64\">Loading Firebase...</div>; // Or render an error state
+  }
   const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
 
   // Fetch content on load
@@ -114,7 +118,7 @@ export default function AdminContentPage() {
     setSaving(true);
     try {
       // Use updateDoc to only change fields, or setDoc with merge: true if you prefer
-      await updateDoc(contentDocRef, content);
+      await updateDoc(contentDocRef, content as Record<string, any>);
       toast({
         title: "Success",
         description: "Website content updated successfully.",

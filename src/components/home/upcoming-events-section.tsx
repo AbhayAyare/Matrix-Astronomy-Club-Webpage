@@ -192,7 +192,7 @@ export function UpcomingEventsSection() {
 
       {/* Loading State */}
       {loading && (
-        <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Events...</span></div>
+        <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2 text-muted-foreground">Loading Events...</span></div>
       )}
 
        {/* Error State */}
@@ -231,8 +231,8 @@ export function UpcomingEventsSection() {
             return (
               <Dialog key={event.id}>
                 <DialogTrigger asChild>
-                    <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in cursor-pointer" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
-                      <div className="relative h-48 w-full overflow-hidden group">
+                    <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in cursor-pointer group" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
+                      <div className="relative h-48 w-full overflow-hidden">
                         <EventImage
                           src={event.imageURL}
                           alt={event.name}
@@ -247,13 +247,11 @@ export function UpcomingEventsSection() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-grow">
-                        {/* Change description text color */}
                         <p className="text-card-foreground line-clamp-3">{event.description}</p>
                       </CardContent>
                       <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
-                         {/* This span now acts like a button for the trigger */}
-                         <span role="button" className="inline-flex items-center justify-center text-sm font-medium text-primary/80 hover:text-primary cursor-pointer">
+                         <span role="button" className="inline-flex items-center justify-center text-sm font-medium text-primary/80 hover:text-primary cursor-pointer group-hover:text-primary group-focus-within:text-primary">
                              Learn More <ArrowRight className="ml-1 h-4 w-4"/>
                          </span>
                       </CardFooter>
@@ -264,12 +262,9 @@ export function UpcomingEventsSection() {
                     aria-labelledby={modalTitleId}
                     aria-describedby={modalDescriptionId} // Add aria-describedby
                   >
-                    {/* Ensure DialogHeader with Title and Description is present */}
                     <DialogHeader className="p-4 sm:p-6 border-b">
-                       {/* Re-use the title from the card, ensuring it has the correct ID */}
                       <DialogTitle id={modalTitleId}>{event.name}</DialogTitle>
-                      {/* Add a meaningful description */}
-                      <DialogDescription id={modalDescriptionId}>
+                      <DialogDescription id={modalDescriptionId} className="sr-only"> {/* Screen reader description */}
                         Event details for {event.name} scheduled on {eventLongDateString}.
                       </DialogDescription>
                     </DialogHeader>
@@ -296,7 +291,6 @@ export function UpcomingEventsSection() {
                           />
                         </div>
                       )}
-                       {/* Ensure modal text is readable */}
                       <p className="text-sm text-muted-foreground">{eventLongDateString}</p>
                       <p className="text-foreground/90 whitespace-pre-wrap">{event.description}</p>
                     </div>
