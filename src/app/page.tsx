@@ -127,10 +127,7 @@ export default async function Home() {
 
         {/* Upcoming Events Section - Render Client Component */}
         <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-           {/* Changed heading text color to white */}
-          <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-foreground flex items-center justify-center gap-2">
-            <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
-          </h2>
+          {/* Removed the h2 heading for Upcoming Events */}
           <UpcomingEventsSection /> {/* Pass siteContent if needed for fallbacks inside */}
         </section>
 
@@ -218,3 +215,4 @@ export default async function Home() {
     </div>
   );
 }
+

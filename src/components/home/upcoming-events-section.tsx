@@ -181,10 +181,7 @@ export function UpcomingEventsSection() {
 
   return (
     <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-      <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2">
-        <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
-      </h2>
-
+      {/* Removed h2 heading - it's in the parent component (app/page.tsx) */}
       {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading Events...</span></div>
@@ -307,3 +304,4 @@ export function UpcomingEventsSection() {
     </section>
   );
 }
+
