@@ -127,7 +127,7 @@ export function GallerySection() {
 
   return (
     <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-      <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-primary flex items-center justify-center gap-2">
+      <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-foreground flex items-center justify-center gap-2">
         <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
       </h2>
 
@@ -186,7 +186,7 @@ export function GallerySection() {
                </DialogTrigger>
                <DialogContent
                    className="max-w-3xl p-2 sm:p-4"
-                   aria-labelledby={modalTitleId}
+                   aria-labelledby={modalTitleId} // Use dynamic ID
                    aria-describedby={modalDescriptionId} // Add aria-describedby
                >
                     {/* Ensure DialogHeader with Title and Description is present */}
@@ -226,5 +226,6 @@ export function GallerySection() {
     </section>
   );
 }
+
 
 
