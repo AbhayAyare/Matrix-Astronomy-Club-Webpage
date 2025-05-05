@@ -20,7 +20,7 @@ body {
     --secondary: 0 0% 90%; /* Light Gray */
     --secondary-foreground: 210 100% 12%; /* Dark Blue */
     --muted: 0 0% 95%; /* Lighter Gray */
-    --muted-foreground: 0 0% 70%; /* Lighter Medium Gray (Fix: Contrast with dark background) */
+    --muted-foreground: 0 0% 40%; /* Darker Gray (Fix: Improved contrast on light/dark backgrounds) */
     --accent: 180 100% 25%; /* Teal */
     --accent-foreground: 0 0% 98%; /* Near White */
     --destructive: 0 84.2% 60.2%;
