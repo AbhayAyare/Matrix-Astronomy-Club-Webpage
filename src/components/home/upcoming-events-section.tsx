@@ -45,8 +45,8 @@ export function UpcomingEventsSection() {
   const [isOffline, setIsOffline] = useState(false);
 
   const eventsCollectionName = 'events';
-  // Explicitly use an empty array for fallbacks during debugging
-  const fallbackEvents: Event[] = [];
+  // Provide fallback data for display during errors or offline states if desired
+  const fallbackEvents: Event[] = []; // Currently empty, could add placeholder events
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -69,13 +69,11 @@ export function UpcomingEventsSection() {
       let errorMessage: string | null = null;
 
       try {
-        // --- DEBUG: Log the date/time used for comparison ---
+        // Calculate the start of today in the user's local timezone
         const now = new Date();
-        // Start of today, using local time zone (browser's time)
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
         const todayTimestamp = Timestamp.fromDate(startOfToday);
         console.log(`[UpcomingEvents] Fetching events from collection '${eventsCollectionName}' on or after: ${startOfToday.toISOString()} (Local Time). Timestamp (seconds): ${todayTimestamp.seconds}`);
-        // --- End DEBUG Log ---
 
         // The query definition
         const q = query(
@@ -132,12 +130,12 @@ export function UpcomingEventsSection() {
           setUpcomingEvents(events);
         }
       } catch (error) {
-         console.error(`[UpcomingEvents] Error fetching events:`, error); // Log the raw error
+         console.error(`[UpcomingEvents] Error fetching events:`, error); // Log the raw error object
          const isOfflineErr = isOfflineError(error);
          setIsOffline(isOfflineErr); // Set offline state based on helper
 
          if (isOfflineErr) {
-              errorMessage = `Network Issue: Could not connect to fetch events (${(error as FirestoreError)?.code}).`;
+              errorMessage = `Network Issue: Could not connect to fetch events (${(error as FirestoreError)?.code}). Please check your connection.`;
               console.warn(`[UpcomingEvents] ${errorMessage}`);
           } else if (error instanceof FirestoreError) {
              if (error.code === 'permission-denied') {
@@ -145,7 +143,7 @@ export function UpcomingEventsSection() {
                  console.error(`[UpcomingEvents] CRITICAL: ${errorMessage}`);
              } else if (error.code === 'failed-precondition') {
                   // This error usually means an index is missing
-                  errorMessage = `Index Required: Firestore query needs a composite index on 'date >=, date asc'. Create it in the Firebase console. Link in console error details.`;
+                  errorMessage = `Index Required: Firestore query needs a composite index on 'date >=, date asc'. Please create it in the Firebase console. The link might be in the detailed console error.`;
                  console.error(`[UpcomingEvents] ACTION NEEDED: ${errorMessage}`);
              } else {
                  // Catch other specific Firestore errors
@@ -158,7 +156,7 @@ export function UpcomingEventsSection() {
              console.error(`[UpcomingEvents] ${errorMessage}`);
           }
         setFetchError(errorMessage);
-        // Only set fallback if fallbackEvents has items
+        // Use fallback data if available
         if (fallbackEvents.length > 0) {
             console.warn("[UpcomingEvents] Setting fallback event data due to error.");
             setUpcomingEvents(fallbackEvents);
@@ -201,13 +199,13 @@ export function UpcomingEventsSection() {
                   {fetchError} {fallbackEvents.length > 0 && upcomingEvents === fallbackEvents && " Showing fallback events."}
                   {isOffline && fallbackEvents.length > 0 && upcomingEvents === fallbackEvents && " Showing fallback events."}
                   {/* Message if offline and no fallback or if other error and no fallback */}
-                  {((isOffline && fallbackEvents.length === 0) || (!isOffline && !fetchError?.includes("fallback") && fallbackEvents.length === 0)) && " Cannot load events."}
+                  {((isOffline && fallbackEvents.length === 0) || (!isOffline && !fetchError?.includes("fallback") && fallbackEvents.length === 0)) && " Cannot display events at this time."}
              </AlertDescription>
           </Alert>
       )}
 
 
-       {/* Empty State - Show ONLY if not loading AND events array is empty */}
+       {/* Empty State - Show ONLY if not loading AND events array is empty AND there was no error */}
        {!loading && upcomingEvents.length === 0 && !fetchError && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
@@ -217,7 +215,7 @@ export function UpcomingEventsSection() {
       )}
 
 
-      {/* Events Grid (Show if not loading AND there are events - either fetched or fallback) */}
+      {/* Events Grid (Show if not loading AND there are events - either fetched or fallback on error) */}
       {!loading && upcomingEvents.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {upcomingEvents.map((event, index) => {
