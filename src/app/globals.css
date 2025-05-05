@@ -9,8 +9,8 @@ body {
 @layer base {
   :root {
     /* Light Theme */
-    --background: 0 0% 98%; /* Near White */
-    --foreground: 210 100% 12%; /* Dark Blue */
+    --background: 210 100% 12%; /* Dark Blue */
+    --foreground: 0 0% 98%; /* Near White (Fix: Contrast with background) */
     --card: 0 0% 100%; /* White */
     --card-foreground: 210 100% 12%; /* Dark Blue */
     --popover: 0 0% 100%; /* White */
@@ -20,7 +20,7 @@ body {
     --secondary: 0 0% 90%; /* Light Gray */
     --secondary-foreground: 210 100% 12%; /* Dark Blue */
     --muted: 0 0% 95%; /* Lighter Gray */
-    --muted-foreground: 0 0% 45.1%; /* Medium Gray */
+    --muted-foreground: 0 0% 70%; /* Lighter Medium Gray (Fix: Contrast with dark background) */
     --accent: 180 100% 25%; /* Teal */
     --accent-foreground: 0 0% 98%; /* Near White */
     --destructive: 0 84.2% 60.2%;
@@ -50,8 +50,8 @@ body {
 
   .dark {
     /* Dark Theme (Optional - keeping similar colors but inverted) */
-    --background: 210 100% 12%; /* Dark Blue */
-    --foreground: 0 0% 98%; /* Near White */
+    --background: 0 0% 98%; /* Near White */
+    --foreground: 210 100% 12%; /* Dark Blue (Fix: Contrast with background) */
     --card: 210 100% 15%; /* Slightly Lighter Dark Blue */
     --card-foreground: 0 0% 98%; /* Near White */
     --popover: 210 100% 15%; /* Slightly Lighter Dark Blue */
