@@ -138,10 +138,7 @@ export default async function Home() {
 
         {/* Event Gallery Section - Render Client Component */}
         <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-           {/* Changed heading text color to white */}
-          <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-foreground flex items-center justify-center gap-2">
-            <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
-          </h2>
+          {/* Removed the h2 heading for Event Gallery */}
           <GallerySection /> {/* Pass siteContent if needed for fallbacks inside */}
         </section>
 
