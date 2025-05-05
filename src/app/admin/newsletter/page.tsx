@@ -229,4 +229,3 @@ export default function AdminNewsletterPage() {
     </div>
   );
 }
-
