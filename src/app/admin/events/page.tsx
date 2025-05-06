@@ -387,7 +387,7 @@ export default function AdminEventsPage() {
                  </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-primary-foreground/80">{event.description}</p>
+                <p className="text-sm text-card-foreground">{event.description}</p>
                  {/* Display Image URL if available */}
                  {event.imageURL && (
                    <p className="text-xs text-muted-foreground mt-2 truncate">
@@ -451,7 +451,7 @@ export default function AdminEventsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description" name="description" value={currentEvent?.description || ''} onChange={handleInputChange} required rows={5} disabled={saving || isOffline} className="text-primary-foreground placeholder:text-muted-foreground"/>
+              <Textarea id="description" name="description" value={currentEvent?.description || ''} onChange={handleInputChange} required rows={5} disabled={saving || isOffline} className="text-foreground placeholder:text-muted-foreground"/>
             </div>
              {/* Image URL Input */}
             <div className="space-y-2">
