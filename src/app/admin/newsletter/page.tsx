@@ -34,8 +34,14 @@ export default function AdminNewsletterPage() {
 
   // Return early if db is null or undefined
   if (!db) {
-    return <div>Error: Firestore not initialized.</div>;
+    // This case should ideally be handled by a loading state or global error boundary
+    // For now, rendering a simple message or null.
+    console.error("[AdminNewsletterPage] Firestore DB is not initialized.");
+    return <div className="flex items-center justify-center h-screen text-destructive">Firestore DB not available. Check FirebaseProvider or config.</div>;
   }
+
+  const subscribersCollectionRef = collection(db, NEWSLETTER_COLLECTION);
+
 
   // Fetch subscribers on load
   useEffect(() => {
