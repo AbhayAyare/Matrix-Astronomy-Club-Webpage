@@ -47,7 +47,7 @@ export function UpcomingEventsSection() {
   const eventsCollectionName = 'events';
   // Provide fallback data for display during errors or offline states if desired
    const fallbackEvents: Event[] = [
-       { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), description: 'Join us for a night under the stars observing distant galaxies and nebulae.', imageURL: 'https://picsum.photos/seed/event1/400/250'},
+       { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), description: 'Join us for a night under the stars! We\'ll explore constellations, planets, and deep-sky objects with our telescopes. Lea', imageURL: 'https://picsum.photos/seed/event1/400/250'},
        { id: 'fallback2', name: 'Workshop: Introduction to Astrophotography (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)), description: 'Learn the basics of capturing stunning images of the night sky.', imageURL: 'https://picsum.photos/seed/event2/400/250'},
     ];
 
@@ -98,17 +98,6 @@ export function UpcomingEventsSection() {
         } else {
           const events: Event[] = querySnapshot.docs.map((doc, index) => {
             const data = doc.data();
-             // --- DEBUG: Log raw data for each document ---
-            //  console.log(`[UpcomingEvents] Raw doc data [${index}] for ${doc.id}:`, JSON.stringify({
-            //     name: data.name,
-            //     date_seconds: data.date?.seconds, // Log timestamp seconds
-            //     date_nanos: data.date?.nanoseconds,
-            //     description_length: data.description?.length,
-            //     imageURL_present: !!data.imageURL,
-            //     createdAt_seconds: data.createdAt?.seconds,
-            // }, (key, value) => typeof value === 'bigint' ? value.toString() : value, 2)); // Handle potential bigints if any
-            // --- End DEBUG Log ---
-
             // Basic validation for required fields
              const eventDate = data.date instanceof Timestamp ? data.date : Timestamp.fromDate(new Date(0)); // Use Epoch if date invalid/missing
              if (!(data.date instanceof Timestamp)) {
@@ -128,9 +117,6 @@ export function UpcomingEventsSection() {
               createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined,
             };
           });
-          //  console.log("[UpcomingEvents] Successfully mapped documents to events array (first 3 shown):", JSON.stringify(events.slice(0, 3), (key, value) =>
-          //    value instanceof Timestamp ? value.toDate().toISOString() : value, 2)
-          //  ); // LOG MAPPED DATA (first 3)
           setUpcomingEvents(events);
         }
       } catch (error) {
@@ -186,7 +172,7 @@ export function UpcomingEventsSection() {
   return (
     <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
        {/* Added Upcoming Events Heading */}
-       <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-foreground flex items-center justify-center gap-2">
+       <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
          <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
        </h2>
 
@@ -241,13 +227,13 @@ export function UpcomingEventsSection() {
                         />
                       </div>
                       <CardHeader>
-                         <CardTitle className="text-xl">{event.name}</CardTitle>
+                         <CardTitle className="text-xl text-card-foreground">{event.name}</CardTitle>
                          <CardDescription>
                           {eventDateString}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-grow">
-                        <p className="text-card-foreground line-clamp-3">{event.description}</p>
+                        <p className="text-black line-clamp-3">{event.description}</p>
                       </CardContent>
                       <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
@@ -294,9 +280,11 @@ export function UpcomingEventsSection() {
                       <p className="text-sm text-muted-foreground">{eventLongDateString}</p>
                       <p className="text-foreground/90 whitespace-pre-wrap">{event.description}</p>
                     </div>
-                    <DialogClose className="absolute top-3 right-3 p-1 rounded-full bg-secondary/80 text-muted-foreground hover:bg-secondary transition-colors z-10">
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Close</span>
+                    <DialogClose asChild>
+                         <Button variant="ghost" size="icon" className="absolute top-3 right-3 p-1 rounded-full bg-secondary/80 text-muted-foreground hover:bg-secondary transition-colors z-10">
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Close</span>
+                        </Button>
                     </DialogClose>
                   </DialogContent>
               </Dialog>
@@ -307,3 +295,4 @@ export function UpcomingEventsSection() {
     </section>
   );
 }
+

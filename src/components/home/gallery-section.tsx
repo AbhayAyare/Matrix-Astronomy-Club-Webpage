@@ -128,7 +128,7 @@ export function GallerySection() {
 
   return (
     <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-      <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-foreground flex items-center justify-center gap-2">
+      <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
         <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
       </h2>
 
@@ -214,10 +214,12 @@ export function GallerySection() {
                           unoptimized={!image.url?.startsWith('/')}
                        />
                    </div>
-                    <DialogClose className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-10">
-                         <X className="h-4 w-4"/>
-                         <span className="sr-only">Close</span>
-                     </DialogClose>
+                    <DialogClose asChild>
+                       <Button variant="ghost" size="icon" className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-10">
+                           <X className="h-4 w-4"/>
+                           <span className="sr-only">Close</span>
+                       </Button>
+                   </DialogClose>
                </DialogContent>
              </Dialog>
              );
@@ -227,3 +229,4 @@ export function GallerySection() {
     </section>
   );
 }
+

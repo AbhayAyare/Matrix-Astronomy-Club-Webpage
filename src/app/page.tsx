@@ -93,7 +93,7 @@ export default async function Home() {
             <Button
               size="lg"
               asChild
-              className="transform hover:scale-105 transition-all duration-300 ease-in-out animate-fade-in border-2 border-primary/50 hover:border-primary shadow-lg hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-accent"
+              className="transform hover:scale-105 transition-all duration-300 ease-in-out animate-fade-in border-2 border-transparent hover:border-primary shadow-lg hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-accent"
               style={{ animationDelay: '0.3s' }}
             >
               <Link href="#join">Join the Club</Link>
@@ -132,9 +132,6 @@ export default async function Home() {
 
         {/* Event Gallery Section - Renders Client Component which handles its own fetch/error/loading */}
         <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
-                <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
-           </h2>
           <GallerySection />
         </section>
 
@@ -206,3 +203,4 @@ export default async function Home() {
     </div>
   );
 }
+
