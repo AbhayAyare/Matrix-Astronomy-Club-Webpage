@@ -125,9 +125,6 @@ export default async function Home() {
 
         {/* Upcoming Events Section - Renders Client Component which handles its own fetch/error/loading */}
        <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
-                <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
-            </h2>
             <UpcomingEventsSection />
         </section>
 
@@ -136,9 +133,6 @@ export default async function Home() {
 
         {/* Event Gallery Section - Renders Client Component which handles its own fetch/error/loading */}
        <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
-                <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
-            </h2>
             <GallerySection />
         </section>
 
