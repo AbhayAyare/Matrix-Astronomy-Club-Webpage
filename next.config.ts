@@ -3,6 +3,7 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: 'export', // Ensures static site generation compatible with Firebase Hosting
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -25,6 +26,7 @@ const nextConfig: NextConfig = {
        //   pathname: '/v0/b/matrixclub-bb0db.appspot.com/**', // Adjust path for your bucket
        // },
     ],
+    unoptimized: true, // Required for static export with next/image
   },
    env: {
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -41,8 +43,8 @@ const nextConfig: NextConfig = {
         allowedOrigins: [
             "matrixclub-bb0db.firebaseapp.com",
             "matrixclub-bb0db.web.app", // Add the .web.app domain
-            "localhost:9002",
-            "127.0.0.1:9002" // Add 127.0.0.1 for local dev
+            "localhost:9002", // Local development
+            "127.0.0.1:9002" // Local development
         ]
       }
     }
