@@ -51,7 +51,7 @@ body {
   .dark {
     /* Dark Theme (Optional - keeping similar colors but inverted) */
     --background: 0 0% 98%; /* Near White */
-    --foreground: 210 100% 12%; /* Dark Blue (Fix: Contrast with background) */
+    --foreground: 0 0% 7%; /* Near Black for high contrast text */
     --card: 210 100% 15%; /* Slightly Lighter Dark Blue */
     --card-foreground: 0 0% 98%; /* Near White */
     --popover: 210 100% 15%; /* Slightly Lighter Dark Blue */
