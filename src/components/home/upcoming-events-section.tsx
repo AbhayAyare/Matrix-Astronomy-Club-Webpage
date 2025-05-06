@@ -80,9 +80,12 @@ export function UpcomingEventsSection() {
           limit(6)
         );
         
+        console.log(`[UpcomingEventsSection] Executing getDocs query for '${eventsCollectionName}'...`);
         const querySnapshot = await getDocs(q);
+        console.log(`[UpcomingEventsSection] Fetched ${querySnapshot.size} events.`);
 
         if (querySnapshot.empty) {
+          console.log("[UpcomingEventsSection] No upcoming events found in Firestore.");
           setUpcomingEvents([]);
         } else {
           const events: Event[] = querySnapshot.docs.map((doc) => {
@@ -102,32 +105,42 @@ export function UpcomingEventsSection() {
             };
           });
           setUpcomingEvents(events);
+           console.log("[UpcomingEventsSection] Events state updated:", events);
         }
       } catch (error) {
+         console.error(`[UpcomingEventsSection] Error fetching events:`, error);
          const isOfflineErr = isOfflineError(error);
          setIsOffline(isOfflineErr);
 
          if (isOfflineErr) {
               errorMessage = `Network Issue: Could not connect to fetch events (${(error as FirestoreError)?.code}). Please check your connection.`;
+              console.warn(`[UpcomingEventsSection] ${errorMessage}`);
           } else if (error instanceof FirestoreError) {
              if (error.code === 'permission-denied') {
                  errorMessage = `Permission Denied: Could not read collection '${eventsCollectionName}'. Check Firestore rules.`;
+                 console.error(`[UpcomingEventsSection] CRITICAL: ${errorMessage}`);
              } else if (error.code === 'failed-precondition') {
                   errorMessage = `Index Required: Firestore query needs a composite index on 'date >=, date asc'. Please create it in the Firebase console.`;
+                 console.error(`[UpcomingEventsSection] ACTION NEEDED: ${errorMessage}`);
              } else {
                  errorMessage = `Firestore Error (${error.code}): ${error.message}.`;
+                  console.error(`[UpcomingEventsSection] Full Firestore error: ${error.message}`);
              }
           } else {
              errorMessage = `Unexpected Error: ${error instanceof Error ? error.message : String(error)}.`;
+             console.error(`[UpcomingEventsSection] ${errorMessage}`);
           }
         setFetchError(errorMessage);
         if (fallbackEvents.length > 0) {
+            console.log("[UpcomingEventsSection] Using fallback event data due to error.");
             setUpcomingEvents(fallbackEvents);
         } else {
+             console.log("[UpcomingEventsSection] No fallback events available and error occurred.");
              setUpcomingEvents([]);
         }
       } finally {
         setLoading(false);
+        console.log("[UpcomingEventsSection] Fetching events complete.");
       }
     };
 
@@ -141,6 +154,9 @@ export function UpcomingEventsSection() {
 
   return (
     <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+      <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+        <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
+      </h2>
       
 
       {loading && (
@@ -195,7 +211,7 @@ export function UpcomingEventsSection() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-grow">
-                        <p className="text-card-foreground line-clamp-3">{event.description}</p>
+                        <p className="text-black line-clamp-3">{event.description}</p>
                       </CardContent>
                       <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
@@ -255,3 +271,4 @@ export function UpcomingEventsSection() {
     </section>
   );
 }
+
