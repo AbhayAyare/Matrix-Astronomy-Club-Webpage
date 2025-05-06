@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { collection, getDocs, query, orderBy, Timestamp, where, limit, FirestoreError } from 'firebase/firestore';
 import { useFirebase } from '@/context/firebase-provider';
 import Image from 'next/image'; // For modal image
+import { Button } from "@/components/ui/button"; // Import Button component
 
 interface Event {
   id: string;
@@ -47,7 +48,7 @@ export function UpcomingEventsSection() {
   const eventsCollectionName = 'events';
   // Provide fallback data for display during errors or offline states if desired
    const fallbackEvents: Event[] = [
-       { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), description: 'Join us for a night under the stars! We\'ll explore constellations, planets, and deep-sky objects with our telescopes. Lea', imageURL: 'https://picsum.photos/seed/event1/400/250'},
+       { id: 'fallback1', name: 'Deep Sky Observation Night (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), description: 'Join us for a night under the stars observing distant galaxies and nebulae.', imageURL: 'https://picsum.photos/seed/event1/400/250'},
        { id: 'fallback2', name: 'Workshop: Introduction to Astrophotography (Fallback)', date: Timestamp.fromDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)), description: 'Learn the basics of capturing stunning images of the night sky.', imageURL: 'https://picsum.photos/seed/event2/400/250'},
     ];
 
@@ -199,7 +200,7 @@ export function UpcomingEventsSection() {
        {/* Empty State - Show ONLY if not loading AND events array is empty AND there was no error that resulted in a fallback being shown */}
        {!loading && upcomingEvents.length === 0 && !fetchError && (
         <Card>
-          <CardContent className="p-6 text-center text-muted-foreground">
+          <CardContent className="p-6 text-center text-foreground">
              No upcoming events scheduled yet. Check back soon!
           </CardContent>
         </Card>
@@ -285,7 +286,7 @@ export function UpcomingEventsSection() {
                             <X className="h-4 w-4" />
                             <span className="sr-only">Close</span>
                         </Button>
-                    </DialogClose>
+                   </DialogClose>
                   </DialogContent>
               </Dialog>
             );
