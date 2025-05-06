@@ -209,6 +209,7 @@ export default function AdminContentPage() {
               value={content.heroTitle}
               onChange={handleInputChange}
               disabled={saving || isOffline}
+              className="text-primary-foreground placeholder:text-gray-300"
             />
           </div>
           <div className="space-y-2">
@@ -220,6 +221,7 @@ export default function AdminContentPage() {
               onChange={handleInputChange}
               rows={3}
               disabled={saving || isOffline}
+              className="text-primary-foreground placeholder:text-gray-300"
             />
           </div>
         </CardContent>
@@ -242,6 +244,7 @@ export default function AdminContentPage() {
                onChange={handleInputChange}
                rows={6}
                disabled={saving || isOffline}
+               className="text-primary-foreground placeholder:text-gray-300"
              />
            </div>
         </CardContent>
@@ -262,6 +265,7 @@ export default function AdminContentPage() {
               value={content.joinTitle}
               onChange={handleInputChange}
               disabled={saving || isOffline}
+              className="text-primary-foreground placeholder:text-gray-300"
             />
           </div>
           <div className="space-y-2">
@@ -273,6 +277,7 @@ export default function AdminContentPage() {
               onChange={handleInputChange}
               rows={3}
               disabled={saving || isOffline}
+              className="text-primary-foreground placeholder:text-gray-300"
             />
           </div>
         </CardContent>
@@ -293,6 +298,7 @@ export default function AdminContentPage() {
               value={content.newsletterTitle}
               onChange={handleInputChange}
               disabled={saving || isOffline}
+              className="text-primary-foreground placeholder:text-gray-300"
             />
           </div>
           <div className="space-y-2">
@@ -304,6 +310,7 @@ export default function AdminContentPage() {
               onChange={handleInputChange}
               rows={3}
               disabled={saving || isOffline}
+              className="text-primary-foreground placeholder:text-gray-300"
             />
           </div>
         </CardContent>
@@ -328,6 +335,7 @@ export default function AdminContentPage() {
                  value={content.contactEmail}
                  onChange={handleInputChange}
                  disabled={saving || isOffline}
+                 className="text-primary-foreground placeholder:text-gray-300"
                />
              </div>
               <div className="space-y-2">
@@ -340,6 +348,7 @@ export default function AdminContentPage() {
                  value={content.contactPhone}
                  onChange={handleInputChange}
                  disabled={saving || isOffline}
+                 className="text-primary-foreground placeholder:text-gray-300"
                />
              </div>
              <div className="space-y-2">
@@ -352,6 +361,7 @@ export default function AdminContentPage() {
                  onChange={handleInputChange}
                  rows={3}
                  disabled={saving || isOffline}
+                 className="text-primary-foreground placeholder:text-gray-300"
                />
              </div>
           </div>
