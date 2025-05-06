@@ -10,6 +10,7 @@ import { collection, getDocs, query, orderBy, limit, Timestamp, FirestoreError }
 import { useFirebase } from '@/context/firebase-provider';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"; // Import DialogHeader, DialogTitle, DialogDescription
 import Image from 'next/image'; // Use next/image for modal content
+import { Button } from "@/components/ui/button"; // Import Button component
 
 interface GalleryImageMetadata {
   id: string;
@@ -128,9 +129,7 @@ export function GallerySection() {
 
   return (
     <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-      <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
-        <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
-      </h2>
+      
 
       {/* Loading State */}
       {loading && (
