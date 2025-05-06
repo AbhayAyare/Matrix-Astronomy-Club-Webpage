@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react'; // Ensured React is imported
@@ -424,6 +423,7 @@ export default function AdminEventsPage() {
                         value={aiKeywords}
                         onChange={(e) => setAiKeywords(e.target.value)}
                         disabled={aiLoading || isOffline}
+                         className="text-primary-foreground placeholder:text-muted-foreground"
                     />
                     <Button type="button" onClick={handleSuggestDetails} disabled={!aiKeywords || aiLoading || isOffline} size="sm">
                         {aiLoading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Wand2 className="mr-1 h-4 w-4" />}
@@ -442,15 +442,15 @@ export default function AdminEventsPage() {
           <form onSubmit={handleSaveEvent} className="space-y-4 pt-4">
             <div className="space-y-2">
               <Label htmlFor="name">Event Name</Label>
-              <Input id="name" name="name" value={currentEvent?.name || ''} onChange={handleInputChange} required disabled={saving || isOffline} />
+              <Input id="name" name="name" value={currentEvent?.name || ''} onChange={handleInputChange} required disabled={saving || isOffline}  className="text-primary-foreground placeholder:text-muted-foreground"/>
             </div>
             <div className="space-y-2">
               <Label htmlFor="date">Date</Label>
-              <Input id="date" name="date" type="date" value={currentEvent?.date || ''} onChange={handleInputChange} required disabled={saving || isOffline} />
+              <Input id="date" name="date" type="date" value={currentEvent?.date || ''} onChange={handleInputChange} required disabled={saving || isOffline}  className="text-primary-foreground placeholder:text-muted-foreground"/>
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description" name="description" value={currentEvent?.description || ''} onChange={handleInputChange} required rows={5} disabled={saving || isOffline} />
+              <Textarea id="description" name="description" value={currentEvent?.description || ''} onChange={handleInputChange} required rows={5} disabled={saving || isOffline} className="text-foreground placeholder:text-muted-foreground"/>
             </div>
              {/* Image URL Input */}
             <div className="space-y-2">
@@ -463,6 +463,7 @@ export default function AdminEventsPage() {
                     value={currentEvent?.imageURL || ''}
                     onChange={handleInputChange}
                     disabled={saving || isOffline}
+                    className="text-primary-foreground placeholder:text-muted-foreground"
                 />
                 <p className="text-xs text-muted-foreground">Enter a direct link to an image for the event.</p>
             </div>
@@ -481,3 +482,4 @@ export default function AdminEventsPage() {
     </div>
   );
 }
+
