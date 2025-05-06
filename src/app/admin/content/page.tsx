@@ -57,7 +57,7 @@ export default function AdminContentPage() {
  
   // If db is not initialized, return early or handle appropriately
   if (!db) {
- return <div className=\"flex items-center justify-center h-64\">Loading Firebase...</div>; // Or render an error state
+ return <div className="flex items-center justify-center h-64">Loading Firebase...</div>; // Or render an error state
   }
   const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
 

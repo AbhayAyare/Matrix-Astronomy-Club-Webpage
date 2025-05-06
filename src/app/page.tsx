@@ -81,7 +81,7 @@ export default async function Home() {
         {/* Hero Section - Added frame styling, removed border */}
         <section
            id="hero"
-           className="text-center py-16 md:py-24 bg-card/80 rounded-2xl shadow-xl animate-fade-in p-8 relative overflow-hidden backdrop-blur-sm"
+           className="text-center py-16 md:py-24 bg-card/80 rounded-2xl shadow-xl animate-fade-in p-8 relative overflow-hidden backdrop-blur-sm border-transparent"
            style={{ animationDelay: '0s' }} // Start animation immediately
          >
             {/* Optional: Inner shadow for depth */}
@@ -124,9 +124,6 @@ export default async function Home() {
 
         {/* Upcoming Events Section - Renders Client Component which handles its own fetch/error/loading */}
         <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
-                 <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
-            </h2>
             <UpcomingEventsSection />
         </section>
 
@@ -148,7 +145,7 @@ export default async function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><UserPlus className="w-8 h-8 text-accent"/>{siteContent.joinTitle}</h2>
           <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardHeader>
-              <CardTitle className="text-foreground">{siteContent.joinTitle}</CardTitle>
+              <CardTitle className="text-card-foreground">{siteContent.joinTitle}</CardTitle>
               <CardDescription>{siteContent.joinDescription}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -164,7 +161,7 @@ export default async function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><Mail className="w-8 h-8 text-accent"/>{siteContent.newsletterTitle}</h2>
           <Card className="max-w-2xl mx-auto shadow-lg bg-secondary/50 hover:shadow-xl transition-shadow duration-300">
              <CardHeader>
-               <CardTitle className="text-foreground">{siteContent.newsletterTitle}</CardTitle>
+               <CardTitle className="text-card-foreground">{siteContent.newsletterTitle}</CardTitle>
                <CardDescription className="text-white">{siteContent.newsletterDescription}</CardDescription>
              </CardHeader>
              <CardContent>
