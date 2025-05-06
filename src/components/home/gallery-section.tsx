@@ -2,26 +2,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card"; // Removed CardHeader, CardTitle as they are not directly used for the main section
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { GalleryImage } from './gallery-image'; // Ensure this component exists and is client-compatible
+import { GalleryImage } from './gallery-image';
 import { Image as ImageIconIcon, AlertCircle, Loader2, WifiOff, Maximize, X } from 'lucide-react';
 import { collection, getDocs, query, orderBy, limit, Timestamp, FirestoreError } from 'firebase/firestore';
 import { useFirebase } from '@/context/firebase-provider';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"; // Import DialogHeader, DialogTitle, DialogDescription
-import Image from 'next/image'; // Use next/image for modal content
-import { Button } from "@/components/ui/button"; // Import Button component
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import Image from 'next/image';
+import { Button } from "@/components/ui/button";
 
 interface GalleryImageMetadata {
   id: string;
   url: string;
   name: string;
-  createdAt?: Timestamp; // Optional, but good for ordering
-}
-
-interface FetchResult<T> {
-  data: T[];
-  error: string | null;
+  createdAt?: Timestamp;
 }
 
 // Helper function to check for offline errors
@@ -63,12 +58,12 @@ export function GallerySection() {
     const fetchGallery = async () => {
       setLoading(true);
       setFetchError(null);
-      setIsOffline(false); // Assume online initially
+      setIsOffline(false);
 
       if (!db) {
         setFetchError("Database not initialized.");
         setLoading(false);
-        setGalleryImages(fallbackImages); // Show fallback if DB missing
+        setGalleryImages(fallbackImages);
         return;
       }
 
@@ -83,13 +78,13 @@ export function GallerySection() {
 
         if (querySnapshot.empty) {
           console.log("[GallerySection] No gallery images found.");
-          setGalleryImages([]); // Ensure state is empty
+          setGalleryImages([]);
         } else {
           const images = querySnapshot.docs.map(doc => ({
             id: doc.id,
             url: doc.data().url as string,
             name: doc.data().name as string,
-            createdAt: doc.data().createdAt as Timestamp, // Keep timestamp if available
+            createdAt: doc.data().createdAt as Timestamp,
           })) as GalleryImageMetadata[];
           setGalleryImages(images);
         }
@@ -98,7 +93,7 @@ export function GallerySection() {
         if (isOfflineError(error)) {
              errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch gallery images (${(error as FirestoreError)?.code}). Using fallback data.`;
              console.warn(`[GallerySection] ${errorMessage}`);
-             setIsOffline(true); // Set offline state
+             setIsOffline(true);
           } else if (error instanceof FirestoreError) {
              if (error.code === 'permission-denied') {
                  errorMessage = `Permission Denied: Could not read collection '${galleryCollectionName}'. Check Firestore rules.`;
@@ -113,7 +108,7 @@ export function GallerySection() {
              errorMessage = `Unexpected Error: ${error instanceof Error ? error.message : String(error)}. Using fallback data.`;
           }
         setFetchError(errorMessage);
-        setGalleryImages(fallbackImages); // Use fallback on error
+        setGalleryImages(fallbackImages);
       } finally {
         setLoading(false);
       }
@@ -121,7 +116,7 @@ export function GallerySection() {
 
     fetchGallery();
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db]); // Depend on db instance
+  }, [db]);
 
   const getModalTitleId = (imageId: string) => `gallery-modal-title-${imageId}`;
   const getModalDescriptionId = (imageId: string) => `gallery-modal-description-${imageId}`;
@@ -129,14 +124,15 @@ export function GallerySection() {
 
   return (
     <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-      
+      {/* Added Event Gallery Heading */}
+      <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+        <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
+      </h2>
 
-      {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2 text-muted-foreground">Loading Gallery...</span></div>
       )}
 
-      {/* Error State */}
       {!loading && fetchError && (
           <Alert variant={isOffline ? "default" : "destructive"} className={`mb-4 ${isOffline ? 'border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400' : ''}`}>
               {isOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
@@ -148,8 +144,6 @@ export function GallerySection() {
           </Alert>
       )}
 
-
-       {/* Empty State (Only show if not loading and no error resulted in fallback) */}
        {!loading && galleryImages.length === 0 && !(fetchError && fallbackImages.length > 0) && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
@@ -158,7 +152,6 @@ export function GallerySection() {
         </Card>
       )}
 
-      {/* Gallery Grid */}
       {!loading && galleryImages.length > 0 && (
         <div className="grid grid-cols-gallery gap-4">
           {galleryImages.map((image, index) => {
@@ -174,11 +167,9 @@ export function GallerySection() {
                      imageId={image.id}
                      loading={index < 6 ? "eager" : "lazy"}
                    />
-                    {/* Subtle overlay/icon on hover */}
                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                          <Maximize className="h-8 w-8 text-white/80" />
                      </div>
-                   {/* Optional: Name overlay */}
                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 text-white text-xs truncate pointer-events-none">
                      {image.name}
                    </div>
@@ -186,27 +177,25 @@ export function GallerySection() {
                </DialogTrigger>
                <DialogContent
                    className="max-w-3xl p-2 sm:p-4"
-                   aria-labelledby={modalTitleId} // Use dynamic ID
-                   aria-describedby={modalDescriptionId} // Add aria-describedby
+                   aria-labelledby={modalTitleId}
+                   aria-describedby={modalDescriptionId}
                >
-                    {/* Ensure DialogHeader with Title and Description is present */}
                    <DialogHeader>
                      <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
                      <DialogDescription id={modalDescriptionId} className="sr-only">
                        Enlarged view of the gallery image: {image.name || 'Unnamed Image'}
                      </DialogDescription>
                    </DialogHeader>
-                   {/* Content */}
-                   <div className="relative aspect-video"> {/* Use aspect-video for consistent ratio */}
+                   <div className="relative aspect-video">
                        <Image
                          src={image.url}
                          alt={image.name || 'Enlarged gallery image'}
-                         fill // Use fill to cover the aspect-ratio container
-                         sizes="(max-width: 768px) 90vw, (max-width: 1280px) 70vw, 1200px" // Responsive sizes
-                         className="rounded-md object-contain" // Use object-contain to show full image
+                         fill
+                         sizes="(max-width: 768px) 90vw, (max-width: 1280px) 70vw, 1200px"
+                         className="rounded-md object-contain"
                          onError={(e) => {
                               console.warn(`Modal Image Load Error: ${image.url}`);
-                              e.currentTarget.src = `https://picsum.photos/seed/${image.id}/1200/800`; // Larger fallback
+                              e.currentTarget.src = `https://picsum.photos/seed/${image.id}/1200/800`;
                               e.currentTarget.alt = `${image.name} (Fallback)`;
                               e.currentTarget.onerror = null;
                           }}
