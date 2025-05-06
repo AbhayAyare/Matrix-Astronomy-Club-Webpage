@@ -78,22 +78,23 @@ export default async function Home() {
        )}
 
       <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24 overflow-x-hidden">
-        {/* Hero Section - Added frame styling, removed border */}
+        {/* Hero Section - Changed bg-card/80 to bg-primary/80 */}
         <section
            id="hero"
-           className="text-center py-16 md:py-24 bg-card/80 rounded-2xl shadow-xl animate-fade-in p-8 relative overflow-hidden backdrop-blur-sm border-transparent"
+           className="text-center py-16 md:py-24 bg-primary/80 rounded-2xl shadow-xl animate-fade-in p-8 relative overflow-hidden backdrop-blur-sm border-transparent"
            style={{ animationDelay: '0s' }} // Start animation immediately
          >
             {/* Optional: Inner shadow for depth */}
             <div className="absolute inset-0 rounded-2xl shadow-inner pointer-events-none"></div>
 
             <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white animate-fade-in" style={{ animationDelay: '0.1s' }}>{siteContent.heroTitle}</h1>
-            <p className="text-lg md:text-xl text-foreground/80 max-w-3xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>{siteContent.heroSubtitle}</p>
+            <p className="text-lg md:text-xl text-white/90 max-w-3xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>{siteContent.heroSubtitle}</p>
             {/* Enhanced Button Styling */}
             <Button
               size="lg"
               asChild
-              className="transform hover:scale-105 transition-all duration-300 ease-in-out animate-fade-in border-2 border-transparent hover:border-primary shadow-lg hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-accent"
+              variant="secondary" // Changed to secondary for better contrast on blue background
+              className="transform hover:scale-105 transition-all duration-300 ease-in-out animate-fade-in border-2 border-transparent hover:border-accent shadow-lg hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-accent"
               style={{ animationDelay: '0.3s' }}
             >
               <Link href="#join">Join the Club</Link>
@@ -115,7 +116,7 @@ export default async function Home() {
                 </Alert>
               )}
               {/* Always display the 'about' content (either fetched or default) */}
-              <p className="text-lg leading-relaxed text-black">{siteContent.about}</p>
+              <p className="text-lg leading-relaxed text-card-foreground">{siteContent.about}</p>
             </CardContent>
           </Card>
         </section>
@@ -123,7 +124,10 @@ export default async function Home() {
         <Separator />
 
         {/* Upcoming Events Section - Renders Client Component which handles its own fetch/error/loading */}
-        <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+       <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+                <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
+            </h2>
             <UpcomingEventsSection />
         </section>
 
@@ -131,8 +135,11 @@ export default async function Home() {
         <Separator />
 
         {/* Event Gallery Section - Renders Client Component which handles its own fetch/error/loading */}
-        <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-          <GallerySection />
+       <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
+            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+                <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
+            </h2>
+            <GallerySection />
         </section>
 
         <Separator />
@@ -184,15 +191,15 @@ export default async function Home() {
               )}
                <div className="flex items-center gap-3 group">
                  <Mail className="w-5 h-5 text-accent group-hover:animate-pulse"/>
-                 <a href={`mailto:${siteContent.contactEmail}`} className="text-black hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail || 'N/A'}</a>
+                 <a href={`mailto:${siteContent.contactEmail}`} className="text-card-foreground hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail || 'N/A'}</a>
                </div>
                <div className="flex items-center gap-3 group">
                  <Phone className="w-5 h-5 text-accent group-hover:animate-pulse"/>
-                 <a href={`tel:${siteContent.contactPhone}`} className="text-black hover:text-accent transition-colors duration-200">{siteContent.contactPhone || 'N/A'}</a>
+                 <a href={`tel:${siteContent.contactPhone}`} className="text-card-foreground hover:text-accent transition-colors duration-200">{siteContent.contactPhone || 'N/A'}</a>
                </div>
                <div className="flex items-start gap-3 group">
                  <MapPin className="w-5 h-5 text-accent mt-1 group-hover:animate-pulse"/>
-                 <span className="text-black whitespace-pre-wrap">{siteContent.contactAddress || 'Location not specified'}, India</span>
+                 <span className="text-card-foreground whitespace-pre-wrap">{siteContent.contactAddress || 'Location not specified'}, India</span>
                </div>
              </CardContent>
            </Card>
