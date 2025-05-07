@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Globe, UserPlus, Mail, Phone, MapPin, WifiOff, ServerCrash, Loader2, CalendarDays, Image as ImageIcon, AlertCircle } from 'lucide-react'; // Added AlertCircle
+import { Globe, UserPlus, Mail, Phone, MapPin, WifiOff, ServerCrash, Loader2, AlertCircle } from 'lucide-react'; // Added AlertCircle
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import type { SiteContent } from '@/services/content'; // Type only
@@ -109,9 +109,7 @@ export default function Home() {
 
                 {/* Upcoming Events Section */}
                  <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-                   <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
-                     <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
-                   </h2>
+                   {/* Heading removed as requested */}
                    <UpcomingEventsSection />
                  </section>
 
@@ -119,9 +117,7 @@ export default function Home() {
 
                 {/* Event Gallery Section */}
                 <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-                  <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
-                    <ImageIcon className="w-8 h-8 text-accent"/>Event Gallery
-                  </h2>
+                  {/* Heading removed as requested */}
                   <GallerySection />
                 </section>
 
@@ -165,15 +161,7 @@ export default function Home() {
                    <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
                     <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
                       <CardContent className="p-6 md:p-8 space-y-4">
-                       {hasContentOtherErrors && ( // Show specific error if contact details might be affected
-                         <Alert variant="destructive" className="mb-4">
-                            <ServerCrash className="h-4 w-4"/>
-                           <AlertTitle>Contact Details Error</AlertTitle>
-                            <AlertDescription>
-                              Could not load contact details. Displaying defaults. Error: {String(siteContentError?.message || siteContentError)}
-                           </AlertDescription>
-                         </Alert>
-                       )}
+                       {/* Removed specific error alert for contact details */}
                         <div className="flex items-center gap-3 group">
                           <Mail className="w-5 h-5 text-accent group-hover:animate-pulse"/>
                           <a href={`mailto:${siteContent.contactEmail}`} className="text-black hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail || 'N/A'}</a>
