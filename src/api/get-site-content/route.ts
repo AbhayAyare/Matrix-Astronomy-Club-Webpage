@@ -40,22 +40,23 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     const duration = endTime - startTime;
     console.error(`[API /api/get-site-content] CRITICAL UNHANDLED ERROR in GET handler after ${duration}ms:`, error);
 
-    // Default error message
+    // Determine the error message
     let errorMessage = 'An unknown critical error occurred in the site content API.';
-    try {
-      // Try to get a more specific message, but don't let this fail the response
-      if (error instanceof Error) {
+    if (error instanceof Error) {
         errorMessage = error.message;
+        // Log stack trace for server-side debugging
         console.error("[API /api/get-site-content] Stack Trace:", error.stack);
-      } else {
-        errorMessage = String(error); // Fallback to string conversion
-      }
-    } catch (e) {
-      console.error("[API /api/get-site-content] Error while trying to stringify the original error:", e);
-      // Keep the default errorMessage if stringification fails
+    } else {
+        // Try to stringify non-Error objects, but handle potential failures
+        try {
+            errorMessage = String(error);
+        } catch (stringifyError) {
+            console.error("[API /api/get-site-content] Error trying to stringify the unknown error:", stringifyError);
+            // Keep the default message if stringification fails
+        }
     }
 
-    // Construct the JSON response *before* logging it
+    // Construct the JSON response
     const criticalErrorResponse: ErrorResponse = {
         content: null, // Explicitly set content to null on critical errors
         error: `API Route Server Error: ${errorMessage}. Check server logs.` // Indicate error happened at API level
@@ -64,21 +65,10 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     console.log("[API /api/get-site-content] Sending 500 response due to critical handler error:", JSON.stringify(criticalErrorResponse));
 
     // Ensure this ALWAYS returns JSON, preventing HTML error pages
-    try {
-        // Force the response content type to JSON
-        return NextResponse.json(criticalErrorResponse, {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        });
-    } catch (responseError) {
-        // Fallback if NextResponse.json fails (highly unlikely)
-        console.error("[API /api/get-site-content] FAILED TO SEND JSON RESPONSE:", responseError);
-        // Return a plain text response as a last resort, still trying to make it JSON-like
-        // Use the Response constructor directly for maximum safety
-        return new Response(JSON.stringify({ error: 'Failed to generate JSON error response.' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-        });
-    }
+    // Use the Response constructor directly for maximum safety in critical error paths
+    return new Response(JSON.stringify(criticalErrorResponse), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
