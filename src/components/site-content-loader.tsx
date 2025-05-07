@@ -8,7 +8,6 @@ import type { SiteContent } from '@/services/content'; // Import the type
 import { defaultSiteContent } from "@/services/content"; // Import the default data
 import { isOfflineError } from "@/lib/utils"; // Use helper from utils
 
-
 interface SiteContentLoaderProps {
   children: (props: { content: SiteContent; error: any | null; loading: boolean; isOffline: boolean }) => React.ReactNode;
 }
@@ -25,25 +24,22 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
       setError(null);
       setOffline(false); // Reset offline state at the beginning of fetch
       let response: Response | null = null;
-      let responseBodyText: string | null = null; // Store response text if needed
+      let responseBodyText: string | null = null; // Store response text
 
       try {
         console.log("[SiteContentLoader] Fetching /api/get-site-content...");
         response = await fetch("/api/get-site-content");
         console.log(`[SiteContentLoader] API response status: ${response.status}`);
 
-        // Try reading the body text regardless of status first, as it's needed for detailed errors
+        // Try reading the body text ONCE. Avoids "body stream already read" error.
         try {
             responseBodyText = await response.text();
             console.log(`[SiteContentLoader] Raw response body text received (length: ${responseBodyText?.length ?? 0}).`);
-            // Optionally log a snippet for debugging, be careful with sensitive data
-            // console.log(`[SiteContentLoader] Body snippet: ${responseBodyText?.substring(0, 100)}...`);
+            // console.log(`[SiteContentLoader] Body snippet: ${responseBodyText?.substring(0, 100)}...`); // Use only for debugging
         } catch (bodyReadError) {
             console.error("[SiteContentLoader] Error reading response body:", bodyReadError);
-            // If body read fails, proceed with status-based error handling
             responseBodyText = null; // Ensure it's null if read failed
         }
-
 
         // --- Handle Non-OK HTTP Responses (e.g., 500, 404) ---
         if (!response.ok) {
@@ -53,34 +49,28 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
           // Check if the response body looks like HTML (indicating a server crash page)
           if (contentType && contentType.includes("text/html") && responseBodyText && responseBodyText.trim().toLowerCase().startsWith('<!doctype html')) {
             console.warn(`[SiteContentLoader] API route /api/get-site-content returned an HTML error page (Status: ${response.status}). This often indicates a server-side crash in the API route.`);
-            errorText = `Server error (${response.status}): Could not load site content. The API route may have crashed or returned HTML.`; // Keep this specific message
+            errorText = `Server error (${response.status}): Could not load site content. The API route may have crashed or returned HTML.`;
           } else if (responseBodyText) {
-            // Try parsing as JSON to get a structured error message from the API's JSON response
+            // Try parsing as JSON to get a structured error message
             if (contentType && contentType.includes("application/json")) {
               try {
                 const errorData = JSON.parse(responseBodyText);
                 if (errorData && errorData.error) {
-                  // Use the structured error message from the API's JSON response
                   errorText = `API Error (${response.status}): ${errorData.error}`; // Use the specific error from API
                   console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with JSON error: ${errorData.error}`);
                 } else {
-                  // Valid JSON but no 'error' field, use generic message
                   errorText = `Server error (${response.status}): Unexpected JSON response format.`;
                   console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with unexpected JSON structure.`);
                 }
               } catch (jsonParseError) {
-                 // Response body wasn't valid JSON, use generic server error
-                 errorText = `Server error (${response.status}): Non-JSON response received from API.`;
+                 errorText = `Server error (${response.status}): Failed to parse non-OK response as JSON. Body starts with: ${responseBodyText.substring(0, 100)}...`;
                  console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with non-JSON body.`);
               }
             } else {
-               // Not HTML, not JSON, but has text content - treat as generic server error
-               errorText = `Server error (${response.status}): Received unexpected content type '${contentType}' from API.`;
+               errorText = `Server error (${response.status}): Received unexpected content type '${contentType}'. Body starts with: ${responseBodyText.substring(0, 100)}...`;
                console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with unexpected content type.`);
              }
-
           } else {
-               // Body read failed or was empty
                errorText = `Server error (${response.status}): ${response.statusText || 'Failed request with empty or unreadable response body.'}`;
                console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with empty or unreadable body.`);
           }
@@ -90,7 +80,7 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
 
         // --- Handle OK HTTP Responses (Status 200-299) ---
          if (!responseBodyText) {
-            // This shouldn't happen if response.ok is true, but defensive check
+            // This shouldn't happen if response.ok is true and body read succeeded
             throw new Error("API returned OK status but response body could not be read.");
          }
 
@@ -100,10 +90,9 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
             data = JSON.parse(responseBodyText);
         } catch (jsonParseError) {
             console.error("[SiteContentLoader] Failed to parse JSON from OK response:", jsonParseError);
-            console.error("[SiteContentLoader] Raw response body that failed parsing:", responseBodyText);
+            console.error("[SiteContentLoader] Raw response body that failed parsing:", responseBodyText); // Log the problematic text
             throw new Error(`Failed to parse successful API response as JSON. Body starts with: ${responseBodyText.substring(0, 100)}...`);
         }
-
 
         // Check if the successful response *still* contains an error field (from the getSiteContent service)
         if (data && data.error) {
@@ -183,7 +172,7 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
     };
-
+     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array ensures this runs once on mount
 
   // Call the children function with the fetched content, error, and loading state

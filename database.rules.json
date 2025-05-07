@@ -1,3 +1,4 @@
+
 {
   "rules": {
     "databases": {
@@ -29,6 +30,21 @@
             "allow read, delete": "if request.auth != null;", // Only authenticated users can view/delete subscribers
             "allow update": "if false;" // Updates generally not needed/allowed
           },
+          // Explicitly allow read access to the collections as well (needed for list queries)
+          "events": {
+             "allow list": "if true;" // Allow listing events
+          },
+          "gallery": {
+             "allow list": "if true;" // Allow listing gallery items
+          },
+          // Allow authenticated users to list members and subscribers
+          "members": {
+             "allow list": "if request.auth != null;"
+          },
+          "newsletterSubscribers": {
+             "allow list": "if request.auth != null;"
+          },
+
           // Default deny for any other paths not explicitly matched above
           "match /{document=**}": {
             "allow read, write": "if false;"

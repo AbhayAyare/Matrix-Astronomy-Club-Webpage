@@ -26,9 +26,8 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
             error: `Service Error: ${result.error}` // Prefix the error message
         };
         console.log("[API /api/get-site-content] Sending 500 response due to service error:", JSON.stringify(errorResponse));
-        return NextResponse.json(errorResponse,
-          { status: 500 }
-        );
+        // Ensure JSON is returned even for service errors
+        return NextResponse.json(errorResponse, { status: 500 });
     } else {
          console.log(`[API /api/get-site-content] getSiteContent service returned successfully after ${Date.now() - startTime}ms.`);
          // Successful fetch, return 200 OK with the content
@@ -61,13 +60,13 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
 
     console.log("[API /api/get-site-content] Sending 500 response due to critical handler error:", JSON.stringify(criticalErrorResponse));
 
-    // Ensure this ALWAYS returns JSON
+    // Ensure this ALWAYS returns JSON, preventing HTML error pages
     try {
         return NextResponse.json(criticalErrorResponse, { status: 500 });
     } catch (responseError) {
         // Fallback if NextResponse.json fails (highly unlikely)
         console.error("[API /api/get-site-content] FAILED TO SEND JSON RESPONSE:", responseError);
-        // Return a plain text response as a last resort
+        // Return a plain text response as a last resort, still trying to make it JSON-like
         return new Response(JSON.stringify({ error: 'Failed to generate JSON error response.' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
@@ -75,3 +74,4 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     }
   }
 }
+
