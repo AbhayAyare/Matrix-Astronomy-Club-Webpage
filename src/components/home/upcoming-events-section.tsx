@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react'; // Import useState and useEffect
@@ -55,6 +56,7 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
   const isDisplayingFallbacks = error && events.length === 0;
   const isCurrentlyOffline = error ? isOfflineError(new Error(error)) : false;
 
+  // Helper function to generate unique IDs for Dialog Title and Description
   const getModalTitleId = (eventId: string) => `event-modal-title-${eventId}`;
   const getModalDescriptionId = (eventId: string) => `event-modal-description-${eventId}`;
 
@@ -112,7 +114,7 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
                          </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-grow">
-                        <p className="text-foreground/80 line-clamp-3">{event.description}</p>
+                        <p className="text-card-foreground line-clamp-3">{event.description}</p> {/* Changed text-foreground/80 to text-card-foreground */}
                       </CardContent>
                       <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
@@ -128,8 +130,10 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
                     aria-describedby={modalDescriptionId}
                   >
                     <DialogHeader className="p-4 sm:p-6 border-b">
+                      {/* Added id to DialogTitle */}
                       <DialogTitle id={modalTitleId}>{event.name}</DialogTitle>
                        {/* Use EventTime also in the modal for consistency */}
+                       {/* Added id to DialogDescription */}
                        <DialogDescription id={modalDescriptionId} className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
                             <span><CalendarDays className="inline-block h-4 w-4 mr-1.5 align-text-bottom"/>{eventLongDateString}</span>
                             <span><Clock className="inline-block h-4 w-4 mr-1.5 align-text-bottom"/> <EventTime timestamp={event.date} /></span>
@@ -173,3 +177,5 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
     </>
   );
 }
+
+    
