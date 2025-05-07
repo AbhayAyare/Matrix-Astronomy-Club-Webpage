@@ -21,9 +21,9 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
         // return a non-200 status from the API route to signal an issue occurred.
         // Still return the JSON structure the client expects ({ content: ..., error: ... }).
         // Return 500 as the service layer encountered an error.
-        const errorResponse: ErrorResponse = { content: null, error: result.error };
+        const errorResponse: ErrorResponse = { content: null, error: result.error }; // Use null content
         console.log("[API /api/get-site-content] Sending 500 response due to service error:", JSON.stringify(errorResponse));
-        return NextResponse.json(errorResponse, { status: 500 });
+        return NextResponse.json(errorResponse, { status: 500 }); // Return 500 with JSON error
     } else {
          console.log(`[API /api/get-site-content] getSiteContent service returned successfully after ${Date.now() - startTime}ms.`);
          // Successful fetch, return 200 OK with the content
@@ -32,27 +32,41 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
 
   } catch (error: any) {
     // --- Catch UNEXPECTED errors within the API route handler itself ---
-    // This block is a safety net for errors not caught by getSiteContent() or other issues in this route handler.
     const endTime = Date.now();
     const duration = endTime - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'An unknown critical error occurred in the site content API.';
     console.error(`[API /api/get-site-content] CRITICAL UNHANDLED ERROR in GET handler after ${duration}ms:`, error);
-    // Log the stack trace if available
-    if (error instanceof Error) {
+
+    // Default error message
+    let errorMessage = 'An unknown critical error occurred in the site content API.';
+    try {
+      // Try to get a more specific message, but don't let this fail the response
+      errorMessage = error instanceof Error ? error.message : String(error);
+      if (error instanceof Error && error.stack) {
         console.error("[API /api/get-site-content] Stack Trace:", error.stack);
-    } else {
-         console.error("[API /api/get-site-content] Raw Error Object:", error);
+      }
+    } catch (e) {
+      console.error("[API /api/get-site-content] Error while trying to stringify the original error:", e);
     }
 
     // Construct the JSON response *before* logging it
     const criticalErrorResponse: ErrorResponse = {
-        content: null, // Explicitly null content on critical server error
-        error: `API Route Server Error: ${errorMessage}. Check server logs for full details.` // Indicate error happened at API level
+        content: null,
+        error: `API Route Server Error: ${errorMessage}. See server logs.`
     };
 
     console.log("[API /api/get-site-content] Sending 500 response due to critical handler error:", JSON.stringify(criticalErrorResponse));
 
-    // Return a standardized JSON error response with a 500 status
-    return NextResponse.json(criticalErrorResponse, { status: 500 });
+    // Ensure this ALWAYS returns JSON
+    try {
+        return NextResponse.json(criticalErrorResponse, { status: 500 });
+    } catch (responseError) {
+        // Fallback if NextResponse.json fails (highly unlikely)
+        console.error("[API /api/get-site-content] FAILED TO SEND JSON RESPONSE:", responseError);
+        // Return a plain text response as a last resort
+        return new Response(JSON.stringify({ error: 'Failed to generate JSON error response.' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
   }
 }
