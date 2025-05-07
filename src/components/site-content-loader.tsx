@@ -6,17 +6,10 @@ import { ServerCrash, WifiOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { SiteContent } from "@/services/content"; // Import the type
 import { defaultSiteContent as defaultSiteContentData } from "@/services/content"; // Import the default data
+import { isOfflineError } from "@/lib/utils"; // Use helper from utils
 
 interface SiteContentLoaderProps {
   children: (props: { content: SiteContent; error: any | null; loading: boolean; }) => React.ReactNode;
-}
-
-// Local function to check for client-side network errors during fetch
-function isNetworkError(error: any): boolean {
-  return error instanceof TypeError && (
-    error.message.toLowerCase().includes('failed to fetch') || // Common browser network error
-    error.message.toLowerCase().includes('network request failed') // React Native/other environments
-  );
 }
 
 export function SiteContentLoader({ children }: SiteContentLoaderProps) {
@@ -38,18 +31,19 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
 
         // --- Handle Non-OK HTTP Responses (e.g., 500, 404) ---
         if (!response.ok) {
-          let errorText = `API Request Failed (${response.status}): ${response.statusText}`; // Default error text
+          let errorText = `API Request Failed (${response.status}): ${response.statusText || 'Unknown Error'}`; // Default error text
+          const contentType = response.headers.get("content-type");
 
           try {
             // Try reading the body ONCE to get more context
             responseBodyText = await response.text();
 
             // Check if the response body looks like HTML (indicating a server crash page)
-            if (responseBodyText && responseBodyText.trim().toLowerCase().startsWith('<!doctype html')) {
+            if (contentType && contentType.includes("text/html") && responseBodyText && responseBodyText.trim().toLowerCase().startsWith('<!doctype html')) {
               console.warn(`[SiteContentLoader] API route /api/get-site-content returned an HTML error page (Status: ${response.status}). This often indicates a server-side crash.`);
-              errorText = `Server error (${response.status}): Could not load site content. The API route may have crashed.`;
+              errorText = `Server error (${response.status}): Could not load site content. The API route may have crashed or returned HTML.`;
 
-            } else if (responseBodyText) {
+            } else if (responseBodyText && contentType && contentType.includes("application/json")) {
               // Try parsing as JSON to get a structured error message from the API route's catch block
               try {
                 const errorData = JSON.parse(responseBodyText);
@@ -59,7 +53,7 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
                    console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with JSON error: ${errorData.error}`);
                 } else {
                   // Valid JSON but no 'error' field, use truncated text as fallback
-                  errorText = `API Error (${response.status}): Unexpected response format. Body: ${responseBodyText.substring(0, 200)}...`;
+                  errorText = `API Error (${response.status}): Unexpected JSON response format. Body: ${responseBodyText.substring(0, 200)}...`;
                    console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with unexpected JSON structure.`);
                 }
               } catch (jsonParseError) {
@@ -67,6 +61,10 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
                 errorText = `API Error (${response.status}): Non-JSON response received. Body: ${responseBodyText.substring(0, 500)}...`;
                  console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with non-JSON body: ${responseBodyText.substring(0, 100)}...`);
               }
+            } else if (responseBodyText) {
+                // Not HTML, not JSON, but has text content
+                 errorText = `API Error (${response.status}): Received unexpected content type '${contentType}'. Body: ${responseBodyText.substring(0, 500)}...`;
+                 console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with unexpected content type and body: ${responseBodyText.substring(0, 100)}...`);
             } else {
                  console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with empty body.`);
             }
@@ -86,7 +84,7 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
         if (data && data.error) {
           console.warn("[SiteContentLoader] API returned 200 OK, but contained a service-level error message:", data.error);
           setError(new Error(data.error)); // Set error state based on the message from the service
-          setContent(defaultSiteContentData); // Use default content when there's a service-level error
+          setContent(data.content || defaultSiteContentData); // Use default content if service provides none, else the content from service
         } else if (data && data.content) {
           // Successfully fetched content
           setContent({ ...defaultSiteContentData, ...data.content }); // Merge with defaults
@@ -103,8 +101,7 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
         // --- Handle Fetch Errors (Network, CORS, etc.) OR Errors Thrown Above ---
         console.error("[SiteContentLoader] Fetch or processing error in fetchSiteContent:", err);
 
-        if (isNetworkError(err)) {
-           // Specific network error detected client-side
+        if (isOfflineError(err)) { // Check if it's likely an offline/network error
            setError(new Error("Network Error: Could not connect to fetch site content. Please check your connection."));
         } else if (err instanceof Error) {
             // Use the error message thrown from the !response.ok block or other JS errors
