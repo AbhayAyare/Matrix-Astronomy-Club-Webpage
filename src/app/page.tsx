@@ -1,11 +1,10 @@
-
 'use client';
 
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Globe, UserPlus, Mail, Phone, MapPin, WifiOff, ServerCrash, Loader2, CalendarDays, Image as ImageIcon } from 'lucide-react'; // Added Loader2, CalendarDays, ImageIcon
+import { Globe, UserPlus, Mail, Phone, MapPin, WifiOff, ServerCrash, Loader2, CalendarDays, Image as ImageIcon, AlertCircle } from 'lucide-react'; // Added AlertCircle
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import type { SiteContent } from '@/services/content'; // Type only
@@ -65,7 +64,8 @@ export default function Home() {
                         ? "Could not connect to fetch essential site text due to network issues. Displaying default or potentially outdated text."
                         : `Could not load essential site text (e.g., titles, descriptions) due to server-side errors. Displaying default text.`
                       }
-                      <p className="mt-2 text-xs font-mono bg-muted/50 p-1 rounded max-h-20 overflow-y-auto">Error: {String(siteContentError?.message || siteContentError)}</p>
+                       {/* Show the raw error message for debugging */}
+                       <p className="mt-2 text-xs font-mono bg-muted/50 p-1 rounded max-h-20 overflow-y-auto">Error: {String(siteContentError?.message || siteContentError)}</p>
                       Events and Gallery sections will attempt to load separately. Refreshing the page might help.
                     </AlertDescription>
                   </Alert>
@@ -76,7 +76,7 @@ export default function Home() {
                  {/* Hero Section */}
                  <section
                    id="hero"
-                   className="text-center py-16 md:py-24 bg-primary/80 rounded-2xl shadow-xl animate-fade-in p-8 relative overflow-hidden backdrop-blur-sm border-transparent" // Added border-transparent
+                   className="text-center py-16 md:py-24 bg-primary/80 rounded-2xl shadow-xl animate-fade-in p-8 relative overflow-hidden backdrop-blur-sm border-transparent"
                    style={{ animationDelay: '0s' }}
                  >
                     <div className="absolute inset-0 rounded-2xl shadow-inner pointer-events-none"></div>
@@ -99,28 +99,40 @@ export default function Home() {
                    <h2 className="text-3xl md:text-4xl font-semibold mb-6 text-white flex items-center justify-center gap-2"><Globe className="w-8 h-8 text-accent"/>About Matrix</h2>
                    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                     <CardContent className="p-6 md:p-8">
-                      {hasContentOtherErrors && ( // Show specific error if 'about' content might be affected
-                        <Alert variant="destructive" className="mb-4">
+                       {/* Display specific error for non-offline content issues */}
+                       {hasContentOtherErrors && (
+                         <Alert variant="destructive" className="mb-4">
                            <ServerCrash className="h-4 w-4"/>
-                          <AlertTitle>Content Error</AlertTitle>
-                          <AlertDescription>Could not load the 'About' content. Displaying default text. Error: {String(siteContentError?.message || siteContentError)}</AlertDescription>
-                        </Alert>
-                      )}
-                      <p className="text-lg leading-relaxed text-foreground">{siteContent.about}</p> {/* Changed to text-foreground for better visibility */}
-                    </CardContent>
-                  </Card>
+                           <AlertTitle>Content Error</AlertTitle>
+                            <AlertDescription>
+                               Could not load the 'About' content. Displaying default text. Error: {String(siteContentError?.message || siteContentError)}
+                             </AlertDescription>
+                         </Alert>
+                       )}
+                       <p className="text-lg leading-relaxed text-foreground">{siteContent.about}</p> {/* Changed to text-foreground */}
+                     </CardContent>
+                   </Card>
                 </section>
 
                 <Separator />
 
                 {/* Upcoming Events Section */}
-                <UpcomingEventsSection />
-
+                 <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+                   <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+                     <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
+                   </h2>
+                   <UpcomingEventsSection />
+                 </section>
 
                 <Separator />
 
                 {/* Event Gallery Section */}
-                <GallerySection />
+                <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
+                  <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+                    <ImageIcon className="w-8 h-8 text-accent"/>Event Gallery
+                  </h2>
+                  <GallerySection />
+                </section>
 
 
                 <Separator />
@@ -144,7 +156,7 @@ export default function Home() {
                 {/* Newsletter Subscription Section */}
                 <section id="newsletter" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.3s' }}>
                    <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><Mail className="w-8 h-8 text-accent"/>{siteContent.newsletterTitle}</h2>
-                   <Card className="max-w-2xl mx-auto shadow-lg bg-card hover:shadow-xl transition-shadow duration-300"> {/* Reverted bg-secondary/50 to bg-card */}
+                   <Card className="max-w-2xl mx-auto shadow-lg bg-card hover:shadow-xl transition-shadow duration-300">
                       <CardHeader>
                         <CardTitle>{siteContent.newsletterTitle}</CardTitle>
                         <CardDescription className="text-foreground">{siteContent.newsletterDescription}</CardDescription> {/* Changed to text-foreground */}
@@ -166,7 +178,9 @@ export default function Home() {
                          <Alert variant="destructive" className="mb-4">
                             <ServerCrash className="h-4 w-4"/>
                            <AlertTitle>Contact Details Error</AlertTitle>
-                           <AlertDescription>Could not load contact details. Displaying defaults. Error: {String(siteContentError?.message || siteContentError)}</AlertDescription>
+                            <AlertDescription>
+                              Could not load contact details. Displaying defaults. Error: {String(siteContentError?.message || siteContentError)}
+                           </AlertDescription>
                          </Alert>
                        )}
                         <div className="flex items-center gap-3 group">
