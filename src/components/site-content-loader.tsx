@@ -3,7 +3,8 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ServerCrash, WifiOff, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { isOfflineError } from "@/lib/utils";
+// Removed isOfflineError import as it's now defined locally
+// import { isOfflineError } from "@/lib/utils"; // Removed
 
 // Define SiteContent interface (should match services/content.ts)
 interface SiteContent {
@@ -37,6 +38,14 @@ interface SiteContentLoaderProps {
   children: (props: { content: SiteContent; error: any | null; loading: boolean; }) => React.ReactNode;
 }
 
+// Local isOfflineError function specifically for fetch errors
+function isNetworkError(error: any): boolean {
+  return error instanceof TypeError && (
+    error.message.includes('Failed to fetch') || // Common browser network error
+    error.message.includes('Network request failed') // React Native/other environments
+  );
+}
+
 export function SiteContentLoader({ children }: SiteContentLoaderProps) {
   const [content, setContent] = useState<SiteContent>(defaultSiteContentData);
   const [error, setError] = useState<any | null>(null);
@@ -51,42 +60,64 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
 
         if (!response.ok) {
           let errorText = `Failed to fetch site content: ${response.status} ${response.statusText}`;
-          // Try to get the body as text first. This is generally safer.
-          const responseBodyText = await response.text();
+          let responseBodyText = '';
 
-          if (responseBodyText) {
-            try {
-              // Attempt to parse the text as JSON
-              const errorData = JSON.parse(responseBodyText);
-              if (errorData && errorData.error) {
-                errorText = errorData.error; // Use structured error if available
-              } else {
-                // If JSON parsing was successful but no .error field, or if it's not JSON, use the text
-                errorText = responseBodyText.substring(0, 500); // Truncate long non-JSON errors
-              }
-            } catch (jsonParseError) {
-              // If JSON parsing failed, the body was likely not JSON. Use the raw text.
-              errorText = responseBodyText.substring(0, 500); // Truncate long non-JSON errors
+          try {
+            // Try reading the body *once*
+            responseBodyText = await response.text();
+
+            // Check if the response body looks like HTML
+            if (responseBodyText && responseBodyText.trim().toLowerCase().startsWith('<!doctype html')) {
+               console.warn("API route returned HTML error page, status:", response.status);
+               // Use a generic error message based on status
+               errorText = `Server error (${response.status}): Could not load site content.`;
+            } else if (responseBodyText) {
+               // Attempt to parse as JSON only if it doesn't look like HTML
+               try {
+                  const errorData = JSON.parse(responseBodyText);
+                  if (errorData && errorData.error) {
+                    errorText = errorData.error; // Use structured error if available
+                  } else {
+                    // Valid JSON but no specific error field, use truncated text
+                    errorText = responseBodyText.substring(0, 500);
+                  }
+               } catch (jsonParseError) {
+                  // Not JSON, use truncated raw text
+                  errorText = responseBodyText.substring(0, 500);
+               }
             }
+            // If responseBodyText was empty, errorText remains the statusText initially set
+          } catch (bodyReadError) {
+            // Error reading the body itself (e.g., network interruption during read)
+            console.error("Error reading response body:", bodyReadError);
+            // Keep the original status-based error message
           }
-          // If responseBodyText was empty, errorText remains the statusText
           throw new Error(errorText);
         }
 
         // If response.ok, parse the successful JSON response
         const data = await response.json();
-        
+
+        // Handle different possible successful response structures
         if (data && data.content) {
-          setContent(data.content);
-        } else if (data && data.heroTitle) { 
-          setContent(data as SiteContent);
+            // Structure: { content: { ... } }
+            setContent({ ...defaultSiteContentData, ...data.content }); // Merge with defaults
+        } else if (data && data.heroTitle) {
+             // Structure: { heroTitle: '...', about: '...', ... }
+             setContent({ ...defaultSiteContentData, ...data }); // Merge with defaults
         } else {
-          setContent(defaultSiteContentData);
-          setError(new Error("Unexpected response structure from /api/get-site-content"));
+            console.warn("Unexpected response structure from /api/get-site-content, using defaults.");
+            setContent(defaultSiteContentData); // Fallback to default
         }
+
       } catch (err) {
         console.error("SiteContentLoader fetch error:", err);
-        setError(err);
+        // Check for network-specific errors here
+        if (isNetworkError(err)) {
+           setError(new Error("Network Error: Could not connect to fetch site content. Please check your connection."));
+        } else {
+           setError(err); // Use the error thrown from the !response.ok block or other fetch errors
+        }
         setContent(defaultSiteContentData); // Fallback to default on any error
       } finally {
         setLoading(false);
