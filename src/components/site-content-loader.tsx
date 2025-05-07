@@ -41,111 +41,92 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
           responseBodyText = await response.text();
         } catch (bodyReadError) {
           console.error("[SiteContentLoader] Error reading response body:", bodyReadError);
-           // Treat body read error as a generic server error
            throw new Error(`Failed to read response body (Status: ${responseStatus})`);
+        }
+
+        // Attempt to parse as JSON first
+        let data;
+        let parseError: Error | null = null;
+        try {
+          data = JSON.parse(responseBodyText);
+        } catch (e) {
+          parseError = e instanceof Error ? e : new Error(String(e));
+          console.warn("[SiteContentLoader] Failed to parse response as JSON:", parseError.message);
         }
 
         // --- Handle Non-OK HTTP Responses (e.g., 4xx, 5xx) ---
         if (!response.ok) {
           let errorText = `Server error (${responseStatus}): Could not load site content.`;
-          const isHtmlResponse = responseContentType?.includes("text/html"); // Simpler check for HTML
+          const isHtmlResponse = responseContentType?.includes("text/html") && responseBodyText?.trim().toLowerCase().startsWith('<!doctype html');
 
-          if (isHtmlResponse && responseBodyText?.trim().toLowerCase().startsWith('<!doctype html')) {
-             console.warn(`[SiteContentLoader] API route /api/get-site-content returned an HTML error page (Status: ${responseStatus}).`);
-             errorText = `Server error (${responseStatus}): Could not load site content. The API route may have crashed or returned HTML.`;
-          } else if (responseContentType?.includes("application/json") && responseBodyText) {
-             try {
-               const errorData = JSON.parse(responseBodyText);
-               if (errorData?.error && typeof errorData.error === 'string') {
-                 // Use the specific error message from the API's JSON response
-                 errorText = `API Error (${responseStatus}): ${errorData.error}`;
-                 console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with JSON error: ${errorData.error}`);
-               } else {
-                 // Fallback if JSON doesn't have the expected 'error' field
-                 errorText = `Server error (${responseStatus}): Unexpected JSON error format received.`;
-                 console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with unexpected JSON: ${responseBodyText.substring(0, 100)}...`);
-               }
-             } catch (jsonParseError) {
-                errorText = `Server error (${responseStatus}): Failed to parse non-OK JSON response.`;
-                console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} but failed to parse JSON body.`);
-             }
-           } else if (responseBodyText) {
-             // Non-JSON, non-HTML error response body
+          if (isHtmlResponse) {
+            errorText = `Server error (${responseStatus}): Could not load site content. The API route may have crashed or returned HTML.`;
+            console.warn(`[SiteContentLoader] API route /api/get-site-content returned an HTML error page (Status: ${responseStatus}).`);
+          } else if (data?.error && typeof data.error === 'string') {
+            // Use the specific error message from the API's JSON response (even if status wasn't 200)
+            errorText = `API Error (${responseStatus}): ${data.error}`;
+            console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with JSON error: ${data.error}`);
+          } else if (responseBodyText) {
              errorText = `Server error (${responseStatus}): ${responseBodyText.substring(0, 200)}${responseBodyText.length > 200 ? '...' : ''}`;
              console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with content type '${responseContentType}'. Body: ${errorText}`);
-           } else {
-               // Empty or unreadable body on non-OK response
-               errorText = `Server error (${responseStatus}): ${response.statusText || 'Empty or unreadable response body.'}`;
-               console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with empty or unreadable body.`);
-           }
+          } else {
+             errorText = `Server error (${responseStatus}): ${response.statusText || 'Empty or unreadable response body.'}`;
+             console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with empty or unreadable body.`);
+          }
 
-           // IMPORTANT: Set the error state here instead of throwing,
-           // allowing the component to render with default content and the error message.
-           setError(new Error(errorText));
-           setContent(defaultSiteContent); // Ensure defaults are set
-           setOffline(isOfflineError(new Error(errorText))); // Check if the error implies offline
-           setLoading(false); // Ensure loading stops
-           return; // Exit the try block early after handling the error
+          const errorToSet = new Error(errorText);
+          setError(errorToSet);
+          setContent(defaultSiteContent);
+          setOffline(isOfflineError(errorToSet));
+          setLoading(false);
+          console.error(`[SiteContentLoader] Setting error state due to non-OK response: ${errorText}`);
+          return; // Exit fetch function
         }
 
         // --- Handle OK HTTP Responses (Status 200-299) ---
-        if (!responseBodyText) {
-            console.warn("[SiteContentLoader] API returned OK status but response body was unexpectedly empty. Using defaults.");
-            setError(new Error("API returned OK status but response body was empty."));
-            setContent(defaultSiteContent);
+        if (parseError) {
+           // OK status, but failed to parse JSON -> Treat as unexpected structure
+           console.error("[SiteContentLoader] API returned OK status but failed to parse JSON body:", parseError);
+           console.error("[SiteContentLoader] Raw response body that failed parsing:", responseBodyText.substring(0, 500));
+           setError(new Error(`Failed to parse successful API response as JSON: ${parseError.message}.`));
+           setContent(defaultSiteContent);
+        } else if (data?.error && typeof data.error === 'string') {
+           // API returned 200 OK, but indicates a service-level error (e.g., Firestore issue handled by API)
+           console.warn("[SiteContentLoader] API returned 200 OK, but contained a service-level error message:", data.error);
+           const serviceError = new Error(data.error);
+           setError(serviceError); // Set the specific error from the API response
+           setOffline(isOfflineError(serviceError));
+           // Use content from the response if available (might be default content returned by API), otherwise use component defaults
+           setContent(data.content ? { ...defaultSiteContent, ...data.content } : defaultSiteContent);
+        } else if (data?.content) {
+           // Successful fetch and parse
+           setContent({ ...defaultSiteContent, ...data.content });
+           setError(null); // Clear any previous error
+           setOffline(false); // Ensure offline is false on success
+           console.log("[SiteContentLoader] Successfully fetched and parsed site content.");
         } else {
-            try {
-                const data = JSON.parse(responseBodyText);
-
-                if (data?.error && typeof data.error === 'string') {
-                    // API returned 200 OK, but indicates a service-level error (e.g., Firestore issue handled by API)
-                    console.warn("[SiteContentLoader] API returned 200 OK, but contained a service-level error message:", data.error);
-                    const serviceError = new Error(data.error);
-                    setError(serviceError); // Set the specific error from the API response
-                    setOffline(isOfflineError(serviceError));
-                    // Use content from the response if available (might be default content returned by API), otherwise use component defaults
-                    setContent(data.content ? { ...defaultSiteContent, ...data.content } : defaultSiteContent);
-                } else if (data?.content) {
-                    // Successful fetch and parse
-                    setContent({ ...defaultSiteContent, ...data.content });
-                    setError(null); // Clear any previous error
-                    setOffline(false); // Ensure offline is false on success
-                    console.log("[SiteContentLoader] Successfully fetched and parsed site content.");
-                } else {
-                    // Unexpected success response structure
-                    console.warn("[SiteContentLoader] Unexpected success response structure from API (missing 'content' key?), using defaults.", data);
-                    setError(new Error("Unexpected response structure from content API."));
-                    setContent(defaultSiteContent);
-                }
-            } catch (jsonParseError: any) {
-                // Failed to parse even a successful (2xx) response
-                console.error("[SiteContentLoader] Failed to parse JSON from OK response:", jsonParseError);
-                console.error("[SiteContentLoader] Raw response body that failed parsing:", responseBodyText);
-                setError(new Error(`Failed to parse successful API response as JSON: ${jsonParseError.message}.`));
-                setContent(defaultSiteContent);
-            }
+           // Unexpected success response structure (missing 'content' key)
+           console.warn("[SiteContentLoader] Unexpected success response structure from API (missing 'content' key?), using defaults.", data);
+           setError(new Error("Unexpected response structure from content API."));
+           setContent(defaultSiteContent);
         }
 
       } catch (err: unknown) { // Catch network fetch errors or body reading errors
-        console.error("[SiteContentLoader] CATCH BLOCK ERROR in fetchSiteContent:", err);
-        const finalError = err instanceof Error ? err : new Error(`An unknown error occurred: ${String(err)}`);
-        const isLikelyOffline = isOfflineError(finalError); // Use the utility function
+        const finalError = err instanceof Error ? err : new Error(String(err));
+        const isLikelyOffline = isOfflineError(finalError);
 
-        console.error(`[SiteContentLoader] Final error state - Message: "${finalError.message}", Is Offline: ${isLikelyOffline}`);
-
-        // Log raw response text if available and relevant (e.g., on parse errors)
+        console.error(`[SiteContentLoader] CATCH BLOCK ERROR: ${finalError.message} (Is Offline: ${isLikelyOffline})`);
         if (responseBodyText && finalError.message.toLowerCase().includes('parse')) {
             console.error(`[SiteContentLoader] Raw response body on parse error: ${responseBodyText.substring(0, 500)}${responseBodyText.length > 500 ? '...' : ''}`);
+        } else if (responseBodyText && finalError.message.includes('Failed to read response body')) {
+            console.error(`[SiteContentLoader] Raw response before body read error: ${responseBodyText.substring(0, 500)}...`);
         }
 
         setError(finalError);
         setOffline(isLikelyOffline);
         setContent(defaultSiteContent); // Always fallback to default content on error
       } finally {
-        // Ensure loading is always set to false eventually
-        if (loading) {
-             setLoading(false);
-        }
+        setLoading(false);
         console.log("[SiteContentLoader] Fetch process finished.");
       }
     };
