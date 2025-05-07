@@ -99,17 +99,8 @@ export default function Home() {
                    <h2 className="text-3xl md:text-4xl font-semibold mb-6 text-white flex items-center justify-center gap-2"><Globe className="w-8 h-8 text-accent"/>About Matrix</h2>
                    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
                     <CardContent className="p-6 md:p-8">
-                       {/* Display specific error for non-offline content issues */}
-                       {hasContentOtherErrors && (
-                         <Alert variant="destructive" className="mb-4">
-                           <ServerCrash className="h-4 w-4"/>
-                           <AlertTitle>Content Error</AlertTitle>
-                            <AlertDescription>
-                               Could not load the 'About' content. Displaying default text. Error: {String(siteContentError?.message || siteContentError)}
-                             </AlertDescription>
-                         </Alert>
-                       )}
-                       <p className="text-lg leading-relaxed text-foreground">{siteContent.about}</p> {/* Changed to text-foreground */}
+                       {/* Removed specific error alert for 'About' content */}
+                       <p className="text-lg leading-relaxed text-black">{siteContent.about}</p> {/* Changed to text-black */}
                      </CardContent>
                    </Card>
                 </section>
@@ -159,7 +150,7 @@ export default function Home() {
                    <Card className="max-w-2xl mx-auto shadow-lg bg-card hover:shadow-xl transition-shadow duration-300">
                       <CardHeader>
                         <CardTitle>{siteContent.newsletterTitle}</CardTitle>
-                        <CardDescription className="text-foreground">{siteContent.newsletterDescription}</CardDescription> {/* Changed to text-foreground */}
+                        <CardDescription className="text-white">{siteContent.newsletterDescription}</CardDescription> {/* Changed to text-white */}
                       </CardHeader>
                       <CardContent>
                        <NewsletterForm /> {/* Client Component for form handling */}
@@ -185,15 +176,15 @@ export default function Home() {
                        )}
                         <div className="flex items-center gap-3 group">
                           <Mail className="w-5 h-5 text-accent group-hover:animate-pulse"/>
-                          <a href={`mailto:${siteContent.contactEmail}`} className="text-foreground hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail || 'N/A'}</a>
+                          <a href={`mailto:${siteContent.contactEmail}`} className="text-black hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail || 'N/A'}</a>
                         </div>
                         <div className="flex items-center gap-3 group">
                           <Phone className="w-5 h-5 text-accent group-hover:animate-pulse"/>
-                          <a href={`tel:${siteContent.contactPhone}`} className="text-foreground hover:text-accent transition-colors duration-200">{siteContent.contactPhone || 'N/A'}</a>
+                          <a href={`tel:${siteContent.contactPhone}`} className="text-black hover:text-accent transition-colors duration-200">{siteContent.contactPhone || 'N/A'}</a>
                         </div>
                         <div className="flex items-start gap-3 group">
                           <MapPin className="w-5 h-5 text-accent mt-1 group-hover:animate-pulse"/>
-                          <span className="text-foreground whitespace-pre-wrap">{siteContent.contactAddress || 'Location not specified'}, India</span>
+                          <span className="text-black whitespace-pre-wrap">{siteContent.contactAddress || 'Location not specified'}, India</span>
                         </div>
                       </CardContent>
                     </Card>
