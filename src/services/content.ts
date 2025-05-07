@@ -53,31 +53,35 @@ export async function getSiteContent(): Promise<GetContentResult> {
   const contentDocPath = `${CONTENT_COLLECTION}/${CONTENT_DOC_ID}`;
   console.log(`[Service getSiteContent] Attempting to fetch content from Firestore path: ${contentDocPath}`);
   let errorMessage: string | null = null;
+  const operationStartTime = Date.now(); // Track duration
 
-  // Wrap the entire operation in a try...catch
+  // --- Initial DB Check ---
+  if (!db) {
+      const duration = Date.now() - operationStartTime;
+      errorMessage = `Initialization Error: Firestore database instance (db) is not initialized. Cannot proceed with Firestore operation. (Failed after ${duration}ms)`;
+      console.error(`[Service getSiteContent] ${errorMessage}`);
+      // Return default content and the initialization error message
+      return { content: defaultSiteContent, error: `Service Layer Error: ${errorMessage}` };
+  }
+  console.log("[Service getSiteContent] Firestore db instance check passed.");
+
+  // Wrap the Firestore operation in a try...catch
   try {
-    // --- Initial DB Check ---
-    if (!db) {
-        console.error("[Service getSiteContent] Firestore database instance (db) is null or undefined. Cannot proceed with Firestore operation.");
-        // Throw an error here so it's caught by the main catch block
-        throw new Error("Firestore database instance (db) is not initialized.");
-    }
-    console.log("[Service getSiteContent] Firestore db instance appears valid.");
-
-    // --- Firestore Operation ---
     let contentDocRef;
     try {
          contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
          console.log(`[Service getSiteContent] Created document reference for ${contentDocPath}.`);
     } catch (refError) {
-        console.error(`[Service getSiteContent] Error creating document reference for ${contentDocPath}:`, refError);
-        throw new Error(`Failed to create Firestore document reference: ${refError instanceof Error ? refError.message : String(refError)}`);
+        const duration = Date.now() - operationStartTime;
+        errorMessage = `Ref Creation Error: Failed to create Firestore document reference for ${contentDocPath} (${refError instanceof Error ? refError.message : String(refError)}). (Failed after ${duration}ms)`;
+        console.error(`[Service getSiteContent] ${errorMessage}`);
+        throw new Error(errorMessage); // Throw to be caught by the outer catch block
     }
-
 
     console.log(`[Service getSiteContent] Executing getDoc for ${contentDocPath}...`);
     const docSnap = await getDoc(contentDocRef);
-    console.log(`[Service getSiteContent] getDoc completed for ${contentDocPath}. Document exists: ${docSnap.exists()}`);
+    const fetchDuration = Date.now() - operationStartTime;
+    console.log(`[Service getSiteContent] getDoc completed for ${contentDocPath} in ${fetchDuration}ms. Document exists: ${docSnap.exists()}`);
 
     if (docSnap.exists()) {
       const data = docSnap.data() as Partial<SiteContent>;
@@ -86,33 +90,29 @@ export async function getSiteContent(): Promise<GetContentResult> {
        console.log("[Service getSiteContent] Fetched and merged content successfully.");
        return { content: mergedContent, error: null }; // Success
     } else {
+      // Document doesn't exist - this is not a fetch error, but a state of the DB
       errorMessage = `Configuration document '/${contentDocPath}' not found in Firestore. Using default content.`;
-      console.warn(`[Service getSiteContent] INFO: ${errorMessage}`);
-      // Return default content, but signal that it wasn't found (not a critical fetch error)
-      // Consider if this should be logged as an "error" in the result or just a notice.
-      // For now, returning null error as it's not a fetch failure.
+      console.warn(`[Service getSiteContent] INFO: ${errorMessage} (After ${fetchDuration}ms)`);
+      // Return default content, error is null as it's not a technical failure
       return { content: defaultSiteContent, error: null };
     }
 
   } catch (error) {
-    // --- Catch ANY error during DB check, ref creation, or Firestore operation ---
-    const errorId = `service-error-${Date.now()}`;
-    console.error(`[Service getSiteContent] CRITICAL ERROR during Firestore operation for ${contentDocPath} (ID: ${errorId}):`, error);
+    // --- Catch ANY error during Firestore operation ---
+    const duration = Date.now() - operationStartTime;
+    const errorId = `service-error-${operationStartTime}`;
+    console.error(`[Service getSiteContent] CRITICAL ERROR during Firestore operation for ${contentDocPath} (ID: ${errorId}, Duration: ${duration}ms):`, error);
 
     // Log Firestore-specific details if available
     if (error instanceof FirestoreError) {
         console.error(`[Service getSiteContent] Firestore Error Details (ID: ${errorId}) - Code: ${error.code}, Message: ${error.message}`);
     }
 
-    // Determine the specific error message
-     if (error instanceof Error && error.message.includes("db) is not initialized")) {
-       errorMessage = `Initialization Error: ${error.message}`;
-     } else if (isOfflineError(error)) {
-        // Client seems offline or cannot reach Firestore
+    // Determine the specific error message based on type
+     if (isOfflineError(error)) {
         errorMessage = `Network/Offline Error: Could not connect to Firestore (${(error as FirestoreError)?.code || 'Network Issue'}). Check network connection and Firestore status.`;
        console.warn(`[Service getSiteContent] NETWORK/OFFLINE (ID: ${errorId}): ${errorMessage}`);
     } else if (error instanceof FirestoreError) {
-        // Other Firestore specific errors
         if (error.code === 'permission-denied') {
             errorMessage = `Permission Denied: Could not read '/${contentDocPath}'. Check Firestore security rules.`;
             console.error(`[Service getSiteContent] CRITICAL PERMISSION ERROR (ID: ${errorId}): ${errorMessage}`);
