@@ -34,7 +34,7 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
          return NextResponse.json(result, { status: 200 });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) { // Catch unknown type for broader compatibility
     // --- Catch UNEXPECTED errors within the API route handler itself ---
     const endTime = Date.now();
     const duration = endTime - startTime;
@@ -44,12 +44,15 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     let errorMessage = 'An unknown critical error occurred in the site content API.';
     try {
       // Try to get a more specific message, but don't let this fail the response
-      errorMessage = error instanceof Error ? error.message : String(error);
-      if (error instanceof Error && error.stack) {
+      if (error instanceof Error) {
+        errorMessage = error.message;
         console.error("[API /api/get-site-content] Stack Trace:", error.stack);
+      } else {
+        errorMessage = String(error); // Fallback to string conversion
       }
     } catch (e) {
       console.error("[API /api/get-site-content] Error while trying to stringify the original error:", e);
+      // Keep the default errorMessage if stringification fails
     }
 
     // Construct the JSON response *before* logging it
@@ -62,11 +65,16 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
 
     // Ensure this ALWAYS returns JSON, preventing HTML error pages
     try {
-        return NextResponse.json(criticalErrorResponse, { status: 500 });
+        // Force the response content type to JSON
+        return NextResponse.json(criticalErrorResponse, {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
     } catch (responseError) {
         // Fallback if NextResponse.json fails (highly unlikely)
         console.error("[API /api/get-site-content] FAILED TO SEND JSON RESPONSE:", responseError);
         // Return a plain text response as a last resort, still trying to make it JSON-like
+        // Use the Response constructor directly for maximum safety
         return new Response(JSON.stringify({ error: 'Failed to generate JSON error response.' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
@@ -74,4 +82,3 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     }
   }
 }
-
