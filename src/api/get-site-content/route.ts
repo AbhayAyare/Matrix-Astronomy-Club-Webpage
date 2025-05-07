@@ -114,4 +114,3 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     }
   }
 }
-
