@@ -1,11 +1,9 @@
-
 'use client';
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { GalleryImage } from './gallery-image';
 import { Image as ImageIconIcon, AlertCircle, WifiOff, Maximize, X } from 'lucide-react'; // Removed Loader2 as loading is handled by parent
-import { Timestamp } from 'firebase/firestore'; // Keep Timestamp for type definition
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import Image from 'next/image';
 import { Button } from "@/components/ui/button"; // Import Button
@@ -16,7 +14,7 @@ export interface GalleryImageMetadata {
   id: string;
   url: string;
   name: string;
-  createdAt?: Timestamp;
+  createdAt?: number; // Changed from Timestamp to number (milliseconds) or undefined
 }
 
 interface GallerySectionProps {
@@ -142,3 +140,4 @@ export function GallerySection({ galleryImages, error }: GallerySectionProps) {
     </>
   );
 }
+
