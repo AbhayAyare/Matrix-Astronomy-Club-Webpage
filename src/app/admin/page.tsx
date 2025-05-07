@@ -11,22 +11,24 @@ import { ref, listAll, StorageError } from 'firebase/storage'; // Added ref, Sto
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Added Alert components
-import { AlertCircle } from 'lucide-react'; // Added AlertCircle icon
+import { AlertCircle } from 'lucide-react';
+import { isOfflineError } from '@/lib/utils';
+
 
 // Collections and Storage Folders
 const MEMBERS_COLLECTION = 'members';
 const EVENTS_COLLECTION = 'events';
 const NEWSLETTER_COLLECTION = 'newsletterSubscribers';
-const GALLERY_FOLDER = 'gallery';
+const GALLERY_COLLECTION = 'gallery'; // Use Firestore collection name
 const CONTENT_COLLECTION = 'config';
 const CONTENT_DOC_ID = 'siteContent';
 
 export default function AdminDashboardPage() {
-   const { db, storage } = useFirebase();
+   const { db, storage } = useFirebase(); // Still need storage for gallery count if using storage, otherwise remove
    const [stats, setStats] = useState({
      memberCount: 0,
      eventCount: 0,
-     galleryImageCount: 0,
+     galleryImageCount: 0, // Count Firestore docs now
      subscriberCount: 0,
    });
    const [loadingStats, setLoadingStats] = useState(true);
@@ -38,44 +40,44 @@ export default function AdminDashboardPage() {
        setLoadingStats(true);
        setStatsError(null); // Reset error on fetch
        try {
- if (!db || !storage) {
- // If firebase is not initialized, set an error and stop
-        setStatsError("Firebase services not available. Please check configuration.");
- setLoadingStats(false);
- return; // Exit early
- }
+           if (!db) { // Removed storage check, only need db for Firestore gallery
+             setStatsError("Firebase services (Firestore) not available. Please check configuration.");
+             setLoadingStats(false);
+             return; // Exit early
+           }
          const membersCollectionRef = collection(db, MEMBERS_COLLECTION);
          const eventsCollectionRef = collection(db, EVENTS_COLLECTION);
          const newsletterCollectionRef = collection(db, NEWSLETTER_COLLECTION);
-         const galleryListRef = ref(storage, GALLERY_FOLDER);
+         const galleryCollectionRef = collection(db, GALLERY_COLLECTION); // Use Firestore collection
 
          // Use Promise.allSettled to fetch all stats even if some fail
          const results = await Promise.allSettled([
              getDocs(membersCollectionRef),
              getDocs(eventsCollectionRef),
              getDocs(newsletterCollectionRef),
-             listAll(galleryListRef) // Fetch gallery list
+             getDocs(galleryCollectionRef) // Fetch gallery docs from Firestore
          ]);
 
          let memberCount = 0;
          let eventCount = 0;
          let subscriberCount = 0;
-         let galleryImageCount = 0;
+         let galleryImageCount = 0; // Firestore gallery count
          let encounteredError = false;
-         let isOfflineError = false;
+         let isOfflineErrorDetected = false;
 
          // Process results
-         if (results[0].status === 'fulfilled') memberCount = results[0].value.size; else { encounteredError = true; if (results[0].reason instanceof FirestoreError && (results[0].reason.code === 'unavailable' || results[0].reason.message.includes('offline'))) isOfflineError = true; else console.error("Error fetching members:", results[0].reason); }
-         if (results[1].status === 'fulfilled') eventCount = results[1].value.size; else { encounteredError = true; if (results[1].reason instanceof FirestoreError && (results[1].reason.code === 'unavailable' || results[1].reason.message.includes('offline'))) isOfflineError = true; else console.error("Error fetching events:", results[1].reason); }
-         if (results[2].status === 'fulfilled') subscriberCount = results[2].value.size; else { encounteredError = true; if (results[2].reason instanceof FirestoreError && (results[2].reason.code === 'unavailable' || results[2].reason.message.includes('offline'))) isOfflineError = true; else console.error("Error fetching subscribers:", results[2].reason); }
-         if (results[3].status === 'fulfilled') galleryImageCount = results[3].value.items.length; else { encounteredError = true; if (results[3].reason instanceof StorageError && (results[3].reason.code === 'storage/retry-limit-exceeded' || results[3].reason.code.includes('offline'))) isOfflineError = true; else console.error("Error fetching gallery images:", results[3].reason); }
+         if (results[0].status === 'fulfilled') memberCount = results[0].value.size; else { encounteredError = true; if (isOfflineError(results[0].reason)) isOfflineErrorDetected = true; else console.error("Error fetching members:", results[0].reason); }
+         if (results[1].status === 'fulfilled') eventCount = results[1].value.size; else { encounteredError = true; if (isOfflineError(results[1].reason)) isOfflineErrorDetected = true; else console.error("Error fetching events:", results[1].reason); }
+         if (results[2].status === 'fulfilled') subscriberCount = results[2].value.size; else { encounteredError = true; if (isOfflineError(results[2].reason)) isOfflineErrorDetected = true; else console.error("Error fetching subscribers:", results[2].reason); }
+         // Updated gallery count from Firestore result
+         if (results[3].status === 'fulfilled') galleryImageCount = results[3].value.size; else { encounteredError = true; if (isOfflineError(results[3].reason)) isOfflineErrorDetected = true; else console.error("Error fetching gallery metadata:", results[3].reason); }
 
 
          setStats({ memberCount, eventCount, galleryImageCount, subscriberCount });
 
          // Set specific error message based on findings
          if (encounteredError) {
-             if (isOfflineError) {
+             if (isOfflineErrorDetected) {
                   setStatsError("Cannot load all stats. You appear to be offline. Displayed data might be outdated.");
              } else {
                   setStatsError("Failed to load some site statistics due to an unexpected error.");
@@ -87,7 +89,7 @@ export default function AdminDashboardPage() {
          console.error("Unexpected error fetching dashboard stats:", error);
          setStatsError("An unexpected error occurred while loading statistics.");
          // Check if this top-level error is also an offline error
-         if ((error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) || (error instanceof StorageError && (error.code === 'storage/retry-limit-exceeded' || error.code.includes('offline')))){
+         if (isOfflineError(error)){
              setStatsError("Cannot load stats. You appear to be offline.");
          }
        } finally {
@@ -97,7 +99,7 @@ export default function AdminDashboardPage() {
 
      fetchStats();
       // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [db, storage]); // Dependencies db and storage
+   }, [db]); // Dependencies db and storage
 
 
   return (
@@ -147,12 +149,12 @@ export default function AdminDashboardPage() {
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
+                <CardTitle className="text-sm font-medium">Scheduled Events</CardTitle>
                 <CalendarCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.eventCount}</div>
-                <p className="text-xs text-muted-foreground">Scheduled events</p>
+                <p className="text-xs text-muted-foreground">Events in database</p>
               </CardContent>
             </Card>
              <Card>
@@ -162,7 +164,8 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.galleryImageCount}</div>
-                <p className="text-xs text-muted-foreground">Images in gallery</p>
+                {/* Updated description for gallery */}
+                <p className="text-xs text-muted-foreground">Image metadata entries</p>
               </CardContent>
             </Card>
              <Card>
@@ -200,7 +203,7 @@ export default function AdminDashboardPage() {
                     <CardDescription>Add, edit, or delete club events.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button asChild variant="outline" size="sm">
+                    <Button asChild size="sm">
                        <Link href="/admin/events">Manage Events <ArrowRight className="ml-2 h-4 w-4"/></Link>
                     </Button>
                 </CardContent>
@@ -208,7 +211,8 @@ export default function AdminDashboardPage() {
              <Card className="hover:shadow-md transition-shadow duration-300">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg"><ImageIconProp className="w-5 h-5 text-primary"/> Gallery</CardTitle> {/* Use renamed import */}
-                    <CardDescription>Upload or remove gallery images.</CardDescription>
+                     {/* Updated gallery description */}
+                    <CardDescription>Add/remove image URLs and descriptions.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Button asChild variant="outline" size="sm">
