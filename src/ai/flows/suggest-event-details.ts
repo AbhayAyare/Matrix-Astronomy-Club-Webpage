@@ -10,12 +10,12 @@
 import { ai } from '@/ai/ai-instance'; // Corrected import path
 import { z } from 'genkit';
 
-export const SuggestEventDetailsInputSchema = z.object({
+const SuggestEventDetailsInputSchema = z.object({
   keywords: z.string().describe('Keywords related to the event, e.g., "solar eclipse viewing, public park"'),
 });
 export type SuggestEventDetailsInput = z.infer<typeof SuggestEventDetailsInputSchema>;
 
-export const SuggestEventDetailsOutputSchema = z.object({
+const SuggestEventDetailsOutputSchema = z.object({
   title: z.string().describe('An engaging and concise title for the event.'),
   description: z.string().describe('A compelling and informative description for the event (around 2-3 sentences).'),
 });
