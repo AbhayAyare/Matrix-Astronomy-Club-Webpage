@@ -84,16 +84,15 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
         console.error(`[API /api/get-site-content] Stack Trace (ID: ${errorId}):\n${error.stack}`);
      }
 
-    // **Simplified Error Response:** Return a basic JSON error immediately.
+    // Prepare the critical error response structure
     const criticalErrorResponse: ErrorResponse = {
       content: null,
-      error: `API Route Critical Error (ID: ${errorId}): An internal server error occurred (${errorMessage}). Please check server logs.`
+      error: `API Route Critical Error (ID: ${errorId}): An internal server error occurred (${errorMessage}). Check logs.`
     };
 
-    console.log(`[API /api/get-site-content] Sending simplified 500 response due to critical handler error (ID: ${errorId})`);
-
-    // Always return a JSON response, even if error details are hard to get.
+    // Attempt to return the JSON error response
     try {
+      console.log(`[API /api/get-site-content] Sending 500 JSON response due to critical handler error (ID: ${errorId})`);
       return NextResponse.json(criticalErrorResponse, {
           status: 500,
           headers: {
@@ -102,10 +101,17 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
           },
       });
     } catch (responseError) {
-        // Fallback if even NextResponse.json fails (very unlikely)
+        // Fallback if NextResponse.json itself fails (extremely unlikely)
         console.error(`[API /api/get-site-content] CRITICAL FAILURE: Could not even send JSON error response (ID: ${errorId}):`, responseError);
-        // Return a plain text response as a last resort
-        return new Response('Internal Server Error', { status: 500 });
+        // Return a plain text response as a last resort, ensuring a response is sent
+        return new Response('Internal Server Error', {
+            status: 500,
+            headers: {
+                'Content-Type': 'text/plain',
+                'Cache-Control': 'no-store, max-age=0',
+            }
+        });
     }
   }
 }
+
