@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Globe, UserPlus, Mail, Phone, MapPin, Newspaper, ServerCrash, WifiOff, AlertCircle, CalendarDays, Image as ImageIcon } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { SiteContent, defaultSiteContent } from '@/services/content'; // Import defaultContent
+import { SiteContent, defaultSiteContent } from '@/services/content'; // Import SiteContent and defaultSiteContent
 // Firestore imports for events and gallery metadata
 import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase'; // Only need db
@@ -347,7 +348,7 @@ export default async function Home() {
 
         {/* Event Gallery Section - Pass data and error as props */}
          <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+             <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
                <ImageIcon className="w-8 h-8 text-accent"/>Event Gallery
             </h2>
             <GallerySection galleryImages={galleryImages} error={galleryError} />
@@ -396,7 +397,7 @@ export default async function Home() {
            <Card className="max-w-2xl mx-auto shadow-lg bg-card hover:shadow-xl transition-shadow duration-300">
               <CardHeader>
                 <CardTitle>{siteContent.newsletterTitle}</CardTitle>
-                <CardDescription className="text-white">{siteContent.newsletterDescription}</CardDescription>
+                <CardDescription className="text-sm text-black">{siteContent.newsletterDescription}</CardDescription>
               </CardHeader>
               <CardContent>
                <NewsletterForm />
@@ -441,4 +442,5 @@ export default async function Home() {
     </div>
   );
 }
+
 
