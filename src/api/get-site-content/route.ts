@@ -18,12 +18,17 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     if (result.error) {
         console.error(`[API /api/get-site-content] Error returned from getSiteContent service after ${Date.now() - startTime}ms:`, result.error);
         // Even though the service handled it by returning default content,
-        // return a non-200 status from the API route to signal an issue occurred.
-        // Still return the JSON structure the client expects ({ content: ..., error: ... }).
-        // Return 500 as the service layer encountered an error.
-        const errorResponse: ErrorResponse = { content: null, error: result.error }; // Use null content
+        // return a 500 status from the API route to signal an issue occurred.
+        // Return null content to clearly indicate failure at the API level,
+        // along with the error message from the service.
+        const errorResponse: ErrorResponse = {
+            content: null, // Explicitly null content on service error
+            error: `Service Error: ${result.error}` // Prefix the error message
+        };
         console.log("[API /api/get-site-content] Sending 500 response due to service error:", JSON.stringify(errorResponse));
-        return NextResponse.json(errorResponse, { status: 500 }); // Return 500 with JSON error
+        return NextResponse.json(errorResponse,
+          { status: 500 }
+        );
     } else {
          console.log(`[API /api/get-site-content] getSiteContent service returned successfully after ${Date.now() - startTime}ms.`);
          // Successful fetch, return 200 OK with the content

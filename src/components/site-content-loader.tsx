@@ -47,42 +47,45 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
 
         // --- Handle Non-OK HTTP Responses (e.g., 500, 404) ---
         if (!response.ok) {
-          let errorText = `API Request Failed (${response.status}): ${response.statusText || 'Unknown Error'}`; // Default error text
+          let errorText = `Server error (${response.status}): Could not load site content. ${response.statusText || ''}`; // Default error text
           const contentType = response.headers.get("content-type");
 
           // Check if the response body looks like HTML (indicating a server crash page)
           if (contentType && contentType.includes("text/html") && responseBodyText && responseBodyText.trim().toLowerCase().startsWith('<!doctype html')) {
             console.warn(`[SiteContentLoader] API route /api/get-site-content returned an HTML error page (Status: ${response.status}). This often indicates a server-side crash in the API route.`);
-            errorText = `Server error (${response.status}): Could not load site content. The API route may have crashed or returned HTML.`;
-          } else if (responseBodyText && contentType && contentType.includes("application/json")) {
-            // Try parsing as JSON to get a structured error message from the API route's catch block
-            try {
-              const errorData = JSON.parse(responseBodyText);
-              if (errorData && errorData.error) {
-                // Use the structured error message from the API's JSON response
-                errorText = `API Error (${response.status}): ${errorData.error}`;
-                console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with JSON error: ${errorData.error}`);
-              } else {
-                // Valid JSON but no 'error' field, use truncated text as fallback
-                errorText = `API Error (${response.status}): Unexpected JSON response format. Body: ${responseBodyText.substring(0, 200)}...`;
-                console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with unexpected JSON structure.`);
-              }
-            } catch (jsonParseError) {
-              // Response body wasn't JSON, use truncated raw text
-              errorText = `API Error (${response.status}): Non-JSON response received. Body: ${responseBodyText.substring(0, 500)}...`;
-              console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with non-JSON body.`);
-            }
+            errorText = `Server error (${response.status}): Could not load site content. The API route may have crashed or returned HTML.`; // Keep this specific message
           } else if (responseBodyText) {
-              // Not HTML, not JSON, but has text content
-              errorText = `API Error (${response.status}): Received unexpected content type '${contentType}'. Body: ${responseBodyText.substring(0, 500)}...`;
-              console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with unexpected content type and body.`);
+            // Try parsing as JSON to get a structured error message from the API's JSON response
+            if (contentType && contentType.includes("application/json")) {
+              try {
+                const errorData = JSON.parse(responseBodyText);
+                if (errorData && errorData.error) {
+                  // Use the structured error message from the API's JSON response
+                  errorText = `API Error (${response.status}): ${errorData.error}`; // Use the specific error from API
+                  console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with JSON error: ${errorData.error}`);
+                } else {
+                  // Valid JSON but no 'error' field, use generic message
+                  errorText = `Server error (${response.status}): Unexpected JSON response format.`;
+                  console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with unexpected JSON structure.`);
+                }
+              } catch (jsonParseError) {
+                 // Response body wasn't valid JSON, use generic server error
+                 errorText = `Server error (${response.status}): Non-JSON response received from API.`;
+                 console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with non-JSON body.`);
+              }
+            } else {
+               // Not HTML, not JSON, but has text content - treat as generic server error
+               errorText = `Server error (${response.status}): Received unexpected content type '${contentType}' from API.`;
+               console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with unexpected content type.`);
+             }
+
           } else {
                // Body read failed or was empty
-               errorText = `API Error (${response.status}): ${response.statusText || 'Failed request with empty or unreadable response body.'}`;
+               errorText = `Server error (${response.status}): ${response.statusText || 'Failed request with empty or unreadable response body.'}`;
                console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with empty or unreadable body.`);
           }
 
-          throw new Error(errorText); // Throw error to be caught by the outer catch block
+           throw new Error(errorText); // Throw error to be caught by the outer catch block
         }
 
         // --- Handle OK HTTP Responses (Status 200-299) ---
@@ -110,7 +113,8 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
           if (isOfflineError(serviceError)) { // Check if service error indicates offline
               setOffline(true);
           }
-          setContent(data.content || defaultSiteContent); // Use default content if service provides none, else the content from service
+          // Use default content if service reports an error, even if API status was OK
+          setContent(defaultSiteContent);
         } else if (data && data.content) {
           // Successfully fetched content
           setContent({ ...defaultSiteContent, ...data.content }); // Merge with defaults
