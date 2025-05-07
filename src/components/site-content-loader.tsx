@@ -49,8 +49,26 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
       try {
         const response = await fetch("/api/get-site-content"); // API route to fetch content
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: "Failed to parse error from /api/get-site-content" }));
-          throw new Error(errorData.error || `Failed to fetch site content: ${response.statusText}`);
+          let errorText = `Failed to fetch site content: ${response.status} ${response.statusText}`;
+          try {
+            // Try to parse as JSON first
+            const errorData = await response.json();
+            if (errorData && errorData.error) {
+              errorText = errorData.error;
+            }
+          } catch (jsonError) {
+            // If JSON parsing fails, try to get plain text
+            try {
+              const plainTextError = await response.text();
+              if (plainTextError) {
+                errorText = plainTextError;
+              }
+            } catch (textError) {
+              // If text parsing also fails, stick with the status text
+              console.error("Failed to parse error response as JSON or text:", textError);
+            }
+          }
+          throw new Error(errorText);
         }
         const data = await response.json();
         // Assuming the API returns { content: SiteContent } or similar structure from getSiteContent
