@@ -62,9 +62,11 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
              try {
                const errorData = JSON.parse(responseBodyText);
                if (errorData?.error && typeof errorData.error === 'string') {
+                 // Use the error message from the API's JSON response
                  errorText = `API Error (${responseStatus}): ${errorData.error}`;
                  console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with JSON error: ${errorData.error}`);
                } else {
+                 // Valid JSON, but unexpected format
                  errorText = `Server error (${responseStatus}): Unexpected JSON error format received.`;
                  console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with unexpected JSON structure.`);
                }
@@ -156,9 +158,11 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
         }
 
         // Log the raw response text if available and an error occurred
-        if (responseBodyText && !response?.ok) {
-            console.error(`[SiteContentLoader] Raw response body on error: ${responseBodyText.substring(0, 500)}${responseBodyText.length > 500 ? '...' : ''}`);
+        // Ensure response is checked before accessing properties
+        if (responseBodyText && response && !response.ok) {
+            console.error(`[SiteContentLoader] Raw response body on error (Status: ${response.status}): ${responseBodyText.substring(0, 500)}${responseBodyText.length > 500 ? '...' : ''}`);
         }
+
 
         setError(finalError);
         setOffline(isLikelyOffline);

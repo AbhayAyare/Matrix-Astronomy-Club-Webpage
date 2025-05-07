@@ -58,7 +58,7 @@ export async function getSiteContent(): Promise<GetContentResult> {
   try {
     // --- Initial DB Check ---
     if (!db) {
-        console.error("[Service getSiteContent] Firestore database instance (db) is null or undefined.");
+        console.error("[Service getSiteContent] Firestore database instance (db) is null or undefined. Cannot proceed with Firestore operation.");
         // Throw an error here so it's caught by the main catch block
         throw new Error("Firestore database instance (db) is not initialized.");
     }
