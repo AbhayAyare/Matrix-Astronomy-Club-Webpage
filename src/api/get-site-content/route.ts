@@ -1,3 +1,4 @@
+
 import { getSiteContent, defaultSiteContent, GetContentResult } from '@/services/content';
 import { NextResponse } from 'next/server';
 

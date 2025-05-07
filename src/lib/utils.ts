@@ -26,12 +26,16 @@ export function isOfflineError(error: any): boolean {
         'cancelled',          // Can sometimes indicate network issues or client-side cancellation
         'unknown',            // Can sometimes wrap network issues
         'deadline-exceeded',  // Network timeout
-        'resource-exhausted', // Less common, but can relate to network limits
         // Add other codes if observed in logs related to network issues
     ];
     if (offlineCodes.includes(error.code)) {
         console.debug(`[isOfflineError] Detected Firestore offline code: ${error.code}`);
         return true;
+    }
+    // Explicitly check for permission denied as NOT an offline error
+    if (error.code === 'permission-denied') {
+        console.debug('[isOfflineError] Detected Firestore permission-denied, treating as NOT offline.');
+        return false;
     }
   }
 
@@ -45,9 +49,14 @@ export function isOfflineError(error: any): boolean {
     'client is offline',
     'internet connection',
     'network request failed',
+    'connection lost', // Added based on potential error messages
   ];
 
   if (offlineKeywords.some(keyword => message.includes(keyword))) {
+    // Ensure it's not a permission denied error masking as a network issue
+    if (error instanceof FirestoreError && error.code === 'permission-denied') {
+        return false; // Prioritize permission denied over keywords
+    }
     console.debug(`[isOfflineError] Detected offline keyword in message: "${message}"`);
     return true;
   }
