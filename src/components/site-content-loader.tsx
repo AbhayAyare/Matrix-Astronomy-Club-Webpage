@@ -48,43 +48,41 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
       setError(null);
       try {
         const response = await fetch("/api/get-site-content"); // API route to fetch content
+
         if (!response.ok) {
           let errorText = `Failed to fetch site content: ${response.status} ${response.statusText}`;
-          try {
-            // Try to parse as JSON first
-            const errorData = await response.json();
-            if (errorData && errorData.error) {
-              errorText = errorData.error;
-            }
-          } catch (jsonError) {
-            // If JSON parsing fails, try to get plain text
+          // Try to get the body as text first. This is generally safer.
+          const responseBodyText = await response.text();
+
+          if (responseBodyText) {
             try {
-              const plainTextError = await response.text();
-              if (plainTextError) {
-                errorText = plainTextError;
+              // Attempt to parse the text as JSON
+              const errorData = JSON.parse(responseBodyText);
+              if (errorData && errorData.error) {
+                errorText = errorData.error; // Use structured error if available
+              } else {
+                // If JSON parsing was successful but no .error field, or if it's not JSON, use the text
+                errorText = responseBodyText.substring(0, 500); // Truncate long non-JSON errors
               }
-            } catch (textError) {
-              // If text parsing also fails, stick with the status text
-              console.error("Failed to parse error response as JSON or text:", textError);
+            } catch (jsonParseError) {
+              // If JSON parsing failed, the body was likely not JSON. Use the raw text.
+              errorText = responseBodyText.substring(0, 500); // Truncate long non-JSON errors
             }
           }
+          // If responseBodyText was empty, errorText remains the statusText
           throw new Error(errorText);
         }
+
+        // If response.ok, parse the successful JSON response
         const data = await response.json();
-        // Assuming the API returns { content: SiteContent } or similar structure from getSiteContent
+        
         if (data && data.content) {
           setContent(data.content);
+        } else if (data && data.heroTitle) { 
+          setContent(data as SiteContent);
         } else {
-           // If API response structure is not as expected (e.g. data directly is SiteContent)
-           // This branch might need adjustment based on actual API response.
-           // For now, assume data itself might be the content or it's nested under a `content` key.
-           // If data.content is not found, but data itself looks like SiteContent:
-           if (data && data.heroTitle) { // Check for a known key to guess structure
-            setContent(data as SiteContent);
-           } else {
-            setContent(defaultSiteContentData); // Fallback to default if structure is not as expected
-            setError(new Error("Unexpected response structure from /api/get-site-content"));
-           }
+          setContent(defaultSiteContentData);
+          setError(new Error("Unexpected response structure from /api/get-site-content"));
         }
       } catch (err) {
         console.error("SiteContentLoader fetch error:", err);
