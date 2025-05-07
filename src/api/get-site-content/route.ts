@@ -52,16 +52,20 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
       console.error(`[API /api/get-site-content] Stack Trace: ${errorStack}`);
     } else {
       try {
-        errorMessage = String(error); // Attempt to stringify unknown errors
+        // Attempt to stringify non-Error objects, but be cautious
+        errorMessage = `Non-Error object caught: ${JSON.stringify(error)}`;
       } catch (stringifyError) {
          console.error("[API /api/get-site-content] Error trying to stringify the unknown error:", stringifyError);
+         // Fallback to a very generic message if stringification fails
+         errorMessage = "An unknown, non-serializable critical error occurred.";
       }
     }
 
     // Construct the standardized JSON error response
+    // Use a safe, guaranteed-to-serialize message in the response
     const criticalErrorResponse: ErrorResponse = {
       content: null, // No content available due to critical API error
-      error: `API Route Critical Error: ${errorMessage}. Check server logs.`
+      error: `API Route Critical Error: Could not process request due to an internal server issue. Check server logs for ID [${startTime}] for details.` // More generic user-facing message
     };
 
     console.log("[API /api/get-site-content] Sending 500 response due to critical handler error:", JSON.stringify(criticalErrorResponse));
