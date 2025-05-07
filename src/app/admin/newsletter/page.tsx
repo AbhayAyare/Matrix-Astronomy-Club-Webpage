@@ -32,19 +32,21 @@ export default function AdminNewsletterPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false); // Track offline state
 
-  // Return early if db is null or undefined
-  if (!db) {
-    // This case should ideally be handled by a loading state or global error boundary
-    // For now, rendering a simple message or null.
-    console.error("[AdminNewsletterPage] Firestore DB is not initialized.");
-    return <div className="flex items-center justify-center h-screen text-destructive">Firestore DB not available. Check FirebaseProvider or config.</div>;
-  }
-
-  const subscribersCollectionRef = collection(db, NEWSLETTER_COLLECTION);
-
-
   // Fetch subscribers on load
   useEffect(() => {
+    if (!db) {
+      setLoading(false);
+      setFetchError("Firestore DB is not initialized.");
+      toast({
+        title: "Database Error",
+        description: "Firestore DB is not initialized. Cannot fetch subscribers.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const subscribersCollectionRef = collection(db, NEWSLETTER_COLLECTION);
+
     const fetchSubscribers = async () => {
       setLoading(true);
       setFetchError(null); // Reset error on fetch
@@ -103,8 +105,7 @@ export default function AdminNewsletterPage() {
       }
     };
     fetchSubscribers();
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db]); // Rerun if db instance changes
+  }, [db, toast]); // Added toast to dependency array
 
   const handleDeleteSubscriber = async (id: string) => {
     setDeletingId(id);
@@ -137,6 +138,28 @@ export default function AdminNewsletterPage() {
    // Function to generate unique IDs for Alert Dialog Title and Description
    const getDialogTitleId = (subscriberId: string) => `remove-subscriber-dialog-title-${subscriberId}`;
    const getDialogDescriptionId = (subscriberId: string) => `remove-subscriber-dialog-description-${subscriberId}`;
+
+  // Early return if db is still initializing (covered by useEffect check, but good for clarity)
+  if (!db && loading) { // Only show this if db is null AND we haven't errored out yet
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2">Initializing Firebase...</span>
+        </div>
+    );
+  }
+  if (!db && fetchError) { // If db is null and we already have a fetchError related to it
+    return (
+        <div className="flex items-center justify-center h-screen">
+             <Alert variant="destructive">
+               <AlertCircle className="h-4 w-4" />
+               <AlertTitle>Database Error</AlertTitle>
+               <AlertDescription>{fetchError}</AlertDescription>
+             </Alert>
+        </div>
+    );
+  }
+
 
   return (
     <div className="space-y-6">

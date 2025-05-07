@@ -5,7 +5,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": "out",
+    "public": ".next/server/app",
     "ignore": [
       "firebase.json",
       "**/.*",
