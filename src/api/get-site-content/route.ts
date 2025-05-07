@@ -50,8 +50,8 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
 
     // Construct the JSON response *before* logging it
     const criticalErrorResponse: ErrorResponse = {
-        content: null,
-        error: `API Route Server Error: ${errorMessage}. See server logs.`
+        content: null, // Explicitly set content to null on critical errors
+        error: `API Route Server Error: ${errorMessage}. Check server logs.` // Indicate error happened at API level
     };
 
     console.log("[API /api/get-site-content] Sending 500 response due to critical handler error:", JSON.stringify(criticalErrorResponse));
