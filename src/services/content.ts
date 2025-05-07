@@ -54,17 +54,17 @@ export async function getSiteContent(): Promise<GetContentResult> {
   console.log(`[getSiteContent] Attempting to fetch content from Firestore path: ${contentDocPath}`);
   let errorMessage: string | null = null;
 
+  // Wrap the entire operation in a try...catch
   try {
     // --- Initial DB Check ---
     if (!db) {
-        errorMessage = "Firestore database instance (db) is not initialized.";
-        console.error(`[getSiteContent] CRITICAL: ${errorMessage}`);
-        // Return immediately with default content and initialization error
-        return { content: defaultSiteContent, error: `Initialization Error: ${errorMessage}` };
+        // Throw an error here so it's caught by the main catch block
+        throw new Error("Firestore database instance (db) is not initialized.");
     }
     console.log("[getSiteContent] Firestore db instance appears valid.");
 
     // --- Firestore Operation ---
+    // Call doc() inside the try block as well
     const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
     console.log(`[getSiteContent] Executing getDoc for ${contentDocPath}...`);
     const docSnap = await getDoc(contentDocRef);
@@ -72,24 +72,30 @@ export async function getSiteContent(): Promise<GetContentResult> {
 
     if (docSnap.exists()) {
       const data = docSnap.data() as Partial<SiteContent>;
+       // Merge fetched data with defaults to handle potentially missing fields
        const mergedContent = { ...defaultSiteContent, ...data };
        console.log("[getSiteContent] Fetched and merged content successfully.");
        return { content: mergedContent, error: null }; // Success
     } else {
       errorMessage = `Configuration document '/${contentDocPath}' not found in Firestore. Using default content.`;
       console.warn(`[getSiteContent] INFO: ${errorMessage}`);
-      return { content: defaultSiteContent, error: `Content Notice: ${errorMessage}` }; // Not found, use defaults
+      // Return default content, but signal that it wasn't found (not a critical fetch error)
+      return { content: defaultSiteContent, error: `Content Notice: ${errorMessage}` };
     }
 
   } catch (error) {
     // --- Catch ANY error during DB check or Firestore operation ---
     console.error(`[getSiteContent] Error during Firestore operation for ${contentDocPath}:`, error);
+
+    // Log Firestore-specific details if available
     if (error instanceof FirestoreError) {
         console.error(`[getSiteContent] Firestore Error Details - Code: ${error.code}, Message: ${error.message}`);
     }
 
     // Determine the specific error message
-    if (isOfflineError(error)) {
+     if (error instanceof Error && error.message.includes("db) is not initialized")) {
+       errorMessage = `Initialization Error: ${error.message}`;
+     } else if (isOfflineError(error)) {
         // Client seems offline or cannot reach Firestore
         errorMessage = `Network/Offline Error: Could not connect to Firestore (${(error as FirestoreError)?.code || 'Network Issue'}). Using default content.`;
        console.warn(`[getSiteContent] NETWORK/OFFLINE: ${errorMessage}`);
@@ -113,6 +119,7 @@ export async function getSiteContent(): Promise<GetContentResult> {
     }
 
     // Return default content as a fallback, including the specific error message
+    // Ensure it always returns the GetContentResult structure
     return { content: defaultSiteContent, error: `Content Fetch Error: ${errorMessage}` };
   }
 }
