@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter, // Added DialogFooter
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
@@ -115,6 +116,8 @@ export default function AdminEventsPage() {
             } else if (error.code === 'unavailable' || error.message.includes('offline')) {
                 errorMessage = "Cannot load events. You appear to be offline. Please check your internet connection.";
                 setIsOffline(true); // Set offline state
+            } else if (error.code === 'permission-denied') {
+                errorMessage = "Permission denied accessing 'events'. Check Firestore rules.";
             }
         }
         setFetchError(errorMessage); // Set error message
@@ -227,6 +230,8 @@ export default function AdminEventsPage() {
       if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
           errorMessage = "Cannot save event. You appear to be offline.";
           setIsOffline(true);
+      } else if (error instanceof FirestoreError && error.code === 'permission-denied') {
+          errorMessage = "Permission denied saving event. Check Firestore rules.";
       }
       toast({
         title: "Error",
@@ -251,6 +256,8 @@ export default function AdminEventsPage() {
       if (error instanceof FirestoreError && (error.code === 'unavailable' || error.message.includes('offline'))) {
           errorMessage = "Cannot delete event. You appear to be offline.";
           setIsOffline(true);
+      } else if (error instanceof FirestoreError && error.code === 'permission-denied') {
+          errorMessage = "Permission denied deleting event. Check Firestore rules.";
       }
       toast({
         title: "Error",
@@ -333,7 +340,7 @@ export default function AdminEventsPage() {
                   value={aiKeywords}
                   onChange={(e) => setAiKeywords(e.target.value)}
                   disabled={isSuggesting || saving || isOffline}
-                  className="transition-colors duration-200 focus:border-accent"
+                  className="transition-colors duration-200 focus:border-accent text-foreground"
                 />
                 <Button type="button" onClick={handleAISuggest} disabled={isSuggesting || saving || isOffline || !aiKeywords.trim()}>
                   {isSuggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
@@ -350,7 +357,7 @@ export default function AdminEventsPage() {
                 onChange={(e) => setEventName(e.target.value)}
                 required
                 disabled={saving || isOffline}
-                className="text-primary-foreground placeholder:text-gray-300"
+                className="text-foreground placeholder:text-gray-500" // Changed placeholder color
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -363,7 +370,8 @@ export default function AdminEventsPage() {
                   onChange={(e) => setEventDate(e.target.value)}
                   required
                   disabled={saving || isOffline}
-                  className="text-primary-foreground placeholder:text-gray-300"
+                  className="text-foreground placeholder:text-gray-500" // Changed placeholder color
+                  style={{ colorScheme: 'dark' }} // Hint for better date picker contrast
                 />
               </div>
               <div className="space-y-1">
@@ -375,7 +383,8 @@ export default function AdminEventsPage() {
                   onChange={(e) => setEventTime(e.target.value)}
                   required
                   disabled={saving || isOffline}
-                  className="text-primary-foreground placeholder:text-gray-300"
+                  className="text-foreground placeholder:text-gray-500" // Changed placeholder color
+                  style={{ colorScheme: 'dark' }} // Hint for better time picker contrast
                 />
               </div>
             </div>
@@ -388,7 +397,7 @@ export default function AdminEventsPage() {
                 rows={4}
                 required
                 disabled={saving || isOffline}
-                className="text-primary-foreground placeholder:text-gray-300"
+                className="text-foreground placeholder:text-gray-500" // Changed placeholder color
               />
             </div>
             <div className="space-y-1">
@@ -400,7 +409,7 @@ export default function AdminEventsPage() {
                 value={eventImageURL}
                 onChange={(e) => setEventImageURL(e.target.value)}
                 disabled={saving || isOffline}
-                className="text-primary-foreground placeholder:text-gray-300"
+                className="text-foreground placeholder:text-gray-500" // Changed placeholder color
               />
             </div>
              <DialogFooter>
@@ -412,6 +421,7 @@ export default function AdminEventsPage() {
               </Button>
             </DialogFooter>
           </form>
+            {/* Removed unnecessary DialogClose */}
         </DialogContent>
       </Dialog>
 
@@ -446,7 +456,7 @@ export default function AdminEventsPage() {
                 return(
                 <Card key={event.id} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-md transition-shadow">
                   <div className="flex-1 space-y-1">
-                    <h3 className="text-lg font-semibold text-primary-foreground">{event.name}</h3>
+                    <h3 className="text-lg font-semibold text-foreground">{event.name}</h3>
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <Calendar className="h-4 w-4" /> {event.date.toDate().toLocaleDateString()}
                       <Clock className="h-4 w-4 ml-2" /> {event.date.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -459,7 +469,8 @@ export default function AdminEventsPage() {
                         </a>
                       </div>
                     )}
-                     <p className="text-sm text-primary-foreground pt-1 line-clamp-3">{event.description}</p>
+                     {/* Changed text color to foreground (black) */}
+                     <p className="text-sm text-foreground pt-1 line-clamp-3">{event.description}</p>
                   </div>
                   <div className="flex gap-2 mt-2 sm:mt-0 shrink-0">
                     <Button variant="outline" size="sm" onClick={() => handleOpenModal(event)} disabled={deletingId === event.id || isOffline}>
