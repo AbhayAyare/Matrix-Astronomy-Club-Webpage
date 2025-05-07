@@ -1,26 +1,23 @@
 'use server';
-
 /**
- * @fileOverview An AI tool that suggests engaging titles and descriptions for upcoming events based on keywords.
+ * @fileOverview AI flow to suggest event titles and descriptions based on keywords.
  *
- * - suggestEventDetails - A function that handles the event title and description generation process.
+ * - suggestEventDetails - A function that generates event title and description.
  * - SuggestEventDetailsInput - The input type for the suggestEventDetails function.
  * - SuggestEventDetailsOutput - The return type for the suggestEventDetails function.
  */
 
-import {ai} from '@/ai/ai-instance';
-import {z} from 'genkit';
+import { ai } from '@/ai/ai-instance'; // Corrected import path
+import { z } from 'genkit';
 
-const SuggestEventDetailsInputSchema = z.object({
-  keywords: z
-    .string()
-    .describe('Keywords related to the event, used to generate titles and descriptions.'),
+export const SuggestEventDetailsInputSchema = z.object({
+  keywords: z.string().describe('Keywords related to the event, e.g., "solar eclipse viewing, public park"'),
 });
 export type SuggestEventDetailsInput = z.infer<typeof SuggestEventDetailsInputSchema>;
 
-const SuggestEventDetailsOutputSchema = z.object({
-  title: z.string().describe('An engaging title for the event.'),
-  description: z.string().describe('A detailed and appealing description of the event.'),
+export const SuggestEventDetailsOutputSchema = z.object({
+  title: z.string().describe('An engaging and concise title for the event.'),
+  description: z.string().describe('A compelling and informative description for the event (around 2-3 sentences).'),
 });
 export type SuggestEventDetailsOutput = z.infer<typeof SuggestEventDetailsOutputSchema>;
 
@@ -28,36 +25,29 @@ export async function suggestEventDetails(input: SuggestEventDetailsInput): Prom
   return suggestEventDetailsFlow(input);
 }
 
-const prompt = ai.definePrompt({
+const suggestEventDetailsPrompt = ai.definePrompt({
   name: 'suggestEventDetailsPrompt',
-  input: {
-    schema: z.object({
-      keywords: z
-        .string()
-        .describe('Keywords related to the event, used to generate titles and descriptions.'),
-    }),
-  },
-  output: {
-    schema: z.object({
-      title: z.string().describe('An engaging title for the event.'),
-      description: z.string().describe('A detailed and appealing description of the event.'),
-    }),
-  },
-  prompt: `You are an AI assistant designed to generate engaging titles and descriptions for upcoming astronomy club events.
-
-  Based on the provided keywords, suggest a title and a detailed description for the event. The title should be concise and attention-grabbing, while the description should provide comprehensive information about the event.
-
-  Keywords: {{{keywords}}}`,
+  input: { schema: SuggestEventDetailsInputSchema },
+  output: { schema: SuggestEventDetailsOutputSchema },
+  prompt: `You are an expert event planner for an astronomy club.
+Given the following keywords: {{{keywords}}}, generate an engaging event title and a short, compelling description (2-3 sentences).
+Ensure the title is catchy and relevant to astronomy.
+The description should be informative and encourage attendance.
+Provide the output in the specified JSON format.
+`,
 });
 
-const suggestEventDetailsFlow = ai.defineFlow<
-  typeof SuggestEventDetailsInputSchema,
-  typeof SuggestEventDetailsOutputSchema
->({
-  name: 'suggestEventDetailsFlow',
-  inputSchema: SuggestEventDetailsInputSchema,
-  outputSchema: SuggestEventDetailsOutputSchema,
-}, async input => {
-  const {output} = await prompt(input);
-  return output!;
-});
+const suggestEventDetailsFlow = ai.defineFlow(
+  {
+    name: 'suggestEventDetailsFlow',
+    inputSchema: SuggestEventDetailsInputSchema,
+    outputSchema: SuggestEventDetailsOutputSchema,
+  },
+  async (input) => {
+    const { output } = await suggestEventDetailsPrompt(input);
+    if (!output) {
+      throw new Error('AI failed to generate event details.');
+    }
+    return output;
+  }
+);
