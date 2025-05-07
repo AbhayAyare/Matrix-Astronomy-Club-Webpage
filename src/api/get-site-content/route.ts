@@ -37,22 +37,17 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
   console.log("[API /api/get-site-content] Firestore db instance check passed.");
 
   try {
-    // Call the service function which handles its own errors and returns a consistent structure
     console.log("[API /api/get-site-content] Calling getSiteContent service...");
     const result: GetContentResult = await getSiteContent();
     const duration = Date.now() - startTime;
     console.log(`[API /api/get-site-content] getSiteContent service returned after ${duration}ms. Error present: ${!!result.error}`);
 
     if (result.error) {
-        // Log the error reported by the service layer
         console.error(`[API /api/get-site-content] Service Error after ${duration}ms: ${result.error}`);
-
-        // Return a 500 status, providing the structure the client expects ({ content: ..., error: ... }).
         // Use the content (likely default) and error message from the service result.
-        // The content part might be default content provided by the service layer itself during its error handling.
-        return NextResponse.json(
-          { content: result.content, error: result.error }, // Use content and error from service result
-          {
+        const errorResponse: GetContentResult = { content: result.content, error: result.error }; // Ensure GetContentResult structure
+        console.log(`[API /api/get-site-content] Preparing 500 JSON response for service error...`);
+        return NextResponse.json(errorResponse, {
             status: 500, // Indicate a server-side issue occurred during data fetching
             headers: {
               'Content-Type': 'application/json',
@@ -61,9 +56,10 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
           }
         );
     } else {
-         // Service returned content successfully without errors
          console.log(`[API /api/get-site-content] Service returned successfully after ${duration}ms.`);
-         return NextResponse.json(result, {
+         const successResponse: GetContentResult = { content: result.content, error: null }; // Explicitly set error to null
+         console.log(`[API /api/get-site-content] Preparing 200 JSON response for success...`);
+         return NextResponse.json(successResponse, {
             status: 200,
              headers: {
               'Content-Type': 'application/json',
@@ -79,20 +75,23 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     const errorId = `api-handler-critical-${startTime}`; // Unique ID for this error instance
     const errorMessage = error instanceof Error ? error.message : 'An unknown critical error occurred in the API route handler.';
 
+    // DETAILED LOGGING IN CATCH BLOCK
     console.error(`[API /api/get-site-content] CRITICAL UNHANDLED ERROR in API route handler after ${duration}ms (ID: ${errorId}):`, error);
      if (error instanceof Error && error.stack) {
         console.error(`[API /api/get-site-content] Stack Trace (ID: ${errorId}):\n${error.stack}`);
+     } else {
+        console.error(`[API /api/get-site-content] Raw Error Object (ID: ${errorId}):`, error);
      }
 
     // Prepare the critical error response structure
     const criticalErrorResponse: ErrorResponse = {
-      content: null,
-      error: `API Route Critical Error (ID: ${errorId}): An internal server error occurred (${errorMessage}). Check logs.`
+      content: null, // Explicitly null content on critical server error
+      error: `API Route Critical Error (ID: ${errorId}): An internal server error occurred (${errorMessage}). Check server logs.`
     };
 
     // Attempt to return the JSON error response
     try {
-      console.log(`[API /api/get-site-content] Sending 500 JSON response due to critical handler error (ID: ${errorId})`);
+      console.log(`[API /api/get-site-content] Attempting to send 500 JSON response due to critical handler error (ID: ${errorId})`);
       return NextResponse.json(criticalErrorResponse, {
           status: 500,
           headers: {
@@ -104,7 +103,7 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
         // Fallback if NextResponse.json itself fails (extremely unlikely)
         console.error(`[API /api/get-site-content] CRITICAL FAILURE: Could not even send JSON error response (ID: ${errorId}):`, responseError);
         // Return a plain text response as a last resort, ensuring a response is sent
-        return new Response('Internal Server Error', {
+        return new Response('Internal Server Error - Response Generation Failed', {
             status: 500,
             headers: {
                 'Content-Type': 'text/plain',
@@ -114,3 +113,4 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     }
   }
 }
+
