@@ -31,14 +31,17 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     // This block is a safety net for errors not caught by getSiteContent() or other issues in this route handler.
     const errorMessage = error instanceof Error ? error.message : 'An unknown critical error occurred in the site content API.';
     console.error("[API /api/get-site-content] CRITICAL UNHANDLED ERROR in GET handler:", error);
+    console.error("[API /api/get-site-content] Error Details:", error); // Log the full error object
 
     // Return a standardized JSON error response with a 500 status
+    // Make the error message more specific that it happened at the API level
     return NextResponse.json(
       {
         content: null, // Explicitly null content on server error
-        error: `API Server Error: ${errorMessage}`
+        error: `API Route Server Error: ${errorMessage}. Check server logs for full details.` // Modified error message
       },
       { status: 500 } // Indicate internal server error
     );
   }
 }
+

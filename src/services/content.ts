@@ -73,7 +73,7 @@ export async function getSiteContent(): Promise<GetContentResult> {
 
   if (!db) {
       const errorMsg = "Firestore database instance (db) is not initialized.";
-      console.error(`[getSiteContent] ${errorMsg}`);
+      console.error(`[getSiteContent] CRITICAL: ${errorMsg}`);
       // Prefix error message for clarity on the client
       return { content: defaultSiteContent, error: `Service Initialization Error: ${errorMsg}` };
   }
@@ -96,7 +96,7 @@ export async function getSiteContent(): Promise<GetContentResult> {
     } else {
       // Document doesn't exist - this is not necessarily a fatal error, but useful info.
       errorMessage = `Configuration document '/${contentDocPath}' not found in Firestore. Using default website content. Please check the Admin Content page to save the initial configuration if needed.`;
-      console.warn(`[getSiteContent] ${errorMessage}`);
+      console.warn(`[getSiteContent] INFO: ${errorMessage}`);
       // Return default content but include the informational error message
       return { content: defaultSiteContent, error: `Website Content Notice: ${errorMessage}` };
     }
@@ -108,28 +108,28 @@ export async function getSiteContent(): Promise<GetContentResult> {
     if (isFirestoreOfflineError(error)) {
         // Client seems offline or cannot reach Firestore
         errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch site content (${(error as FirestoreError)?.code || 'Network Error'}). Please check the network connection. Displaying default content.`;
-       console.warn(`[getSiteContent] ${errorMessage}`);
+       console.warn(`[getSiteContent] NETWORK/OFFLINE: ${errorMessage}`);
     } else if (error instanceof FirestoreError) {
         // Other Firestore specific errors
         if (error.code === 'permission-denied') {
-            errorMessage = `Permission Denied: Could not read site content document ('/${contentDocPath}'). Check Firestore security rules. Ensure the 'config/siteContent' path allows public read access.`;
-            console.error(`[getSiteContent] CRITICAL: ${errorMessage}`);
+            errorMessage = `Permission Denied: Could not read site content document ('/${contentDocPath}'). Check Firestore security rules. Ensure the '${contentDocPath}' path allows public read access.`;
+            console.error(`[getSiteContent] CRITICAL PERMISSION ERROR: ${errorMessage}`);
         } else if (error.code === 'unimplemented') {
             errorMessage = `Firestore Error (Unimplemented): This operation is not supported. Check Firestore SDK version or query complexity. Path: '${contentDocPath}'.`;
-            console.error(`[getSiteContent] ${errorMessage}`);
+            console.error(`[getSiteContent] FIRESTORE ERROR: ${errorMessage}`);
         } else {
             // Other Firestore errors
             errorMessage = `Firestore Error (${error.code}) fetching site content from '${contentDocPath}'. Details: ${error.message}`;
-            console.error(`[getSiteContent] Full Firestore error: ${errorMessage}`);
+            console.error(`[getSiteContent] FIRESTORE ERROR: Full details - ${errorMessage}`);
         }
     } else if (error instanceof Error) {
          // Generic JS errors
          errorMessage = `Unexpected Error: An unexpected error occurred while fetching site content: ${error.message}`;
-         console.error(`[getSiteContent] ${errorMessage}`);
+         console.error(`[getSiteContent] GENERIC ERROR: ${errorMessage}`);
     } else {
         // Unknown error type
         errorMessage = `Unknown Error: An unknown error occurred fetching site content from '${contentDocPath}'.`;
-        console.error(`[getSiteContent] ${errorMessage}`);
+        console.error(`[getSiteContent] UNKNOWN ERROR TYPE: ${errorMessage}`);
     }
 
     // Return default content as a fallback on any error, including the specific string error message
@@ -137,3 +137,4 @@ export async function getSiteContent(): Promise<GetContentResult> {
     return { content: defaultSiteContent, error: `Website Content Fetch Error: ${errorMessage}` };
   }
 }
+
