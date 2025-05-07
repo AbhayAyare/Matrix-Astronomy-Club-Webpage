@@ -76,10 +76,11 @@ export async function getSiteContent(): Promise<GetContentResult> {
   console.log("[getSiteContent] Firestore db instance appears valid.");
 
 
-  const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
   let errorMessage: string | null = null;
 
   try {
+    // Move doc() call inside the try block to catch potential errors here too
+    const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
     console.log(`[getSiteContent] Executing getDoc for ${contentDocPath}...`);
     const docSnap = await getDoc(contentDocRef);
     console.log(`[getSiteContent] getDoc completed for ${contentDocPath}. Document exists: ${docSnap.exists()}`);
@@ -98,7 +99,7 @@ export async function getSiteContent(): Promise<GetContentResult> {
     }
   } catch (error) {
     // Log the raw error first for detailed diagnosis
-    console.error(`[getSiteContent] Error during getDoc for ${contentDocPath}:`, error);
+    console.error(`[getSiteContent] Error during Firestore operation for ${contentDocPath}:`, error);
 
     // Determine the error message string
     if (isFirestoreOfflineError(error)) {
@@ -130,3 +131,4 @@ export async function getSiteContent(): Promise<GetContentResult> {
     return { content: defaultSiteContent, error: `Website Content: ${errorMessage}` };
   }
 }
+
