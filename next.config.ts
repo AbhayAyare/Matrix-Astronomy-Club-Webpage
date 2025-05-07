@@ -38,6 +38,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
     GOOGLE_GENAI_API_KEY: process.env.GOOGLE_GENAI_API_KEY, // Ensure GenAI key is also passed
   },
+  // Server Actions configuration is typically for dynamic environments,
+  // might not be strictly necessary for a fully static export but doesn't hurt to keep
+  // if parts of the build process might use them internally or if you switch modes later.
   experimental: {
       serverActions: {
         allowedOrigins: [

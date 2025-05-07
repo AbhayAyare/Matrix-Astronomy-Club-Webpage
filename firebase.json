@@ -1,11 +1,11 @@
 
 {
   "firestore": {
-    "rules": "firestore.rules",
+    "rules": "database.rules.json",
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": ".next/server/app",
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
