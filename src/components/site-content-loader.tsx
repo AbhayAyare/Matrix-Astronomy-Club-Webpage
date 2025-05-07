@@ -6,7 +6,7 @@ import { ServerCrash, WifiOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { SiteContent } from '@/services/content'; // Import the type
 import { defaultSiteContent } from "@/services/content"; // Import the default data
-import { isOfflineError } from "@/lib/utils"; // Use helper from utils
+import { isOfflineError } from '@/lib/utils'; // Use helper from utils
 
 interface SiteContentLoaderProps {
   children: (props: { content: SiteContent; error: Error | null; loading: boolean; isOffline: boolean }) => React.ReactNode;
@@ -29,51 +29,62 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
       try {
         console.log("[SiteContentLoader] Fetching /api/get-site-content...");
         response = await fetch("/api/get-site-content");
-        console.log(`[SiteContentLoader] API response status: ${response.status}`);
+        const responseStatus = response.status;
+        const responseContentType = response.headers.get("content-type");
+        console.log(`[SiteContentLoader] API response status: ${responseStatus}, Content-Type: ${responseContentType}`);
 
         try {
-            responseBodyText = await response.text();
+            // Clone the response to allow reading the body multiple times if needed
+            const clonedResponse = response.clone();
+            responseBodyText = await clonedResponse.text();
             // console.log(`[SiteContentLoader] Raw response body text received (length: ${responseBodyText?.length ?? 0}).`);
         } catch (bodyReadError) {
             console.error("[SiteContentLoader] Error reading response body:", bodyReadError);
-            responseBodyText = null;
+            responseBodyText = null; // Ensure it's null if reading fails
+            // If reading fails but status was OK, that's an unexpected issue
             if (response && response.ok) {
                  throw new Error("API returned OK status but response body could not be read.");
              }
         }
 
+        // --- Handle Non-OK HTTP Responses (e.g., 4xx, 5xx) ---
         if (!response.ok) {
-          let errorText = `Server error (${response.status}): Could not load site content.`;
-          const contentType = response.headers.get("content-type");
+          let errorText = `Server error (${responseStatus}): Could not load site content.`;
 
-           // Prefer JSON error message if available
-           if (responseBodyText && contentType?.includes("application/json")) {
-               try {
-                 const errorData = JSON.parse(responseBodyText);
-                 if (errorData?.error && typeof errorData.error === 'string') {
-                   errorText = `API Error (${response.status}): ${errorData.error}`;
-                   console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with JSON error: ${errorData.error}`);
-                 } else {
-                   errorText = `Server error (${response.status}): Unexpected JSON error format.`;
-                   console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with unexpected JSON structure.`);
-                 }
-               } catch (jsonParseError) {
-                  errorText = `Server error (${response.status}): Failed to parse non-OK JSON response.`;
-                  console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with non-JSON body. Starts with: ${responseBodyText?.substring(0, 100)}...`);
+          // Check if the response is likely HTML (indicative of a Next.js error page or server crash)
+          if (responseContentType?.includes("text/html") && responseBodyText?.trim().toLowerCase().startsWith('<!doctype html')) {
+             console.warn(`[SiteContentLoader] API route /api/get-site-content returned an HTML error page (Status: ${responseStatus}). This likely indicates a server crash or unhandled route error.`);
+             errorText = `Server error (${responseStatus}): Could not load site content. The API route may have crashed or returned HTML.`;
+          }
+          // Try to parse JSON error message if content type suggests it
+          else if (responseContentType?.includes("application/json") && responseBodyText) {
+             try {
+               const errorData = JSON.parse(responseBodyText);
+               if (errorData?.error && typeof errorData.error === 'string') {
+                 // Use the specific error message from the API's JSON response
+                 errorText = `API Error (${responseStatus}): ${errorData.error}`;
+                 console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with JSON error: ${errorData.error}`);
+               } else {
+                 // Valid JSON but unexpected structure
+                 errorText = `Server error (${responseStatus}): Unexpected JSON error format received.`;
+                 console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with unexpected JSON structure.`);
                }
-           } else if (contentType?.includes("text/html") && responseBodyText?.trim().toLowerCase().startsWith('<!doctype html')) {
-             console.warn(`[SiteContentLoader] API route /api/get-site-content returned an HTML error page (Status: ${response.status}). This likely indicates a server crash.`);
-             errorText = `Server error (${response.status}): Could not load site content. The API route may have crashed or returned HTML.`;
+             } catch (jsonParseError) {
+                // Failed to parse JSON, use the raw text if available
+                errorText = `Server error (${responseStatus}): Failed to parse non-OK JSON response. Body: ${responseBodyText?.substring(0, 100)}...`;
+                console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} but failed to parse JSON body. Raw text: ${responseBodyText?.substring(0, 100)}...`);
+             }
            } else if (responseBodyText) {
-             // Fallback to using plain text if not JSON or obvious HTML error page
-             errorText = `Server error (${response.status}): ${responseBodyText.substring(0, 200)}${responseBodyText.length > 200 ? '...' : ''}`;
-             console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with unexpected content type '${contentType}'. Body snippet: ${errorText}`);
+             // Fallback for other non-OK responses with text bodies
+             errorText = `Server error (${responseStatus}): ${responseBodyText.substring(0, 200)}${responseBodyText.length > 200 ? '...' : ''}`;
+             console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with content type '${responseContentType}'. Body snippet: ${errorText}`);
            } else {
-               errorText = `Server error (${response.status}): ${response.statusText || 'Failed request with empty or unreadable response body.'}`;
-               console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with empty or unreadable body.`);
+               // No body or unreadable body
+               errorText = `Server error (${responseStatus}): ${response.statusText || 'Failed request with empty or unreadable response body.'}`;
+               console.warn(`[SiteContentLoader] API returned non-OK status ${responseStatus} with empty or unreadable body.`);
            }
 
-           throw new Error(errorText); // Throw error to be caught by the outer catch block
+            throw new Error(errorText); // Throw error to be caught by the outer catch block
         }
 
         // --- Handle OK HTTP Responses (Status 200-299) ---
@@ -84,7 +95,7 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
         console.log("[SiteContentLoader] API response OK. Attempting to parse JSON...");
         let data;
         try {
-            data = JSON.parse(responseBodyText);
+            data = JSON.parse(responseBodyText); // Parse the text read earlier
         } catch (jsonParseError: any) {
             console.error("[SiteContentLoader] Failed to parse JSON from OK response:", jsonParseError);
             console.error("[SiteContentLoader] Raw response body that failed parsing:", responseBodyText);
@@ -117,14 +128,27 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
         let finalError: Error;
         let isLikelyOffline = false;
 
-        if (isOfflineError(err)) {
-            const offlineMsg = "Network Error: Could not connect to fetch site content. Please check your connection.";
+        // Check specifically for network errors first
+        if (err instanceof TypeError && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
+             const offlineMsg = "Network Error: Could not connect to the API endpoint. Please check your network connection.";
+             finalError = new Error(offlineMsg);
+             isLikelyOffline = true;
+             console.warn(`[SiteContentLoader] Network error detected: ${err.message}`);
+        } else if (isOfflineError(err)) { // Check using our utility function
+            const offlineMsg = "Network Error: Browser or utility indicated offline status.";
             finalError = new Error(offlineMsg);
             isLikelyOffline = true;
+            console.warn(`[SiteContentLoader] Offline status detected by utility or browser.`);
         } else if (err instanceof Error) {
-            finalError = err; // Use the error thrown (e.g., from non-OK response handling)
+            finalError = err; // Use the error thrown (e.g., from non-OK response handling or JSON parsing)
+            isLikelyOffline = isOfflineError(finalError); // Double-check if the thrown error indicates offline
+            if (isLikelyOffline) {
+                console.warn(`[SiteContentLoader] Thrown error message suggests offline status: ${finalError.message}`);
+            }
         } else {
+            // Unknown error type
             finalError = new Error(`An unknown error occurred: ${String(err)}`);
+            console.error(`[SiteContentLoader] Unknown error type encountered.`);
         }
 
         setError(finalError);
@@ -138,32 +162,37 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
 
     fetchSiteContent();
 
+    // Event listeners for online/offline status changes
     const handleOnline = () => {
         console.log("[SiteContentLoader] Browser reported online.");
         setOffline(false);
         if (error && isOfflineError(error)) {
             console.log("[SiteContentLoader] Refetching content after coming back online.");
-            fetchSiteContent();
+            fetchSiteContent(); // Refetch content if the previous error was network-related
         }
     };
     const handleOffline = () => {
         console.log("[SiteContentLoader] Browser reported offline.");
         setOffline(true);
+        // Optionally set an error state immediately if not already offline
         if (!error || !isOfflineError(error)) {
-             const offlineErr = new Error("Network Error: Connection lost. Displaying default or cached content.");
+             const offlineErr = new Error("Network Error: Connection lost. Displaying potentially outdated content.");
              setError(offlineErr);
-             // Keep existing content if possible, otherwise it's already default
         }
     };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    if (typeof window !== 'undefined') {
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
 
-    return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-    };
-  }, []); // Runs once on mount
+        // Cleanup listeners on component unmount
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }
+  }, []); // Empty dependency array ensures this runs only once on mount
 
+  // Render the children, passing the fetched content, error state, loading state, and offline status
   return <>{children({ content, error, loading, isOffline: offline })}</>;
 }
