@@ -48,8 +48,8 @@ export default function Home() {
             <>
               <Header />
 
-              {/* Global Alert - Reflects site content fetch status */}
-              {siteContentError && (
+              {/* Global Alert - Removed */}
+              {/* {siteContentError && (
                 <div className="container mx-auto px-4 pt-4">
                   <Alert
                     variant={isContentOffline ? "default" : "destructive"}
@@ -64,13 +64,12 @@ export default function Home() {
                         ? "Could not connect to fetch essential site text due to network issues. Displaying default or potentially outdated text."
                         : `Could not load essential site text (e.g., titles, descriptions) due to server-side errors. Displaying default text.`
                       }
-                       {/* Show the raw error message for debugging */}
                        <p className="mt-2 text-xs font-mono bg-muted/50 p-1 rounded max-h-20 overflow-y-auto">Error: {String(siteContentError?.message || siteContentError)}</p>
                       Events and Gallery sections will attempt to load separately. Refreshing the page might help.
                     </AlertDescription>
                   </Alert>
                 </div>
-              )}
+              )} */}
 
               <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24 overflow-x-hidden">
                  {/* Hero Section */}
