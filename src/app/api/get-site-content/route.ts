@@ -14,11 +14,15 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     const result = await getSiteContent(); // This function should already return { content: ..., error: ... }
 
     if (result.error) {
-        console.warn("[API /api/get-site-content] getSiteContent service returned an error:", result.error);
+        console.error("[API /api/get-site-content] Error returned from getSiteContent service:", result.error);
         // Even though the service handled it by returning default content,
         // return a non-200 status from the API route to signal an issue occurred.
         // Still return the JSON structure the client expects ({ content: ..., error: ... }).
-        return NextResponse.json(result, { status: 500 }); // Return 500 if service indicates an error
+        // Return 500 as the service layer encountered an error.
+        return NextResponse.json(
+          { content: defaultSiteContent, error: result.error }, // Pass the error message from the service
+          { status: 500 }
+        );
     } else {
          console.log("[API /api/get-site-content] getSiteContent service returned successfully.");
          // Successful fetch, return 200 OK with the content
@@ -30,7 +34,12 @@ export async function GET(): Promise<NextResponse<GetContentResult | ErrorRespon
     // This block is a safety net for errors not caught by getSiteContent() or other issues in this route handler.
     const errorMessage = error instanceof Error ? error.message : 'An unknown critical error occurred in the site content API.';
     console.error("[API /api/get-site-content] CRITICAL UNHANDLED ERROR in GET handler:", error);
-    console.error("[API /api/get-site-content] Error Details:", error); // Log the full error object
+    // Log the stack trace if available
+    if (error instanceof Error) {
+        console.error("[API /api/get-site-content] Stack Trace:", error.stack);
+    } else {
+         console.error("[API /api/get-site-content] Raw Error Object:", error);
+    }
 
     // Return a standardized JSON error response with a 500 status
     return NextResponse.json(

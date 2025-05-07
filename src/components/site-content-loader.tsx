@@ -32,11 +32,13 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
       let responseBodyText: string | null = null; // Store response text if needed
 
       try {
+        console.log("[SiteContentLoader] Fetching /api/get-site-content...");
         response = await fetch("/api/get-site-content");
+        console.log(`[SiteContentLoader] API response status: ${response.status}`);
 
         // --- Handle Non-OK HTTP Responses (e.g., 500, 404) ---
         if (!response.ok) {
-          let errorText = `API Error (${response.status}): ${response.statusText}`; // Default error text
+          let errorText = `API Request Failed (${response.status}): ${response.statusText}`; // Default error text
 
           try {
             // Try reading the body ONCE to get more context
@@ -44,8 +46,7 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
 
             // Check if the response body looks like HTML (indicating a server crash page)
             if (responseBodyText && responseBodyText.trim().toLowerCase().startsWith('<!doctype html')) {
-              console.warn(`[SiteContentLoader] API route /api/get-site-content returned an HTML error page (Status: ${response.status}).`);
-              // Provide a more user-friendly message for HTML responses
+              console.warn(`[SiteContentLoader] API route /api/get-site-content returned an HTML error page (Status: ${response.status}). This often indicates a server-side crash.`);
               errorText = `Server error (${response.status}): Could not load site content. The API route may have crashed.`;
 
             } else if (responseBodyText) {
@@ -64,10 +65,11 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
               } catch (jsonParseError) {
                 // Response body wasn't JSON, use truncated raw text
                 errorText = `API Error (${response.status}): Non-JSON response received. Body: ${responseBodyText.substring(0, 500)}...`;
-                 console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with non-JSON body.`);
+                 console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with non-JSON body: ${responseBodyText.substring(0, 100)}...`);
               }
+            } else {
+                 console.warn(`[SiteContentLoader] API returned non-OK status ${response.status} with empty body.`);
             }
-            // If responseBodyText was empty, errorText remains the initial statusText message
           } catch (bodyReadError) {
             // Error reading the response body itself (e.g., network interruption during read)
             console.error("[SiteContentLoader] Error reading non-OK response body:", bodyReadError);
@@ -77,7 +79,7 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
         }
 
         // --- Handle OK HTTP Responses (Status 200-299) ---
-        // If response.ok, parse the successful JSON response
+        console.log("[SiteContentLoader] API response OK. Attempting to parse JSON...");
         const data = await response.json();
 
         // Check if the successful response *still* contains an error field (from the getSiteContent service)
@@ -106,7 +108,7 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
            setError(new Error("Network Error: Could not connect to fetch site content. Please check your connection."));
         } else if (err instanceof Error) {
             // Use the error message thrown from the !response.ok block or other JS errors
-           setError(err);
+           setError(err); // err already contains a descriptive message from the block above
         } else {
             // Fallback for non-Error objects thrown
             setError(new Error("An unknown error occurred while fetching site content."));
@@ -114,6 +116,7 @@ export function SiteContentLoader({ children }: SiteContentLoaderProps) {
         setContent(defaultSiteContentData); // Fallback to default on any error
       } finally {
         setLoading(false);
+        console.log("[SiteContentLoader] Fetch process finished.");
       }
     };
 

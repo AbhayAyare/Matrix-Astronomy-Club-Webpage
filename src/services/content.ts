@@ -103,6 +103,10 @@ export async function getSiteContent(): Promise<GetContentResult> {
   } catch (error) {
     // Log the raw error first for detailed diagnosis
     console.error(`[getSiteContent] Error during Firestore operation for ${contentDocPath}:`, error);
+    // More detailed log if it's a FirestoreError
+    if (error instanceof FirestoreError) {
+        console.error(`[getSiteContent] Firestore Error Details - Code: ${error.code}, Message: ${error.message}, Stack: ${error.stack}`);
+    }
 
     // Determine the error message string
     if (isFirestoreOfflineError(error)) {
@@ -137,4 +141,3 @@ export async function getSiteContent(): Promise<GetContentResult> {
     return { content: defaultSiteContent, error: `Website Content Fetch Error: ${errorMessage}` };
   }
 }
-
