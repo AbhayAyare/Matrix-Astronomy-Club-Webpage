@@ -1,150 +1,70 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent } from "@/components/ui/card"; // Removed CardHeader, CardTitle as they are not directly used for the main section
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { GalleryImage } from './gallery-image';
-import { Image as ImageIconIcon, AlertCircle, Loader2, WifiOff, Maximize, X } from 'lucide-react';
-import { collection, getDocs, query, orderBy, limit, Timestamp, FirestoreError } from 'firebase/firestore';
-import { useFirebase } from '@/context/firebase-provider';
+import { Image as ImageIconIcon, AlertCircle, WifiOff, Maximize, X } from 'lucide-react'; // Removed Loader2 as loading is handled by parent
+import { Timestamp } from 'firebase/firestore'; // Keep Timestamp for type definition
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import Image from 'next/image';
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"; // Import Button
+import { isOfflineError } from '@/lib/utils'; // Keep for checking error type
 
-interface GalleryImageMetadata {
+
+export interface GalleryImageMetadata {
   id: string;
   url: string;
   name: string;
   createdAt?: Timestamp;
 }
 
-// Helper function to check for offline errors
-function isOfflineError(error: any): boolean {
-    const message = String(error?.message ?? '').toLowerCase();
-    if (error instanceof FirestoreError) {
-      return error.code === 'unavailable' ||
-             message.includes('offline') ||
-             message.includes('failed to get document because the client is offline') ||
-             message.includes('could not reach cloud firestore backend');
-    }
-    return error instanceof Error && (
-        message.includes('network error') ||
-        message.includes('client is offline') ||
-        message.includes('could not reach cloud firestore backend')
-    );
-  }
+interface GallerySectionProps {
+    galleryImages: GalleryImageMetadata[];
+    error: string | null;
+}
+
+// Fallback images for display when there's an error and no images are passed
+const fallbackImages: GalleryImageMetadata[] = [
+    { id: 'g1', url: 'https://picsum.photos/seed/gallery1/600/400', name: 'Nebula (Fallback)'},
+    { id: 'g2', url: 'https://picsum.photos/seed/gallery2/600/400', name: 'Galaxy (Fallback)'},
+    { id: 'g3', url: 'https://picsum.photos/seed/gallery3/600/400', name: 'Moon surface (Fallback)'},
+    { id: 'g4', url: 'https://picsum.photos/seed/gallery4/600/400', name: 'Star cluster (Fallback)'},
+    { id: 'g5', url: 'https://picsum.photos/seed/gallery5/600/400', name: 'Planet Jupiter (Fallback)'},
+    { id: 'g6', url: 'https://picsum.photos/seed/gallery6/600/400', name: 'Observatory telescope (Fallback)'},
+  ];
 
 
-export function GallerySection() {
-  const { db } = useFirebase();
-  const [galleryImages, setGalleryImages] = useState<GalleryImageMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [isOffline, setIsOffline] = useState(false);
+export function GallerySection({ galleryImages, error }: GallerySectionProps) {
+    // No useEffect or useState for fetching needed here
 
-  const galleryCollectionName = 'gallery';
-  const fallbackImages: GalleryImageMetadata[] = [
-      { id: 'g1', url: 'https://picsum.photos/seed/gallery1/600/400', name: 'Nebula (Fallback)'},
-      { id: 'g2', url: 'https://picsum.photos/seed/gallery2/600/400', name: 'Galaxy (Fallback)'},
-      { id: 'g3', url: 'https://picsum.photos/seed/gallery3/600/400', name: 'Moon surface (Fallback)'},
-      { id: 'g4', url: 'https://picsum.photos/seed/gallery4/600/400', name: 'Star cluster (Fallback)'},
-      { id: 'g5', url: 'https://picsum.photos/seed/gallery5/600/400', name: 'Planet Jupiter (Fallback)'},
-      { id: 'g6', url: 'https://picsum.photos/seed/gallery6/600/400', name: 'Observatory telescope (Fallback)'},
-    ];
+    const displayImages = error && galleryImages.length === 0 ? fallbackImages : galleryImages;
+    const isDisplayingFallbacks = error && galleryImages.length === 0;
+    const isCurrentlyOffline = error ? isOfflineError(new Error(error)) : false; // Check if the passed error indicates offline
 
-
-  useEffect(() => {
-    const fetchGallery = async () => {
-      setLoading(true);
-      setFetchError(null);
-      setIsOffline(false);
-
-      if (!db) {
-        setFetchError("Database not initialized.");
-        setLoading(false);
-        setGalleryImages(fallbackImages);
-        return;
-      }
-
-      const galleryCollectionRef = collection(db, galleryCollectionName);
-      let errorMessage: string | null = null;
-
-      try {
-        const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12));
-        console.log(`[GallerySection] Executing getDocs query for '${galleryCollectionName}'...`);
-        const querySnapshot = await getDocs(q);
-        console.log(`[GallerySection] Fetched ${querySnapshot.size} gallery images.`);
-
-        if (querySnapshot.empty) {
-          console.log("[GallerySection] No gallery images found.");
-          setGalleryImages([]);
-        } else {
-          const images = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            url: doc.data().url as string,
-            name: doc.data().name as string,
-            createdAt: doc.data().createdAt as Timestamp,
-          })) as GalleryImageMetadata[];
-          setGalleryImages(images);
-        }
-      } catch (error) {
-        console.error(`[GallerySection] Error fetching gallery:`, error);
-        if (isOfflineError(error)) {
-             errorMessage = `Offline/Unavailable: Could not connect to Firestore to fetch gallery images (${(error as FirestoreError)?.code}). Using fallback data.`;
-             console.warn(`[GallerySection] ${errorMessage}`);
-             setIsOffline(true);
-          } else if (error instanceof FirestoreError) {
-             if (error.code === 'permission-denied') {
-                 errorMessage = `Permission Denied: Could not read collection '${galleryCollectionName}'. Check Firestore rules.`;
-                 console.error(`[GallerySection] CRITICAL: ${errorMessage}`);
-             } else if (error.code === 'failed-precondition') {
-                  errorMessage = `Index Required: Firestore query needs an index on 'createdAt' descending. Create it in Firebase. Using fallback data.`;
-                 console.error(`[GallerySection] ACTION NEEDED: ${errorMessage}`);
-             } else {
-                 errorMessage = `Firestore Error (${error.code}): ${error.message}. Using fallback data.`;
-             }
-          } else {
-             errorMessage = `Unexpected Error: ${error instanceof Error ? error.message : String(error)}. Using fallback data.`;
-          }
-        setFetchError(errorMessage);
-        setGalleryImages(fallbackImages);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchGallery();
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db]);
-
-  const getModalTitleId = (imageId: string) => `gallery-modal-title-${imageId}`;
-  const getModalDescriptionId = (imageId: string) => `gallery-modal-description-${imageId}`;
+    // Helper function to generate unique IDs for Dialog Title and Description
+    const getModalTitleId = (imageId: string) => `gallery-modal-title-${imageId}`;
+    const getModalDescriptionId = (imageId: string) => `gallery-modal-description-${imageId}`;
 
 
   return (
-    <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-      {/* Added Event Gallery Heading */}
-      <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
-        <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
-      </h2>
-
-      {loading && (
-        <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2 text-muted-foreground">Loading Gallery...</span></div>
-      )}
-
-      {!loading && fetchError && (
-          <Alert variant={isOffline ? "default" : "destructive"} className={`mb-4 ${isOffline ? 'border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400' : ''}`}>
-              {isOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
-              <AlertTitle>{isOffline ? "Network Issue" : "Gallery Unavailable"}</AlertTitle>
+    <>
+      {/* Error Alert (Only shown if there's an error and no images were fetched, handled globally now) */}
+      {/* The global error alert in page.tsx handles the main error reporting. */}
+      {/* Example:
+      {error && galleryImages.length === 0 && (
+          <Alert variant={isCurrentlyOffline ? "default" : "destructive"} className={`mb-4 ${isCurrentlyOffline ? 'border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400' : ''}`}>
+              {isCurrentlyOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
+              <AlertTitle>{isCurrentlyOffline ? "Network Issue" : "Gallery Unavailable"}</AlertTitle>
               <AlertDescription>
-                  {fetchError} {!isOffline && "Showing fallback images."}
-                  {isOffline && "Showing fallback images."}
+                  {error} {isDisplayingFallbacks && " Showing fallback images."}
              </AlertDescription>
           </Alert>
       )}
+      */}
 
-       {!loading && galleryImages.length === 0 && !(fetchError && fallbackImages.length > 0) && (
+
+       {displayImages.length === 0 && !error && (
         <Card>
           <CardContent className="p-6 text-center text-muted-foreground">
             The gallery is currently empty. Check back soon!
@@ -152,9 +72,9 @@ export function GallerySection() {
         </Card>
       )}
 
-      {!loading && galleryImages.length > 0 && (
+      {displayImages.length > 0 && (
         <div className="grid grid-cols-gallery gap-4">
-          {galleryImages.map((image, index) => {
+          {displayImages.map((image, index) => {
              const modalTitleId = getModalTitleId(image.id);
              const modalDescriptionId = getModalDescriptionId(image.id);
              return (
@@ -177,14 +97,19 @@ export function GallerySection() {
                </DialogTrigger>
                <DialogContent
                    className="max-w-3xl p-2 sm:p-4"
-                   aria-labelledby={modalTitleId}
-                   aria-describedby={modalDescriptionId}
+                   aria-labelledby={modalTitleId} // Ensure this is set
+                   aria-describedby={modalDescriptionId} // Ensure this is set if description exists
                >
                    <DialogHeader>
+                     {/* Ensure DialogTitle and optional DialogDescription are present */}
                      <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
                      <DialogDescription id={modalDescriptionId} className="sr-only">
                        Enlarged view of the gallery image: {image.name || 'Unnamed Image'}
                      </DialogDescription>
+                     {/* Or provide a visible description */}
+                     {/* <DialogDescription id={modalDescriptionId}>
+                        Image description or details here...
+                     </DialogDescription> */}
                    </DialogHeader>
                    <div className="relative aspect-video">
                        <Image
@@ -214,7 +139,6 @@ export function GallerySection() {
           })}
         </div>
       )}
-    </section>
+    </>
   );
 }
-

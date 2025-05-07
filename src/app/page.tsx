@@ -1,147 +1,352 @@
 
-'use client';
-
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Globe, UserPlus, Mail, Phone, MapPin, Newspaper } from 'lucide-react'; // Removed WifiOff, ServerCrash, Loader2, AlertCircle as they are handled by loader
+import { Globe, UserPlus, Mail, Phone, MapPin, Newspaper, ServerCrash, WifiOff, AlertCircle, CalendarDays, Image as ImageIcon } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import type { SiteContent } from '@/services/content'; // Type only
-// Removed defaultSiteContent import as it's provided by the loader
+import { SiteContent, defaultSiteContent } from '@/services/content'; // Import defaultContent
+// Firestore imports for events and gallery metadata
+import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError, limit, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase'; // Only need db
 import { JoinForm } from '@/components/home/join-form';
 import { NewsletterForm } from '@/components/home/newsletter-form';
-// Removed Alert components as global alert is in SiteContentLoader
-import { UpcomingEventsSection } from '@/components/home/upcoming-events-section';
-import { GallerySection } from '@/components/home/gallery-section';
-// Removed isOfflineError import as it's used in SiteContentLoader
-import { SiteContentLoader } from '@/components/site-content-loader'; // Import SiteContentLoader
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { UpcomingEventsSection, Event } from '@/components/home/upcoming-events-section';
+import { GallerySection, GalleryImageMetadata } from '@/components/home/gallery-section';
+import { isOfflineError } from '@/lib/utils'; // Use helper from utils
+
+// Define collection names
+const CONTENT_COLLECTION = 'config';
+const CONTENT_DOC_ID = 'siteContent';
+const EVENTS_COLLECTION = 'events';
+const GALLERY_COLLECTION = 'gallery';
+
+// --- Helper Functions for Data Fetching ---
+
+async function fetchSiteContentData(): Promise<{ content: SiteContent; error: string | null }> {
+  const contentDocPath = `${CONTENT_COLLECTION}/${CONTENT_DOC_ID}`;
+  console.log(`[fetchSiteContentData] Attempting to fetch content from Firestore path: ${contentDocPath}`);
+  const operationStartTime = Date.now();
+
+  if (!db) {
+    const errorMessage = "Initialization Error: Firestore database instance (db) is not initialized.";
+    console.error(`[fetchSiteContentData] ${errorMessage}`);
+    return { content: defaultSiteContent, error: errorMessage };
+  }
+
+  try {
+    const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
+    const docSnap = await getDoc(contentDocRef);
+    const fetchDuration = Date.now() - operationStartTime;
+
+    if (docSnap.exists()) {
+      const data = docSnap.data() as Partial<SiteContent>;
+      const mergedContent = { ...defaultSiteContent, ...data };
+      console.log(`[fetchSiteContentData] Fetched and merged content successfully in ${fetchDuration}ms.`);
+      return { content: mergedContent, error: null };
+    } else {
+      const errorMessage = `Configuration document '/${contentDocPath}' not found. Using default content.`;
+      console.warn(`[fetchSiteContentData] INFO: ${errorMessage} (After ${fetchDuration}ms)`);
+      return { content: defaultSiteContent, error: null }; // Not a technical error
+    }
+  } catch (error) {
+    const duration = Date.now() - operationStartTime;
+    const errorId = `fetch-content-error-${operationStartTime}`;
+    let errorMessage: string;
+    console.error(`[fetchSiteContentData] CRITICAL ERROR (ID: ${errorId}, Duration: ${duration}ms):`, error);
+
+     if (isOfflineError(error)) {
+       errorMessage = `Network/Offline Error fetching site content (${(error as FirestoreError)?.code || 'Network Issue'}). Check connection/Firestore status.`;
+     } else if (error instanceof FirestoreError && error.code === 'permission-denied') {
+       errorMessage = `Permission Denied reading '/${contentDocPath}'. Check Firestore rules.`;
+     } else {
+       errorMessage = `Unexpected Error fetching site content: ${error instanceof Error ? error.message : String(error)}`;
+     }
+     console.error(`[fetchSiteContentData] ${errorMessage}`);
+    return { content: defaultSiteContent, error: `Site Content: ${errorMessage}` };
+  }
+}
+
+async function fetchUpcomingEventsData(): Promise<{ data: Event[]; error: string | null }> {
+  console.log(`[fetchUpcomingEventsData] Attempting to fetch upcoming events from Firestore collection: ${EVENTS_COLLECTION}...`);
+  const operationStartTime = Date.now();
+
+  if (!db) {
+    const errorMessage = "Initialization Error: Firestore database instance (db) is not initialized.";
+    console.error(`[fetchUpcomingEventsData] ${errorMessage}`);
+    return { data: [], error: errorMessage };
+  }
+
+  try {
+    const eventsCollectionRef = collection(db, EVENTS_COLLECTION);
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayTimestamp = Timestamp.fromDate(startOfToday);
+
+    const q = query(
+      eventsCollectionRef,
+      where("date", ">=", todayTimestamp),
+      orderBy("date", "asc"),
+      limit(6)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const fetchDuration = Date.now() - operationStartTime;
+    console.log(`[fetchUpcomingEventsData] Fetched ${querySnapshot.size} events in ${fetchDuration}ms.`);
+
+    const events: Event[] = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        // Basic validation/defaults
+        const eventDate = data.date instanceof Timestamp ? data.date : Timestamp.fromDate(new Date(0)); // Default to epoch if invalid
+        const eventName = data.name || 'Unnamed Event';
+        const eventDesc = data.description || 'No description available.';
+        const eventImage = data.imageURL;
+
+        return {
+            id: doc.id,
+            name: eventName,
+            description: eventDesc,
+            date: eventDate,
+            imageURL: eventImage,
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined,
+        };
+    });
+
+    return { data: events, error: null };
+
+  } catch (error) {
+    const duration = Date.now() - operationStartTime;
+    const errorId = `fetch-events-error-${operationStartTime}`;
+    let errorMessage: string;
+    console.error(`[fetchUpcomingEventsData] CRITICAL ERROR (ID: ${errorId}, Duration: ${duration}ms):`, error);
+
+     if (isOfflineError(error)) {
+       errorMessage = `Network/Offline Error fetching events (${(error as FirestoreError)?.code || 'Network Issue'}). Check connection/Firestore status.`;
+     } else if (error instanceof FirestoreError && error.code === 'permission-denied') {
+        errorMessage = `Permission Denied reading '${EVENTS_COLLECTION}'. Check Firestore rules.`;
+     } else if (error instanceof FirestoreError && error.code === 'failed-precondition') {
+        errorMessage = `Index Required for events query (date >=, date asc). Create it in Firebase.`;
+     } else {
+       errorMessage = `Unexpected Error fetching events: ${error instanceof Error ? error.message : String(error)}`;
+     }
+     console.error(`[fetchUpcomingEventsData] ${errorMessage}`);
+    return { data: [], error: `Events: ${errorMessage}` };
+  }
+}
+
+async function fetchGalleryImagesData(): Promise<{ data: GalleryImageMetadata[]; error: string | null }> {
+  console.log(`[fetchGalleryImagesData] Attempting to fetch gallery images from Firestore collection: ${GALLERY_COLLECTION}...`);
+  const operationStartTime = Date.now();
+
+  if (!db) {
+     const errorMessage = "Initialization Error: Firestore database instance (db) is not initialized.";
+     console.error(`[fetchGalleryImagesData] ${errorMessage}`);
+    return { data: [], error: errorMessage };
+  }
+
+  try {
+    const galleryCollectionRef = collection(db, GALLERY_COLLECTION);
+    const q = query(galleryCollectionRef, orderBy("createdAt", "desc"), limit(12));
+    const querySnapshot = await getDocs(q);
+    const fetchDuration = Date.now() - operationStartTime;
+    console.log(`[fetchGalleryImagesData] Fetched ${querySnapshot.size} gallery images in ${fetchDuration}ms.`);
+
+    const images = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      url: doc.data().url as string,
+      name: doc.data().name as string,
+      createdAt: doc.data().createdAt as Timestamp,
+    })) as GalleryImageMetadata[];
+
+    return { data: images, error: null };
+  } catch (error) {
+    const duration = Date.now() - operationStartTime;
+    const errorId = `fetch-gallery-error-${operationStartTime}`;
+    let errorMessage: string;
+    console.error(`[fetchGalleryImagesData] CRITICAL ERROR (ID: ${errorId}, Duration: ${duration}ms):`, error);
+
+     if (isOfflineError(error)) {
+       errorMessage = `Network/Offline Error fetching gallery (${(error as FirestoreError)?.code || 'Network Issue'}). Check connection/Firestore status.`;
+     } else if (error instanceof FirestoreError && error.code === 'permission-denied') {
+        errorMessage = `Permission Denied reading '${GALLERY_COLLECTION}'. Check Firestore rules.`;
+     } else if (error instanceof FirestoreError && error.code === 'failed-precondition') {
+        errorMessage = `Index Required for gallery query (createdAt desc). Create it in Firebase.`;
+     } else {
+       errorMessage = `Unexpected Error fetching gallery: ${error instanceof Error ? error.message : String(error)}`;
+     }
+     console.error(`[fetchGalleryImagesData] ${errorMessage}`);
+    return { data: [], error: `Gallery: ${errorMessage}` };
+  }
+}
 
 
-export default function Home() {
+// --- Home Page Component ---
+export default async function Home() {
+  console.log("[Home Page] Rendering...");
+
+  // Fetch data in parallel
+  const [
+    { content: siteContent, error: siteContentError },
+    { data: upcomingEvents, error: eventsError },
+    { data: galleryImages, error: galleryError },
+  ] = await Promise.all([
+    fetchSiteContentData(),
+    fetchUpcomingEventsData(),
+    fetchGalleryImagesData(),
+  ]);
+
+  const allErrors = [siteContentError, eventsError, galleryError].filter(Boolean) as string[];
+  const isAnyOffline = allErrors.some(err => err.toLowerCase().includes('offline') || err.toLowerCase().includes('network'));
+  const otherErrorsPresent = allErrors.some(err => !err.toLowerCase().includes('offline') && !err.toLowerCase().includes('network'));
+
+  console.log(`[Home Page] Data fetch completed. SiteContentError: ${siteContentError}, EventsError: ${eventsError}, GalleryError: ${galleryError}`);
+  console.log(`[Home Page] Offline state: ${isAnyOffline}, Other errors present: ${otherErrorsPresent}`);
+
 
   return (
-    <SiteContentLoader>
-      {({ content: siteContent, error: siteContentError, loading: siteContentLoading, isOffline: isContentOffline }) => {
+    <div className="flex flex-col min-h-screen">
+      <Header />
 
-         // SiteContentLoader now handles the loading state and the global error alert.
-         // We just need to render the page content using the provided siteContent.
-
-        return (
-          <div className="flex flex-col min-h-screen">
-            <Header />
-
-            {/* Global error alert is rendered inside SiteContentLoader, so no need here */}
-
-            <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24 overflow-x-hidden">
-               {/* Hero Section */}
-               <section
-                 id="hero"
-                 className="text-center py-16 md:py-24 bg-primary/80 rounded-2xl shadow-xl animate-fade-in p-8 relative overflow-hidden backdrop-blur-sm border-transparent"
-                 style={{ animationDelay: '0s' }}
-               >
-                  <div className="absolute inset-0 rounded-2xl shadow-inner pointer-events-none"></div>
-                  <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white animate-fade-in" style={{ animationDelay: '0.1s' }}>{siteContent.heroTitle}</h1>
-                  <p className="text-lg md:text-xl text-white/90 max-w-3xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>{siteContent.heroSubtitle}</p>
-                  <Button
-                    size="lg"
-                    asChild
-                    variant="secondary"
-                    className="transform hover:scale-105 transition-all duration-300 ease-in-out animate-fade-in border-2 border-transparent hover:border-accent shadow-lg hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-accent"
-                    style={{ animationDelay: '0.3s' }}
-                  >
-                    <Link href="#join">Join the Club</Link>
-                  </Button>
-              </section>
-
-
-              {/* About Matrix Section */}
-              <section id="about" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.4s' }}>
-                 <h2 className="text-3xl md:text-4xl font-semibold mb-6 text-white flex items-center justify-center gap-2"><Globe className="w-8 h-8 text-accent"/>About Matrix</h2>
-                 <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-                  <CardContent className="p-6 md:p-8">
-                     {/* Removed specific error alert for About section */}
-                     <p className="text-lg leading-relaxed text-black">{siteContent.about}</p>
-                   </CardContent>
-                 </Card>
-              </section>
-
-              <Separator />
-
-              {/* Upcoming Events Section */}
-               <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-                  <UpcomingEventsSection /> {/* This component handles its own loading/error state */}
-               </section>
-
-              <Separator />
-
-              {/* Event Gallery Section */}
-              <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-                <GallerySection /> {/* This component handles its own loading/error state */}
-              </section>
-
-
-              <Separator />
-
-              {/* Join Matrix Section */}
-              <section id="join" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.2s' }}>
-                 <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><UserPlus className="w-8 h-8 text-accent"/>{siteContent.joinTitle}</h2>
-                 <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
-                  <CardHeader>
-                    <CardTitle>{siteContent.joinTitle}</CardTitle>
-                    <CardDescription>{siteContent.joinDescription}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <JoinForm />
-                  </CardContent>
-                </Card>
-              </section>
-
-              <Separator />
-
-              {/* Newsletter Subscription Section */}
-               <section id="newsletter" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.3s' }}>
-                 <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><Newspaper className="w-8 h-8 text-accent"/>{siteContent.newsletterTitle}</h2>
-                 <Card className="max-w-2xl mx-auto shadow-lg bg-card hover:shadow-xl transition-shadow duration-300">
-                    <CardHeader>
-                      <CardTitle>{siteContent.newsletterTitle}</CardTitle>
-                      <CardDescription className="text-white">{siteContent.newsletterDescription}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                     <NewsletterForm />
-                    </CardContent>
-                 </Card>
-               </section>
-
-              <Separator />
-
-              {/* Contact Us Section */}
-              <section id="contact" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.4s' }}>
-                 <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
-                  <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
-                    <CardContent className="p-6 md:p-8 space-y-4">
-                      {/* Removed specific error alert for Contact section */}
-                      <div className="flex items-center gap-3 group">
-                        <Mail className="w-5 h-5 text-accent group-hover:animate-pulse"/>
-                        <a href={`mailto:${siteContent.contactEmail}`} className="text-black hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail || 'N/A'}</a>
-                      </div>
-                      <div className="flex items-center gap-3 group">
-                        <Phone className="w-5 h-5 text-accent group-hover:animate-pulse"/>
-                        <a href={`tel:${siteContent.contactPhone}`} className="text-black hover:text-accent transition-colors duration-200">{siteContent.contactPhone || 'N/A'}</a>
-                      </div>
-                      <div className="flex items-start gap-3 group">
-                        <MapPin className="w-5 h-5 text-accent mt-1 group-hover:animate-pulse"/>
-                        <span className="text-black whitespace-pre-wrap">{siteContent.contactAddress || 'Location not specified'}, India</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-               </section>
-            </main>
-            <Footer />
+       {/* Global Error/Offline Alert */}
+       {allErrors.length > 0 && (
+         <div className="container mx-auto px-4 pt-4">
+            <Alert
+             variant={isAnyOffline ? "default" : "destructive"}
+             className={`${isAnyOffline ? "border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400" : ""} animate-fade-in`}
+           >
+             {isAnyOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
+             <AlertTitle>
+               {isAnyOffline ? "Network Connectivity Issue" : "Data Loading Issue"}
+             </AlertTitle>
+             <AlertDescription>
+               {isAnyOffline
+                 ? "Could not connect to fetch all site data. Displaying available or default content."
+                 : `Could not load all site data due to server-side errors. Some sections might be showing default content.`}
+               <ul className="list-disc list-inside mt-2 text-xs max-h-32 overflow-y-auto">
+                 {allErrors.map((err, index) => (
+                   <li key={index}>{err}</li>
+                 ))}
+               </ul>
+               {!isAnyOffline && "Please try refreshing the page. If the problem persists, contact support."}
+             </AlertDescription>
+           </Alert>
           </div>
-        );
-      }}
-    </SiteContentLoader>
+       )}
+
+
+      <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24 overflow-x-hidden">
+         {/* Hero Section */}
+         <section
+           id="hero"
+           className="text-center py-16 md:py-24 bg-primary/80 rounded-2xl shadow-xl animate-fade-in p-8 relative overflow-hidden backdrop-blur-sm border-transparent"
+           style={{ animationDelay: '0s' }}
+         >
+            <div className="absolute inset-0 rounded-2xl shadow-inner pointer-events-none"></div>
+            <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white animate-fade-in" style={{ animationDelay: '0.1s' }}>{siteContent.heroTitle}</h1>
+            <p className="text-lg md:text-xl text-white/90 max-w-3xl mx-auto mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>{siteContent.heroSubtitle}</p>
+            <Button
+              size="lg"
+              asChild
+              variant="secondary"
+              className="transform hover:scale-105 transition-all duration-300 ease-in-out animate-fade-in border-2 border-transparent hover:border-accent shadow-lg hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:ring-accent"
+              style={{ animationDelay: '0.3s' }}
+            >
+              <Link href="#join">Join the Club</Link>
+            </Button>
+        </section>
+
+
+        {/* About Matrix Section */}
+        <section id="about" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+           <h2 className="text-3xl md:text-4xl font-semibold mb-6 text-white flex items-center justify-center gap-2"><Globe className="w-8 h-8 text-accent"/>About Matrix</h2>
+           <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardContent className="p-6 md:p-8">
+              {/* Use siteContent directly */}
+               <p className="text-lg leading-relaxed text-black">{siteContent.about}</p>
+             </CardContent>
+           </Card>
+        </section>
+
+        <Separator />
+
+        {/* Upcoming Events Section - Pass data and error as props */}
+         <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
+            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+             <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
+            </h2>
+            <UpcomingEventsSection events={upcomingEvents} error={eventsError} />
+         </section>
+
+        <Separator />
+
+        {/* Event Gallery Section - Pass data and error as props */}
+        <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
+           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+              <ImageIcon className="w-8 h-8 text-accent"/>Event Gallery
+           </h2>
+           <GallerySection galleryImages={galleryImages} error={galleryError} />
+        </section>
+
+
+        <Separator />
+
+        {/* Join Matrix Section */}
+        <section id="join" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.2s' }}>
+           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><UserPlus className="w-8 h-8 text-accent"/>{siteContent.joinTitle}</h2>
+           <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader>
+              <CardTitle>{siteContent.joinTitle}</CardTitle>
+              <CardDescription>{siteContent.joinDescription}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <JoinForm />
+            </CardContent>
+          </Card>
+        </section>
+
+        <Separator />
+
+        {/* Newsletter Subscription Section */}
+         <section id="newsletter" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.3s' }}>
+           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><Newspaper className="w-8 h-8 text-accent"/>{siteContent.newsletterTitle}</h2>
+           <Card className="max-w-2xl mx-auto shadow-lg bg-card hover:shadow-xl transition-shadow duration-300">
+              <CardHeader>
+                <CardTitle>{siteContent.newsletterTitle}</CardTitle>
+                <CardDescription className="text-white">{siteContent.newsletterDescription}</CardDescription>
+              </CardHeader>
+              <CardContent>
+               <NewsletterForm />
+              </CardContent>
+           </Card>
+         </section>
+
+        <Separator />
+
+        {/* Contact Us Section */}
+        <section id="contact" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.4s' }}>
+           <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
+            <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardContent className="p-6 md:p-8 space-y-4">
+                {/* Use siteContent directly */}
+                <div className="flex items-center gap-3 group">
+                  <Mail className="w-5 h-5 text-accent group-hover:animate-pulse"/>
+                  <a href={`mailto:${siteContent.contactEmail}`} className="text-black hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail || 'N/A'}</a>
+                </div>
+                <div className="flex items-center gap-3 group">
+                  <Phone className="w-5 h-5 text-accent group-hover:animate-pulse"/>
+                  <a href={`tel:${siteContent.contactPhone}`} className="text-black hover:text-accent transition-colors duration-200">{siteContent.contactPhone || 'N/A'}</a>
+                </div>
+                <div className="flex items-start gap-3 group">
+                  <MapPin className="w-5 h-5 text-accent mt-1 group-hover:animate-pulse"/>
+                  <span className="text-black whitespace-pre-wrap">{siteContent.contactAddress || 'Location not specified'}, India</span>
+                </div>
+              </CardContent>
+            </Card>
+         </section>
+      </main>
+      <Footer />
+    </div>
   );
 }
