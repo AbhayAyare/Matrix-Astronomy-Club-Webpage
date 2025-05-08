@@ -48,21 +48,18 @@ export function GallerySection({ galleryImages, error }: GallerySectionProps) {
 
   return (
     <>
-        <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
-            <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
-        </h2>
-      {/* Error Alert (Only shown if there's an error and no images were fetched, handled globally now) */}
-      {/* Example:
-      {error && galleryImages.length === 0 && (
-          <Alert variant={isCurrentlyOffline ? "default" : "destructive"} className={`mb-4 ${isCurrentlyOffline ? 'border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400' : ''}`}>
-              {isCurrentlyOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
-              <AlertTitle>{isCurrentlyOffline ? "Network Issue" : "Gallery Unavailable"}</AlertTitle>
-              <AlertDescription>
-                  {error} {isDisplayingFallbacks && " Showing fallback images."}
-             </AlertDescription>
-          </Alert>
-      )}
-      */}
+        {/* Error Alert (Only shown if there's an error and no images were fetched, handled globally now) */}
+        {/* Example:
+        {error && galleryImages.length === 0 && (
+            <Alert variant={isCurrentlyOffline ? "default" : "destructive"} className={`mb-4 ${isCurrentlyOffline ? 'border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400' : ''}`}>
+                {isCurrentlyOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
+                <AlertTitle>{isCurrentlyOffline ? "Network Issue" : "Gallery Unavailable"}</AlertTitle>
+                <AlertDescription>
+                    {error} {isDisplayingFallbacks && " Showing fallback images."}
+               </AlertDescription>
+            </Alert>
+        )}
+        */}
 
 
        {displayImages.length === 0 && !error && (
@@ -102,15 +99,17 @@ export function GallerySection({ galleryImages, error }: GallerySectionProps) {
                    aria-describedby={modalDescriptionId} // Ensure this is set
                >
                    <DialogHeader>
-                      {/* Ensure DialogTitle is present */}
-                      <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
-                      <DialogDescription id={modalDescriptionId} className="sr-only">
-                        Enlarged view of the gallery image: {image.name || 'Unnamed Image'}
-                      </DialogDescription>
-                      {/* Or provide a visible description */}
-                      {/* <DialogDescription id={modalDescriptionId}>
-                         Image description or details here...
-                      </DialogDescription> */}
+
+                     {/* Ensure DialogTitle and optional DialogDescription are present */}
+                     <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
+                     <DialogDescription id={modalDescriptionId} className="sr-only">
+                       Enlarged view of the gallery image: {image.name || 'Unnamed Image'}
+                     </DialogDescription>
+                     {/* Or provide a visible description */}
+                     {/* <DialogDescription id={modalDescriptionId}>
+
+                        Image description or details here...
+                     </DialogDescription> */}
                    </DialogHeader>
                    <div className="relative aspect-video">
                        <Image
