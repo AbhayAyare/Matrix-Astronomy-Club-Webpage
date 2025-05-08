@@ -42,14 +42,16 @@ export function GallerySection({ galleryImages, error }: GallerySectionProps) {
     const isCurrentlyOffline = error ? isOfflineError(new Error(error)) : false; // Check if the passed error indicates offline
 
     // Helper function to generate unique IDs for Dialog Title and Description
-    const getModalTitleId = (imageId: string) => `gallery-modal-title-${imageId}`;
-    const getModalDescriptionId = (imageId: string) => `gallery-modal-description-${imageId}`;
+    const getModalTitleId = (imageId: string): string => `gallery-modal-title-${imageId || 'fallback'}`;
+    const getModalDescriptionId = (imageId: string): string => `gallery-modal-description-${imageId || 'fallback'}`;
 
 
   return (
     <>
+       <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+          <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
+       </h2>
       {/* Error Alert (Only shown if there's an error and no images were fetched, handled globally now) */}
-      {/* The global error alert in page.tsx handles the main error reporting. */}
       {/* Example:
       {error && galleryImages.length === 0 && (
           <Alert variant={isCurrentlyOffline ? "default" : "destructive"} className={`mb-4 ${isCurrentlyOffline ? 'border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400' : ''}`}>
@@ -96,8 +98,8 @@ export function GallerySection({ galleryImages, error }: GallerySectionProps) {
                </DialogTrigger>
                <DialogContent
                    className="max-w-3xl p-2 sm:p-4"
-                   aria-labelledby={modalTitleId} // Ensure this is set
-                   aria-describedby={modalDescriptionId} // Ensure this is set if description exists
+                   aria-labelledby={modalTitleId} // Use generated ID
+                   aria-describedby={modalDescriptionId} // Use generated ID
                >
                    {/* Ensure DialogHeader and DialogTitle are present */}
                    <DialogHeader>
@@ -105,10 +107,10 @@ export function GallerySection({ galleryImages, error }: GallerySectionProps) {
                      <DialogDescription id={modalDescriptionId} className="sr-only">
                        Enlarged view of the gallery image: {image.name || 'Unnamed Image'}
                      </DialogDescription>
-                     {/* Or provide a visible description if needed */}
-                     {/* <DialogDescription id={modalDescriptionId}> */}
-                     {/*    Image description or details here... */}
-                     {/* </DialogDescription> */}
+                     {/* Or provide a visible description */}
+                     {/* <DialogDescription id={modalDescriptionId}>
+                         Image description or details here...
+                      </DialogDescription> */}
                    </DialogHeader>
                    <div className="relative aspect-video">
                        <Image

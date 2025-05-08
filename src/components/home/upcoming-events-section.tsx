@@ -9,7 +9,7 @@ import { CalendarDays, AlertCircle, WifiOff, ArrowRight, X, Clock } from 'lucide
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Image from 'next/image';
-import { Button } from "@/components/ui/button"; // Import Button
+import { Button } from "@/components/ui/button"; // Ensure Button is imported
 import { isOfflineError } from '@/lib/utils';
 
 // Event interface remains the same
@@ -57,12 +57,16 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
   const isCurrentlyOffline = error ? isOfflineError(new Error(error)) : false;
 
   // Helper function to generate unique IDs for Dialog Title and Description
-  const getModalTitleId = (eventId: string) => `event-modal-title-${eventId}`;
-  const getModalDescriptionId = (eventId: string) => `event-modal-description-${eventId}`;
+  const getModalTitleId = (eventId: string): string => `event-modal-title-${eventId || 'fallback'}`;
+  const getModalDescriptionId = (eventId: string): string => `event-modal-description-${eventId || 'fallback'}`;
 
 
   return (
     <>
+      <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+         <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
+       </h2>
+
        {error && events.length === 0 && (
          <Alert variant={isCurrentlyOffline ? "default" : "destructive"} className={`mb-4 ${isCurrentlyOffline ? 'border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400' : ''}`}>
            {isCurrentlyOffline ? <WifiOff className="h-4 w-4"/> : <AlertCircle className="h-4 w-4"/>}
@@ -114,7 +118,7 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
                          </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-grow">
-                        <p className="text-card-foreground line-clamp-3">{event.description}</p>
+                        <p className="text-foreground/90 line-clamp-3">{event.description}</p>
                       </CardContent>
                       <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
@@ -126,8 +130,8 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
                 </DialogTrigger>
                  <DialogContent
                     className="sm:max-w-[600px] p-0"
-                    aria-labelledby={modalTitleId}
-                    aria-describedby={modalDescriptionId}
+                    aria-labelledby={modalTitleId} // Use generated ID
+                    aria-describedby={modalDescriptionId} // Use generated ID
                   >
                     {/* Ensure DialogHeader and DialogTitle are present */}
                     <DialogHeader className="p-4 sm:p-6 border-b">
