@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { GalleryImage } from './gallery-image';
 import { Image as ImageIconIcon, AlertCircle, WifiOff, Maximize, X } from 'lucide-react'; // Removed Loader2 as loading is handled by parent
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"; // Corrected import
 import Image from 'next/image';
 import { Button } from "@/components/ui/button"; // Import Button
 import { isOfflineError } from '@/lib/utils'; // Keep for checking error type
@@ -48,9 +48,9 @@ export function GallerySection({ galleryImages, error }: GallerySectionProps) {
 
   return (
     <>
-       <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
-          <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
-       </h2>
+        <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
+            <ImageIconIcon className="w-8 h-8 text-accent"/>Event Gallery
+        </h2>
       {/* Error Alert (Only shown if there's an error and no images were fetched, handled globally now) */}
       {/* Example:
       {error && galleryImages.length === 0 && (
@@ -99,16 +99,16 @@ export function GallerySection({ galleryImages, error }: GallerySectionProps) {
                <DialogContent
                    className="max-w-3xl p-2 sm:p-4"
                    aria-labelledby={modalTitleId} // Use generated ID
-                   aria-describedby={modalDescriptionId} // Use generated ID
+                   aria-describedby={modalDescriptionId} // Ensure this is set
                >
-                   {/* Ensure DialogHeader and DialogTitle are present */}
                    <DialogHeader>
-                     <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
-                     <DialogDescription id={modalDescriptionId} className="sr-only">
-                       Enlarged view of the gallery image: {image.name || 'Unnamed Image'}
-                     </DialogDescription>
-                     {/* Or provide a visible description */}
-                     {/* <DialogDescription id={modalDescriptionId}>
+                      {/* Ensure DialogTitle is present */}
+                      <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
+                      <DialogDescription id={modalDescriptionId} className="sr-only">
+                        Enlarged view of the gallery image: {image.name || 'Unnamed Image'}
+                      </DialogDescription>
+                      {/* Or provide a visible description */}
+                      {/* <DialogDescription id={modalDescriptionId}>
                          Image description or details here...
                       </DialogDescription> */}
                    </DialogHeader>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from "@/components/ui/badge";
 import { EventImage } from './event-image';
 import { CalendarDays, AlertCircle, WifiOff, ArrowRight, X, Clock } from 'lucide-react'; // Added Clock icon
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"; // Corrected import
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Image from 'next/image';
 import { Button } from "@/components/ui/button"; // Ensure Button is imported
@@ -63,9 +63,12 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
 
   return (
     <>
+      {/* Heading is rendered in page.tsx now */}
+      {/*
       <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
          <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
        </h2>
+       */}
 
        {error && events.length === 0 && (
          <Alert variant={isCurrentlyOffline ? "default" : "destructive"} className={`mb-4 ${isCurrentlyOffline ? 'border-yellow-500 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300 [&>svg]:text-yellow-500 dark:[&>svg]:text-yellow-400' : ''}`}>
@@ -100,7 +103,7 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
               <Dialog key={event.id}>
                 <DialogTrigger asChild>
                     {/* Card remains mostly the same */}
-                    <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in cursor-pointer group bg-card" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
+                    <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out animate-fade-in cursor-pointer group bg-card text-card-foreground" style={{ animationDelay: `${0.6 + index * 0.1}s` }}>
                       <div className="relative h-48 w-full overflow-hidden group">
                         <EventImage
                           src={event.imageURL}
@@ -110,7 +113,7 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
                         />
                       </div>
                       <CardHeader>
-                         <CardTitle className="text-xl text-card-foreground">{event.name}</CardTitle>
+                         <CardTitle className="text-xl">{event.name}</CardTitle>
                          {/* Display date and use EventTime component for time */}
                          <CardDescription className="text-muted-foreground flex items-center gap-1.5">
                             <CalendarDays className="h-4 w-4" /> {eventDateString}
@@ -118,7 +121,7 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
                          </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-grow">
-                        <p className="text-foreground/90 line-clamp-3">{event.description}</p>
+                        <p className="text-black line-clamp-3">{event.description}</p>
                       </CardContent>
                       <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
@@ -133,9 +136,9 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
                     aria-labelledby={modalTitleId} // Use generated ID
                     aria-describedby={modalDescriptionId} // Use generated ID
                   >
-                    {/* Ensure DialogHeader and DialogTitle are present */}
                     <DialogHeader className="p-4 sm:p-6 border-b">
-                      <DialogTitle id={modalTitleId}>{event.name}</DialogTitle>
+                       {/* Ensure DialogTitle is present */}
+                       <DialogTitle id={modalTitleId}>{event.name}</DialogTitle>
                        <DialogDescription id={modalDescriptionId} className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
                             <span><CalendarDays className="inline-block h-4 w-4 mr-1.5 align-text-bottom"/>{eventLongDateString}</span>
                             <span><Clock className="inline-block h-4 w-4 mr-1.5 align-text-bottom"/> <EventTime timestamp={event.date} /></span>
