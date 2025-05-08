@@ -9,7 +9,7 @@ import { CalendarDays, AlertCircle, WifiOff, ArrowRight, X, Clock } from 'lucide
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Image from 'next/image';
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"; // Import Button
 import { isOfflineError } from '@/lib/utils';
 
 // Event interface remains the same
@@ -75,7 +75,7 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
 
        {displayEvents.length === 0 && !error && (
         <Card>
-          <CardContent className="p-6 text-center text-foreground">
+          <CardContent className="p-6 text-center text-muted-foreground">
              No upcoming events scheduled yet. Check back soon!
           </CardContent>
         </Card>
@@ -114,7 +114,7 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
                          </CardDescription>
                       </CardHeader>
                       <CardContent className="flex-grow">
-                        <p className="text-card-foreground line-clamp-3">{event.description}</p> {/* Changed text-foreground/80 to text-card-foreground */}
+                        <p className="text-card-foreground line-clamp-3">{event.description}</p>
                       </CardContent>
                       <CardFooter className="flex justify-between items-center mt-auto pt-4 border-t">
                         <Badge variant="secondary" className="bg-accent text-accent-foreground">Upcoming</Badge>
@@ -129,11 +129,9 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
                     aria-labelledby={modalTitleId}
                     aria-describedby={modalDescriptionId}
                   >
+                    {/* Ensure DialogHeader and DialogTitle are present */}
                     <DialogHeader className="p-4 sm:p-6 border-b">
-                      {/* Added id to DialogTitle */}
                       <DialogTitle id={modalTitleId}>{event.name}</DialogTitle>
-                       {/* Use EventTime also in the modal for consistency */}
-                       {/* Added id to DialogDescription */}
                        <DialogDescription id={modalDescriptionId} className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
                             <span><CalendarDays className="inline-block h-4 w-4 mr-1.5 align-text-bottom"/>{eventLongDateString}</span>
                             <span><Clock className="inline-block h-4 w-4 mr-1.5 align-text-bottom"/> <EventTime timestamp={event.date} /></span>
@@ -177,5 +175,3 @@ export function UpcomingEventsSection({ events, error }: UpcomingEventsSectionPr
     </>
   );
 }
-
-    

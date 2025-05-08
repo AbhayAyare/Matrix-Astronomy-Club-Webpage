@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -98,16 +99,16 @@ export function GallerySection({ galleryImages, error }: GallerySectionProps) {
                    aria-labelledby={modalTitleId} // Ensure this is set
                    aria-describedby={modalDescriptionId} // Ensure this is set if description exists
                >
+                   {/* Ensure DialogHeader and DialogTitle are present */}
                    <DialogHeader>
-                     {/* Ensure DialogTitle and optional DialogDescription are present */}
                      <DialogTitle id={modalTitleId}>{image.name || 'Gallery Image'}</DialogTitle>
                      <DialogDescription id={modalDescriptionId} className="sr-only">
                        Enlarged view of the gallery image: {image.name || 'Unnamed Image'}
                      </DialogDescription>
-                     {/* Or provide a visible description */}
-                     {/* <DialogDescription id={modalDescriptionId}>
-                        Image description or details here...
-                     </DialogDescription> */}
+                     {/* Or provide a visible description if needed */}
+                     {/* <DialogDescription id={modalDescriptionId}> */}
+                     {/*    Image description or details here... */}
+                     {/* </DialogDescription> */}
                    </DialogHeader>
                    <div className="relative aspect-video">
                        <Image
@@ -140,4 +141,3 @@ export function GallerySection({ galleryImages, error }: GallerySectionProps) {
     </>
   );
 }
-
