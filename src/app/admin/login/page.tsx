@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Telescope } from 'lucide-react'; // Added Telescope
+import { Loader2, Telescope } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-// Removed Image import
 
 export default function LoginPage() {
   const { login, loading: authLoading } = useAuth();
@@ -26,20 +25,16 @@ export default function LoginPage() {
     setError(null);
     setIsLoggingIn(true);
 
-    if (!auth) { // Check if auth service is available from useFirebase
-      setError("Authentication service is not available. Please try again later.");
+    // The login function from useAuth() handles the auth service availability.
+    // If login is not available, it implies an issue with the auth service/provider.
+    if (!login) {
+      setError("Login function is not available. Authentication service might be down or not configured.");
       setIsLoggingIn(false);
       toast({
         title: "Auth Error",
-        description: "Authentication service is not available.",
+        description: "Login service is not available. Please try again later or contact support.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (!login) {
-      setError("Login function is not available.");
-      setIsLoggingIn(false);
       return;
     }
 
@@ -64,6 +59,8 @@ export default function LoginPage() {
          errorMessage = "Too many login attempts. Please try again later.";
       } else if (err.code === 'auth/network-request-failed') {
         errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (err.message && err.message.includes("Firebase Auth is not initialized")) {
+        errorMessage = "Authentication service is not initialized. Please contact support.";
       } else if (err.message) {
           // Fallback to Firebase message if available and not too technical
           if (!err.message.includes('Firebase: Error')) {
