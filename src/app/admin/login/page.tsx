@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from 'lucide-react';
+import { Loader2, Telescope } from 'lucide-react'; // Added Telescope
 import { useToast } from "@/hooks/use-toast";
-import Image from 'next/image';
+// Removed Image import
 
 export default function LoginPage() {
   const { login, loading: authLoading } = useAuth();
@@ -24,6 +25,17 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setIsLoggingIn(true);
+
+    if (!auth) { // Check if auth service is available from useFirebase
+      setError("Authentication service is not available. Please try again later.");
+      setIsLoggingIn(false);
+      toast({
+        title: "Auth Error",
+        description: "Authentication service is not available.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!login) {
       setError("Login function is not available.");
@@ -47,9 +59,11 @@ export default function LoginPage() {
       } else if (err.code === 'auth/invalid-email') {
          errorMessage = "Invalid email format.";
       } else if (err.code === 'auth/operation-not-allowed') {
-         errorMessage = "Login method not enabled. Please contact support."; // More user-friendly
+         errorMessage = "Login method not enabled. Please contact support.";
       } else if (err.code === 'auth/too-many-requests') {
          errorMessage = "Too many login attempts. Please try again later.";
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = "Network error. Please check your internet connection and try again.";
       } else if (err.message) {
           // Fallback to Firebase message if available and not too technical
           if (!err.message.includes('Firebase: Error')) {
@@ -63,6 +77,7 @@ export default function LoginPage() {
         description: errorMessage,
         variant: "destructive",
       });
+    } finally {
       setIsLoggingIn(false);
     }
   };
@@ -73,14 +88,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-sm shadow-2xl animate-fade-in border-primary/20">
         <CardHeader className="space-y-1 text-center">
-          <Image
-              src="/placeholder.svg" // Replace with your actual logo path if available
-              alt="Matrix Astronomy Club Logo"
-              width={60}
-              height={60}
-              className="mx-auto mb-4 rounded-full"
-              data-ai-hint="logo icon astronomy"
-            />
+          <Telescope className="mx-auto mb-4 h-16 w-16 text-primary" />
           <CardTitle className="text-2xl font-bold text-primary">Admin Login</CardTitle>
           <CardDescription>Enter your credentials to access the admin panel.</CardDescription>
         </CardHeader>
@@ -96,7 +104,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
-                className="transition-colors duration-200 focus:border-accent"
+                className="text-primary-foreground placeholder:text-gray-300 transition-colors duration-200 focus:border-accent"
               />
             </div>
             <div className="space-y-2">
@@ -104,11 +112,12 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
-                 className="transition-colors duration-200 focus:border-accent"
+                className="text-primary-foreground placeholder:text-gray-300 transition-colors duration-200 focus:border-accent"
               />
             </div>
             {error && (
