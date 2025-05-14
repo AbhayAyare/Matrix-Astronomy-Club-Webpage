@@ -24,12 +24,11 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setIsLoggingIn(true);
+    console.log("[LoginPage] handleLogin called for email:", email);
 
-    // The login function from useAuth() handles the auth service availability.
-    // If login is not available, it implies an issue with the auth service/provider.
     if (!login) {
       const authUnavailableError = "Login function is not available. Authentication service might be down, not configured, or still initializing. Please try again in a moment. If the issue persists, contact support.";
-      console.error("[LoginPage] HandleLogin: Login function from useAuth() is null.");
+      console.error("[LoginPage] HandleLogin: Login function from useAuth() is null. This indicates a problem with AuthProvider or Firebase Auth service initialization.");
       setError(authUnavailableError);
       setIsLoggingIn(false);
       toast({
@@ -43,6 +42,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      console.log("[LoginPage] Login successful, redirecting to /admin");
       toast({
         title: "Login Successful",
         description: "Redirecting to dashboard...",
@@ -50,7 +50,6 @@ export default function LoginPage() {
       router.push('/admin');
     } catch (err: any) {
       console.error("[LoginPage] Login page error handler caught:", err);
-      // More specific user-facing messages
       let errorMessage = "Login failed. Please try again.";
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         errorMessage = "Invalid email or password.";
@@ -65,7 +64,6 @@ export default function LoginPage() {
       } else if (err.message && err.message.includes("Firebase Auth is not initialized")) {
         errorMessage = "Authentication service is not initialized. Please contact support.";
       } else if (err.message) {
-          // Fallback to Firebase message if available and not too technical
           if (!err.message.includes('Firebase: Error')) {
               errorMessage = err.message;
           }
@@ -79,6 +77,7 @@ export default function LoginPage() {
       });
     } finally {
       setIsLoggingIn(false);
+      console.log("[LoginPage] handleLogin finished.");
     }
   };
 

@@ -9,30 +9,31 @@ import { useFirebase } from './firebase-provider';
 interface AuthContextProps {
   user: User | null;
   loading: boolean;
-  login: ((email: string, password: string) => Promise<void>) | null; // Allow login to be null if auth not ready
-  logout: (() => Promise<void>) | null; // Allow logout to be null
+  login: ((email: string, password: string) => Promise<void>) | null;
+  logout: (() => Promise<void>) | null;
 }
 
 const AuthContext = createContext<AuthContextProps | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { auth: firebaseAuthService } = useFirebase(); // Renamed to avoid confusion with local 'auth'
+  const { auth: firebaseAuthService } = useFirebase();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("[AuthProvider] Initializing. Firebase Auth Service from useFirebase():", firebaseAuthService);
+    console.log("[AuthProvider] Initializing. Firebase Auth Service from useFirebase():", firebaseAuthService ? 'Available' : 'NOT AVAILABLE');
     if (!firebaseAuthService) {
-      console.warn("[AuthProvider] Firebase Auth service is not available on init from useFirebase(). Auth features may not work.");
+      console.warn("[AuthProvider] Firebase Auth service is not available on init. Auth features will be disabled. Setting loading to false.");
       setLoading(false);
       setUser(null);
       return;
     }
+
     console.log("[AuthProvider] Subscribing to onAuthStateChanged.");
     const unsubscribe = onAuthStateChanged(firebaseAuthService, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
-      console.log("[AuthProvider] Auth state changed. User:", currentUser?.email, "Loading:", false);
+      console.log("[AuthProvider] Auth state changed. User:", currentUser?.email || 'No user', "Loading:", false);
     }, (error) => {
        console.error("[AuthProvider] Error in onAuthStateChanged listener:", error);
        setUser(null);
@@ -46,39 +47,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [firebaseAuthService]);
 
   const login = async (email: string, password: string): Promise<void> => {
+    console.log("[AuthProvider] login function called for email:", email);
     setLoading(true);
     if (!firebaseAuthService) {
       setLoading(false);
-      console.error("[AuthProvider] Login function called, but Firebase Auth service is not initialized.");
+      console.error("[AuthProvider] Login function called, but Firebase Auth service is not initialized. This is unexpected if AuthProvider initialized correctly.");
       throw new Error("Firebase Auth is not initialized. Cannot login.");
     }
     try {
       console.log("[AuthProvider] Attempting signInWithEmailAndPassword for:", email);
       await signInWithEmailAndPassword(firebaseAuthService, email, password);
-      // Auth state change will be handled by onAuthStateChanged.
-      console.log("[AuthProvider] signInWithEmailAndPassword successful (pending onAuthStateChanged).");
+      console.log("[AuthProvider] signInWithEmailAndPassword successful (onAuthStateChanged will update user and loading state).");
     } catch (error: any) {
       setLoading(false);
-      console.error("[AuthProvider] Login failed.", "Email:", email, "Error Code:", error.code, "Message:", error.message);
-      if (error.code === 'auth/operation-not-allowed') {
-         console.error("[AuthProvider Detail] Email/Password sign-in might not be enabled in the Firebase project settings.");
-      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-           console.error("[AuthProvider Detail] Invalid email or password provided.");
-      } else if (error.code === 'auth/invalid-email') {
-         console.error("[AuthProvider Detail] Invalid email format.");
-      } else if (error.code === 'auth/too-many-requests') {
-         console.error("[AuthProvider Detail] Too many login attempts. Please try again later.");
-      } else if (error.code === 'auth/network-request-failed') {
-        console.error("[AuthProvider Detail] Network error during login. Check internet connection.");
-      } else if (error.message && error.message.includes("Firebase Auth is not initialized")) {
-        console.error("[AuthProvider Detail] Caught error: Firebase Auth is not initialized during login attempt.");
-      }
-      throw error;
+      console.error("[AuthProvider] Login failed.", "Email:", email, "Error Code:", error.code, "Message:", error.message, error);
+      throw error; // Re-throw to be caught by the calling component (LoginPage)
     }
-    // setLoading will be set to false by onAuthStateChanged
   };
 
   const logout = async (): Promise<void> => {
+    console.log("[AuthProvider] logout function called.");
     setLoading(true);
     if (!firebaseAuthService) {
       setLoading(false);
@@ -88,20 +76,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log("[AuthProvider] Attempting signOut.");
       await signOut(firebaseAuthService);
-      // Auth state change will set user to null via listener.
-      console.log("[AuthProvider] signOut successful (pending onAuthStateChanged).");
+      console.log("[AuthProvider] signOut successful (onAuthStateChanged will update user and loading state).");
     } catch (error) {
       setLoading(false);
       console.error("[AuthProvider] Logout failed", error);
       throw error;
     }
-     // setLoading will be set to false by onAuthStateChanged
   };
 
   const value: AuthContextProps = {
     user,
     loading,
-    login: firebaseAuthService ? login : null, // Only provide login/logout if auth service is available
+    login: firebaseAuthService ? login : null,
     logout: firebaseAuthService ? logout : null,
   };
 
@@ -111,6 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = (): AuthContextProps => {
   const context = useContext(AuthContext);
   if (!context) {
+    console.error("[useAuth] Critical: useAuth must be used within an AuthProvider. This component is likely not wrapped correctly.");
     throw new Error('useAuth must be used within an AuthProvider. This usually means a component calling useAuth() is not wrapped in <AuthProvider>.');
   }
   return context;
