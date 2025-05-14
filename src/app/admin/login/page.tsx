@@ -28,12 +28,15 @@ export default function LoginPage() {
     // The login function from useAuth() handles the auth service availability.
     // If login is not available, it implies an issue with the auth service/provider.
     if (!login) {
-      setError("Login function is not available. Authentication service might be down or not configured.");
+      const authUnavailableError = "Login function is not available. Authentication service might be down, not configured, or still initializing. Please try again in a moment. If the issue persists, contact support.";
+      console.error("[LoginPage] HandleLogin: Login function from useAuth() is null.");
+      setError(authUnavailableError);
       setIsLoggingIn(false);
       toast({
-        title: "Auth Error",
-        description: "Login service is not available. Please try again later or contact support.",
+        title: "Auth Service Error",
+        description: authUnavailableError,
         variant: "destructive",
+        duration: 7000,
       });
       return;
     }
@@ -46,7 +49,7 @@ export default function LoginPage() {
       });
       router.push('/admin');
     } catch (err: any) {
-      console.error("Login page error handler:", err);
+      console.error("[LoginPage] Login page error handler caught:", err);
       // More specific user-facing messages
       let errorMessage = "Login failed. Please try again.";
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
