@@ -10,21 +10,21 @@ body {
   :root {
     /* Light Theme */
     --background: 210 100% 12%; /* Dark Blue */
-    --foreground: 0 0% 98%; /* Near White (Fix: Contrast with background) */
+    --foreground: 0 0% 100%; /* Pure White (Changed from 98%) */
     --card: 0 0% 100%; /* White */
     --card-foreground: 210 100% 12%; /* Dark Blue */
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 210 100% 12%; /* Dark Blue */
     --primary: 210 100% 12%; /* Dark Blue */
-    --primary-foreground: 0 0% 98%; /* Near White */
+    --primary-foreground: 0 0% 100%; /* Pure White (Changed from 98%) */
     --secondary: 0 0% 90%; /* Light Gray */
     --secondary-foreground: 210 100% 12%; /* Dark Blue */
     --muted: 0 0% 95%; /* Lighter Gray */
     --muted-foreground: 0 0% 40%; /* Darker Gray (Fix: Improved contrast on light/dark backgrounds) */
     --accent: 180 100% 25%; /* Teal */
-    --accent-foreground: 0 0% 98%; /* Near White */
+    --accent-foreground: 0 0% 100%; /* Pure White (Changed from 98%) */
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%; /* Pure White (Changed from 98%) */
     --border: 0 0% 83%; /* Light Gray as Border */
     --input: 0 0% 88%; /* Slightly darker gray for input */
     --ring: 180 100% 25%; /* Teal for focus rings */
@@ -35,11 +35,11 @@ body {
     --chart-5: 210 100% 70%;
     --radius: 0.5rem;
     --sidebar-background: 210 100% 12%; /* Dark Blue for Sidebar */
-    --sidebar-foreground: 0 0% 98%; /* Near White */
+    --sidebar-foreground: 0 0% 100%; /* Pure White (Changed from 98%) */
     --sidebar-primary: 180 100% 25%; /* Teal */
-    --sidebar-primary-foreground: 0 0% 98%; /* Near White */
+    --sidebar-primary-foreground: 0 0% 100%; /* Pure White (Changed from 98%) */
     --sidebar-accent: 210 100% 20%; /* Slightly lighter dark blue */
-    --sidebar-accent-foreground: 0 0% 98%; /* Near White */
+    --sidebar-accent-foreground: 0 0% 100%; /* Pure White (Changed from 98%) */
     --sidebar-border: 210 100% 25%;
     --sidebar-ring: 180 100% 35%; /* Teal for focus rings */
     /* Star Colors for Light Theme (More visible) */
@@ -53,19 +53,19 @@ body {
     --background: 0 0% 98%; /* Near White */
     --foreground: 0 0% 7%; /* Near Black for high contrast text */
     --card: 210 100% 15%; /* Slightly Lighter Dark Blue */
-    --card-foreground: 0 0% 98%; /* Near White */
+    --card-foreground: 0 0% 100%; /* Pure White (Was 98%) */
     --popover: 210 100% 15%; /* Slightly Lighter Dark Blue */
-    --popover-foreground: 0 0% 98%; /* Near White */
+    --popover-foreground: 0 0% 100%; /* Pure White (Was 98%) */
     --primary: 0 0% 98%; /* Near White */
     --primary-foreground: 210 100% 12%; /* Dark Blue */
     --secondary: 0 0% 25%; /* Dark Gray */
-    --secondary-foreground: 0 0% 98%; /* Near White */
+    --secondary-foreground: 0 0% 100%; /* Pure White (Was 98%) */
     --muted: 0 0% 20%; /* Darker Gray */
     --muted-foreground: 0 0% 63.9%; /* Medium Gray */
     --accent: 180 100% 35%; /* Brighter Teal */
     --accent-foreground: 210 100% 12%; /* Dark Blue */
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%; /* Pure White (Was 98%) */
     --border: 0 0% 25%; /* Dark Gray as Border */
     --input: 0 0% 30%; /* Darker Gray for input */
     --ring: 180 100% 35%; /* Brighter Teal for focus rings */
@@ -75,11 +75,11 @@ body {
     --chart-4: 180 100% 40%;
     --chart-5: 210 100% 30%;
     --sidebar-background: 210 100% 15%; /* Slightly Lighter Dark Blue for Sidebar */
-    --sidebar-foreground: 0 0% 98%; /* Near White */
+    --sidebar-foreground: 0 0% 100%; /* Pure White (Was 98%) */
     --sidebar-primary: 180 100% 35%; /* Brighter Teal */
     --sidebar-primary-foreground: 210 100% 12%; /* Dark Blue */
     --sidebar-accent: 210 100% 25%; /* Lighter dark blue */
-    --sidebar-accent-foreground: 0 0% 98%; /* Near White */
+    --sidebar-accent-foreground: 0 0% 100%; /* Pure White (Was 98%) */
     --sidebar-border: 210 100% 30%;
     --sidebar-ring: 180 100% 45%; /* Brighter Teal for focus rings */
     /* Star Colors for Dark Theme */
