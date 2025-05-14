@@ -6,16 +6,16 @@ import { Separator } from "@/components/ui/separator";
 import { Globe, UserPlus, Mail, Phone, MapPin, Newspaper, ServerCrash, WifiOff, AlertCircle, CalendarDays, Image as ImageIcon } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { SiteContent, defaultSiteContent } from '@/services/content'; // Import SiteContent and defaultSiteContent
+import { SiteContent, defaultSiteContent } from '@/services/content';
 // Firestore imports for events and gallery metadata
 import { collection, getDocs, query, orderBy, Timestamp, where, FirestoreError, limit, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/config/firebase'; // Only need db
+import { db } from '@/config/firebase';
 import { JoinForm } from '@/components/home/join-form';
 import { NewsletterForm } from '@/components/home/newsletter-form';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { UpcomingEventsSection, Event } from '@/components/home/upcoming-events-section';
 import { GallerySection, GalleryImageMetadata } from '@/components/home/gallery-section';
-import { isOfflineError } from '@/lib/utils'; // Use helper from utils
+import { isOfflineError } from '@/lib/utils';
 
 
 // Define collection names
@@ -23,6 +23,24 @@ const CONTENT_COLLECTION = 'config';
 const CONTENT_DOC_ID = 'siteContent';
 const EVENTS_COLLECTION = 'events';
 const GALLERY_COLLECTION = 'gallery';
+
+// Helper to format error reasons from Promise.allSettled
+function formatErrorReason(reason: any): string {
+  if (reason instanceof Error) {
+    return reason.message;
+  }
+  if (typeof reason === 'string') {
+    return reason;
+  }
+  try {
+    // Attempt to stringify, but handle complex objects that might cause issues
+    const str = JSON.stringify(reason);
+    return str.length > 200 ? str.substring(0, 197) + "..." : str; // Truncate long strings
+  } catch {
+    return 'Unknown error structure';
+  }
+}
+
 
 // --- Helper Functions for Data Fetching ---
 
@@ -69,7 +87,6 @@ async function fetchSiteContentData(): Promise<{ content: SiteContent; error: st
        errorMessage = `Unexpected Error fetching site content: ${error instanceof Error ? error.message : String(error)}`;
      }
      console.error(`[fetchSiteContentData] ${errorMessage}`);
-    // Return default content but also the error message for display
     return { content: defaultSiteContent, error: `Website Content: ${errorMessage}` };
   }
 }
@@ -81,7 +98,6 @@ async function fetchUpcomingEventsData(): Promise<{ data: Event[]; error: string
   if (!db) {
     const errorMessage = "Initialization Error: Firestore database instance (db) is not initialized.";
     console.error(`[fetchUpcomingEvents] ${errorMessage}`);
-    // Return empty data and the error message
     return { data: [], error: `Events: ${errorMessage}` };
   }
   console.log("[fetchUpcomingEvents] Firestore db instance appears valid.");
@@ -108,23 +124,20 @@ async function fetchUpcomingEventsData(): Promise<{ data: Event[]; error: string
 
     const events: Event[] = querySnapshot.docs.map((doc) => {
         const data = doc.data();
-        // Basic validation/defaults
         const eventName = data.name || 'Unnamed Event';
         const eventDesc = data.description || 'No description available.';
         const eventImage = data.imageURL;
-
-         // Convert Timestamp to milliseconds (number)
-        const eventDateMillis = data.date instanceof Timestamp ? data.date.toMillis() : Date.now();
-        const createdAtMillis = data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : undefined;
+        const eventDateMillis = data.date instanceof Timestamp ? data.date.toMillis() : (data.date ? new Date(data.date).getTime() : Date.now());
+        const createdAtMillis = data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : (data.createdAt ? new Date(data.createdAt).getTime() : undefined);
 
 
         return {
             id: doc.id,
             name: eventName,
             description: eventDesc,
-            date: eventDateMillis, // Pass as number
+            date: eventDateMillis,
             imageURL: eventImage,
-            createdAt: createdAtMillis, // Pass as number or undefined
+            createdAt: createdAtMillis,
         };
     });
 
@@ -153,7 +166,6 @@ async function fetchUpcomingEventsData(): Promise<{ data: Event[]; error: string
        errorMessage = "Unknown Error occurred fetching events.";
      }
      console.error(`[fetchUpcomingEvents] ${errorMessage}`);
-     // Return empty data and the error message
      console.log("[fetchUpcomingEvents] Returning empty event data due to error.");
      return { data: [], error: `Events: ${errorMessage}` };
   }
@@ -166,7 +178,6 @@ async function fetchGalleryImagesData(): Promise<{ data: GalleryImageMetadata[];
   if (!db) {
      const errorMessage = "Initialization Error: Firestore database instance (db) is not initialized.";
      console.error(`[getGalleryImages] ${errorMessage}`);
-    // Return empty data and the error message
     return { data: [], error: `Gallery: ${errorMessage}` };
   }
    console.log("[getGalleryImages] Firestore db instance appears valid.");
@@ -181,13 +192,12 @@ async function fetchGalleryImagesData(): Promise<{ data: GalleryImageMetadata[];
 
     const images = querySnapshot.docs.map(doc => {
         const data = doc.data();
-        // Convert Timestamp to milliseconds
-        const createdAtMillis = data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : undefined;
+        const createdAtMillis = data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : (data.createdAt ? new Date(data.createdAt).getTime(): undefined);
         return {
             id: doc.id,
             url: data.url as string,
             name: data.name as string,
-            createdAt: createdAtMillis, // Pass as number or undefined
+            createdAt: createdAtMillis,
         };
     }) as GalleryImageMetadata[];
 
@@ -216,7 +226,6 @@ async function fetchGalleryImagesData(): Promise<{ data: GalleryImageMetadata[];
         errorMessage = "Unknown Error occurred fetching gallery images.";
      }
      console.error(`[getGalleryImages] ${errorMessage}`);
-      // Return empty data and the error message
       console.log("[getGalleryImages] Returning empty gallery data due to error.");
     return { data: [], error: `Gallery: ${errorMessage}` };
   }
@@ -225,40 +234,40 @@ async function fetchGalleryImagesData(): Promise<{ data: GalleryImageMetadata[];
 
 // --- Home Page Component ---
 export default async function Home() {
-  console.log("[Home Page] Starting data fetch...");
-  // Fetch data in parallel
-   const [
-     contentResult,
-     eventsResult,
-     galleryResult,
-   ] = await Promise.allSettled([
-     fetchSiteContentData(),
-     fetchUpcomingEventsData(),
-     fetchGalleryImagesData(),
-   ]);
+  console.log("[Home Page] Starting server-side rendering and data fetch...");
+
+  const [
+    contentResult,
+    eventsResult,
+    galleryResult,
+  ] = await Promise.allSettled([
+    fetchSiteContentData(),
+    fetchUpcomingEventsData(),
+    fetchGalleryImagesData(),
+  ]);
 
   // Process results safely after Promise.allSettled
   const { content: siteContent, error: siteContentError } = contentResult.status === 'fulfilled'
-     ? contentResult.value
-     : { content: defaultSiteContent, error: `Website Content: Fetch failed: ${contentResult.reason}` };
+    ? contentResult.value
+    : { content: defaultSiteContent, error: `Website Content: Fetch failed: ${formatErrorReason(contentResult.reason)}` };
 
-   const { data: upcomingEvents, error: eventsError } = eventsResult.status === 'fulfilled'
-     ? eventsResult.value
-     : { data: [], error: `Events: Fetch failed: ${eventsResult.reason}` };
+  const { data: upcomingEvents, error: eventsError } = eventsResult.status === 'fulfilled'
+    ? eventsResult.value
+    : { data: [], error: `Events: Fetch failed: ${formatErrorReason(eventsResult.reason)}` };
 
-   const { data: galleryImages, error: galleryError } = galleryResult.status === 'fulfilled'
-     ? galleryResult.value
-     : { data: [], error: `Gallery: Fetch failed: ${galleryResult.reason}` };
+  const { data: galleryImages, error: galleryError } = galleryResult.status === 'fulfilled'
+    ? galleryResult.value
+    : { data: [], error: `Gallery: Fetch failed: ${formatErrorReason(galleryResult.reason)}` };
 
 
-  // Combine all errors for display
   const allErrors = [siteContentError, eventsError, galleryError].filter(Boolean) as string[];
   const isAnyOffline = allErrors.some(err => err.toLowerCase().includes('offline') || err.toLowerCase().includes('network'));
-  const otherErrorsPresent = allErrors.some(err => !err.toLowerCase().includes('offline') && !err.toLowerCase().includes('network'));
 
-  console.log(`[Home Page] Data fetch completed. Results:`, [contentResult, eventsResult, galleryResult]);
-  console.log(`[Home Page] Combined Fetch Errors:`, allErrors);
-  console.log(`[Home Page] Offline state: ${isAnyOffline}, Other errors present: ${otherErrorsPresent}`);
+  console.log(`[Home Page] Data fetch completed.`);
+  if (allErrors.length > 0) {
+    console.warn(`[Home Page] Combined Fetch Errors:`, allErrors);
+    console.warn(`[Home Page] Offline state: ${isAnyOffline}`);
+  }
 
 
   return (
@@ -293,7 +302,6 @@ export default async function Home() {
 
 
       <main className="flex-grow container mx-auto px-4 py-8 md:py-12 space-y-16 md:space-y-24 overflow-x-hidden">
-         {/* Hero Section */}
           <section
            id="hero"
            className="text-center py-16 md:py-24 bg-primary/80 rounded-2xl shadow-xl animate-fade-in p-8 relative overflow-hidden backdrop-blur-sm border-transparent"
@@ -314,21 +322,19 @@ export default async function Home() {
         </section>
 
 
-        {/* About Matrix Section */}
         <section id="about" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.4s' }}>
            <h2 className="text-3xl md:text-4xl font-semibold mb-6 text-white flex items-center justify-center gap-2"><Globe className="w-8 h-8 text-accent"/>About Matrix</h2>
-            {siteContentError && !isAnyOffline && (
+            {siteContentError && !isAnyOffline && siteContent.about === defaultSiteContent.about && ( // Show error only if default content is used for 'about'
                  <Alert variant="destructive" className="mb-4">
                    <AlertCircle className="h-4 w-4" />
-                   <AlertTitle>Content Error</AlertTitle>
+                   <AlertTitle>About Content Error</AlertTitle>
                    <AlertDescription>
-                     Could not load the 'About' content. Displaying default text. Error: {siteContentError}
+                     Could not load the 'About' section content. Displaying default text. Error: {siteContentError}
                    </AlertDescription>
                  </Alert>
              )}
            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-6 md:p-8">
-              {/* Use siteContent directly */}
                <p className="text-lg leading-relaxed text-black">{siteContent.about}</p>
              </CardContent>
            </Card>
@@ -336,7 +342,6 @@ export default async function Home() {
 
         <Separator />
 
-         {/* Upcoming Events Section - Pass data and error as props */}
          <section id="events" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.5s' }}>
             <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
              <CalendarDays className="w-8 h-8 text-accent"/>Upcoming Events
@@ -346,7 +351,6 @@ export default async function Home() {
 
         <Separator />
 
-        {/* Event Gallery Section - Pass data and error as props */}
          <section id="gallery" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '0.9s' }}>
              <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2">
                <ImageIcon className="w-8 h-8 text-accent"/>Event Gallery
@@ -357,13 +361,12 @@ export default async function Home() {
 
         <Separator />
 
-        {/* Join Matrix Section */}
         <section id="join" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.2s' }}>
            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><UserPlus className="w-8 h-8 text-accent"/>{siteContent.joinTitle}</h2>
-            {siteContentError && !isAnyOffline && (
+            {siteContentError && !isAnyOffline && (siteContent.joinTitle === defaultSiteContent.joinTitle || siteContent.joinDescription === defaultSiteContent.joinDescription) && (
                  <Alert variant="destructive" className="mb-4 max-w-2xl mx-auto">
                    <AlertCircle className="h-4 w-4" />
-                   <AlertTitle>Content Error</AlertTitle>
+                   <AlertTitle>Join Section Content Error</AlertTitle>
                    <AlertDescription>
                      Could not load join section text. Using defaults. Error: {siteContentError}
                    </AlertDescription>
@@ -382,13 +385,12 @@ export default async function Home() {
 
         <Separator />
 
-        {/* Newsletter Subscription Section */}
          <section id="newsletter" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.3s' }}>
            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><Newspaper className="w-8 h-8 text-accent"/>{siteContent.newsletterTitle}</h2>
-             {siteContentError && !isAnyOffline && (
+             {siteContentError && !isAnyOffline && (siteContent.newsletterTitle === defaultSiteContent.newsletterTitle || siteContent.newsletterDescription === defaultSiteContent.newsletterDescription) && (
                  <Alert variant="destructive" className="mb-4 max-w-2xl mx-auto">
                    <AlertCircle className="h-4 w-4" />
-                   <AlertTitle>Content Error</AlertTitle>
+                   <AlertTitle>Newsletter Section Content Error</AlertTitle>
                    <AlertDescription>
                      Could not load newsletter section text. Using defaults. Error: {siteContentError}
                    </AlertDescription>
@@ -407,10 +409,9 @@ export default async function Home() {
 
         <Separator />
 
-        {/* Contact Us Section */}
         <section id="contact" className="scroll-mt-20 animate-fade-in" style={{ animationDelay: '1.4s' }}>
            <h2 className="text-3xl md:text-4xl font-semibold mb-8 text-white flex items-center justify-center gap-2"><Phone className="w-8 h-8 text-accent"/>Contact Us</h2>
-             {siteContentError && !isAnyOffline && (
+             {siteContentError && !isAnyOffline && (siteContent.contactEmail === defaultSiteContent.contactEmail || siteContent.contactPhone === defaultSiteContent.contactPhone || siteContent.contactAddress === defaultSiteContent.contactAddress) && (
                  <Alert variant="destructive" className="mb-4 max-w-2xl mx-auto">
                    <AlertCircle className="h-4 w-4" />
                    <AlertTitle>Contact Details Error</AlertTitle>
@@ -421,7 +422,6 @@ export default async function Home() {
              )}
             <Card className="max-w-2xl mx-auto shadow-lg hover:shadow-xl transition-shadow duration-300">
               <CardContent className="p-6 md:p-8 space-y-4">
-                {/* Use siteContent directly */}
                 <div className="flex items-center gap-3 group">
                   <Mail className="w-5 h-5 text-accent group-hover:animate-pulse"/>
                   <a href={`mailto:${siteContent.contactEmail}`} className="text-black hover:text-accent transition-colors duration-200 break-all">{siteContent.contactEmail || 'N/A'}</a>
@@ -442,5 +442,3 @@ export default async function Home() {
     </div>
   );
 }
-
-

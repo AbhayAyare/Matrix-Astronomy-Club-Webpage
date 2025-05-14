@@ -1,53 +1,75 @@
 
-import { getSiteContent, defaultSiteContent, GetContentResult } from '@/services/content';
 import { NextResponse } from 'next/server';
+import { db } from '@/config/firebase'; // Firebase instance
+import { doc, getDoc, FirestoreError } from 'firebase/firestore';
+import type { SiteContent } from '@/services/content'; // SiteContent type
+import { defaultSiteContent } from '@/services/content'; // Default content
 
-// Define a consistent error response structure
-interface ErrorResponse {
-    content: null; // Ensure content is null on error
-    error: string;
+// This tells Next.js to treat this API route as a dynamic serverless function,
+// even when the rest of the site is statically exported.
+export const dynamic = 'force-dynamic';
+
+const CONTENT_COLLECTION = 'config';
+const CONTENT_DOC_ID = 'siteContent';
+
+interface GetContentApiResponse {
+    content: SiteContent;
+    error: string | null;
 }
 
-export async function GET(): Promise<NextResponse<GetContentResult | ErrorResponse>> {
+export async function GET(): Promise<NextResponse<GetContentApiResponse>> {
   console.log("[API /api/get-site-content] GET request received.");
+
+  if (!db) {
+    const errorMessage = "Firestore database instance (db) is not initialized.";
+    console.error(`[API /api/get-site-content] CRITICAL: ${errorMessage}`);
+    // Return default content and a 500 error status if db is not available
+    return NextResponse.json({ content: defaultSiteContent, error: errorMessage }, { status: 500 });
+  }
+
   try {
-    const result = await getSiteContent(); // This function should already return { content: ..., error: ... }
+    const contentDocRef = doc(db, CONTENT_COLLECTION, CONTENT_DOC_ID);
+    const docSnap = await getDoc(contentDocRef);
 
-    if (result.error) {
-        console.error("[API /api/get-site-content] Error returned from getSiteContent service:", result.error);
-        // Even though the service handled it by returning default content,
-        // return a non-200 status from the API route to signal an issue occurred.
-        // Still return the JSON structure the client expects ({ content: ..., error: ... }).
-        // Return 500 as the service layer encountered an error.
-        return NextResponse.json(
-          { content: defaultSiteContent, error: result.error }, // Pass the error message from the service
-          { status: 500 }
-        );
+    if (docSnap.exists()) {
+      const data = docSnap.data() as Partial<SiteContent>;
+      // Merge fetched data with defaults to ensure all fields are present,
+      // giving precedence to fetched data.
+      const mergedContent = { ...defaultSiteContent, ...data };
+      console.log("[API /api/get-site-content] Fetched and merged content successfully.");
+      return NextResponse.json({ content: mergedContent, error: null }, { status: 200 });
     } else {
-         console.log("[API /api/get-site-content] getSiteContent service returned successfully.");
-         // Successful fetch, return 200 OK with the content
-         return NextResponse.json(result, { status: 200 });
+      // Document doesn't exist, use default content.
+      // This is not necessarily a server error, but expected behavior if content isn't set in Firestore.
+      const message = `Configuration document '/${CONTENT_COLLECTION}/${CONTENT_DOC_ID}' not found. Serving default content.`;
+      console.warn(`[API /api/get-site-content] INFO: ${message}`);
+      return NextResponse.json({ content: defaultSiteContent, error: null /* Or pass 'message' if client needs to know */ }, { status: 200 });
     }
+  } catch (error) {
+    let errorMessage: string;
+    let statusCode = 500; // Default to Internal Server Error
 
-  } catch (error: any) {
-    // --- Catch UNEXPECTED errors within the API route handler itself ---
-    // This block is a safety net for errors not caught by getSiteContent() or other issues in this route handler.
-    const errorMessage = error instanceof Error ? error.message : 'An unknown critical error occurred in the site content API.';
-    console.error("[API /api/get-site-content] CRITICAL UNHANDLED ERROR in GET handler:", error);
-    // Log the stack trace if available
-    if (error instanceof Error) {
-        console.error("[API /api/get-site-content] Stack Trace:", error.stack);
+    if (error instanceof FirestoreError) {
+      console.error(`[API /api/get-site-content] Firestore Error (Code: ${error.code}):`, error.message, error.stack);
+      if (error.code === 'permission-denied') {
+        errorMessage = `Permission Denied: Cannot read Firestore document '/${CONTENT_COLLECTION}/${CONTENT_DOC_ID}'. Please check Firestore security rules.`;
+        statusCode = 403; // Forbidden
+      } else if (error.code === 'unavailable') {
+        errorMessage = `Firestore Service Unavailable: Could not fetch site content. This might be a temporary network issue or Firestore service disruption. (Code: ${error.code})`;
+        statusCode = 503; // Service Unavailable
+      } else {
+        errorMessage = `A Firestore error occurred while fetching site content (Code: ${error.code}): ${error.message}`;
+      }
+    } else if (error instanceof Error) {
+      console.error("[API /api/get-site-content] Generic Error:", error.message, error.stack);
+      errorMessage = `An unexpected server error occurred while fetching site content: ${error.message}`;
     } else {
-         console.error("[API /api/get-site-content] Raw Error Object:", error);
+      // Handle cases where the error is not an instance of Error
+      console.error("[API /api/get-site-content] Unknown Error Object:", error);
+      errorMessage = "An unknown server error occurred while fetching site content.";
     }
-
-    // Return a standardized JSON error response with a 500 status
-    return NextResponse.json(
-      {
-        content: null, // Explicitly null content on server error
-        error: `API Route Server Error: ${errorMessage}. Check server logs for full details.` // Indicate error happened at API level
-      },
-      { status: 500 } // Indicate internal server error
-    );
+    
+    // In case of any error, return default content along with the error message and appropriate status code
+    return NextResponse.json({ content: defaultSiteContent, error: errorMessage }, { status: statusCode });
   }
 }
