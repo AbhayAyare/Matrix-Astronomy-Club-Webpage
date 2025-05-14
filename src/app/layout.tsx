@@ -17,6 +17,7 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: 'Matrix Astronomy Club', // Updated Title
   description: 'Explore the cosmos with Matrix Astronomy Club.',
+  icons: null, // Explicitly disable default icon handling
 };
 
 export default function RootLayout({
