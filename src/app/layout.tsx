@@ -4,9 +4,8 @@ import {Geist} from 'next/font/google';
 import './globals.css';
 import {Toaster} from '@/components/ui/toaster';
 import {FirebaseProvider} from '@/context/firebase-provider';
-import {QueryClientProviderWrapper} from '@/context/query-client-provider'; // Updated import path
-import { StarBackground } from '@/components/layout/star-background'; // Import the new component
-// Removed AuthProvider import
+import {QueryClientProviderWrapper} from '@/context/query-client-provider';
+import { StarBackground } from '@/components/layout/star-background';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -15,9 +14,14 @@ const geistSans = Geist({
 
 
 export const metadata: Metadata = {
-  title: 'Matrix Astronomy Club', // Updated Title
+  title: 'Matrix Astronomy Club',
   description: 'Explore the cosmos with Matrix Astronomy Club.',
-  icons: null, // Explicitly disable default icon handling
+  icons: { // More explicit "no icons" configuration
+    icon: [],
+    shortcut: [],
+    apple: [],
+    other: [],
+  },
 };
 
 export default function RootLayout({
@@ -27,17 +31,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} antialiased relative`}> {/* Added relative positioning for potential absolute children */}
-         <StarBackground /> {/* Add the star background here */}
+      <body className={`${geistSans.variable} antialiased relative`}>
+         <StarBackground />
         <FirebaseProvider>
-           {/* AuthProvider removed from here, moved to admin layout */}
              <QueryClientProviderWrapper>
-                <div className="relative z-10"> {/* Ensure content is above the background */}
+                <div className="relative z-10">
                   {children}
                 </div>
                <Toaster />
              </QueryClientProviderWrapper>
-           {/* AuthProvider removed from here */}
         </FirebaseProvider>
       </body>
     </html>
