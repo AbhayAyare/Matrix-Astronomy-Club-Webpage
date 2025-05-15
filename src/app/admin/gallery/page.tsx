@@ -274,7 +274,7 @@ export default function AdminGalleryPage() {
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 disabled={savingMetadata || isOffline}
-                className="transition-colors duration-200 focus:border-accent"
+                className="transition-colors duration-200 focus:border-accent text-primary-foreground placeholder:text-gray-300"
              />
           </div>
           <div className="space-y-2">
@@ -286,7 +286,7 @@ export default function AdminGalleryPage() {
                 value={imageName}
                 onChange={(e) => setImageName(e.target.value)}
                 disabled={savingMetadata || isOffline}
-                className="transition-colors duration-200 focus:border-accent"
+                className="transition-colors duration-200 focus:border-accent text-primary-foreground placeholder:text-gray-300"
              />
           </div>
           <Button onClick={handleAddMetadata} disabled={savingMetadata || isOffline || !imageUrl || !imageName}>
