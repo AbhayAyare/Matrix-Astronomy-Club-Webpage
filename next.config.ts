@@ -38,19 +38,18 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
     GOOGLE_GENAI_API_KEY: process.env.GOOGLE_GENAI_API_KEY, // Ensure GenAI key is also passed
   },
-  // Server Actions configuration is typically for dynamic environments,
-  // might not be strictly necessary for a fully static export but doesn't hurt to keep
-  // if parts of the build process might use them internally or if you switch modes later.
-  experimental: {
-      serverActions: {
-        allowedOrigins: [
-            "matrixclub-bb0db.firebaseapp.com",
-            "matrixclub-bb0db.web.app", // Add the .web.app domain
-            "localhost:9002", // Local development
-            "127.0.0.1:9002" // Local development
-        ]
-      }
-    }
+  // Server Actions configuration is incompatible with 'output: "export"'.
+  // Commenting out this block as Server Actions cannot be used with static export.
+  // experimental: {
+  //     serverActions: {
+  //       allowedOrigins: [
+  //           "matrixclub-bb0db.firebaseapp.com",
+  //           "matrixclub-bb0db.web.app", // Add the .web.app domain
+  //           "localhost:9002", // Local development
+  //           "127.0.0.1:9002" // Local development
+  //       ]
+  //     }
+  //   }
 };
 
 export default nextConfig;
